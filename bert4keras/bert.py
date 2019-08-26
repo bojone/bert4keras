@@ -75,6 +75,5 @@ def get_bert_encoder_from_config(config):
         num_attention_heads=config['num_attention_heads'],
         intermediate_size=config['intermediate_size'],
         hidden_act=config['hidden_act'],
-        dropout_rate=0.1
-    )
+        dropout_rate=0.1)
     return model
