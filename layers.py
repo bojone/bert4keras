@@ -6,6 +6,7 @@ import keras.backend as K
 from keras.layers import *
 from keras.models import Model
 
+
 # gelu有两个实现版本
 # 一是利用Erf直接计算，二是利用Tanh做近似，
 # 两者会有一点差异。
