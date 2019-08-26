@@ -62,3 +62,19 @@ def get_bert_encoder(vocab_size, max_position_embeddings, hidden_size,
         x = LayerNormalization(name='%s-Norm' % feed_forward_name)(x)
 
     return Model([x_in, s_in], x)
+
+
+def get_bert_encoder_from_config(config):
+    """根据预先设定的配置字典来构建模型
+    """
+    model = get_bert_encoder(
+        vocab_size=config['vocab_size'],
+        max_position_embeddings=config['max_position_embeddings'],
+        hidden_size=config['hidden_size'],
+        num_hidden_layers=config['num_hidden_layers'],
+        num_attention_heads=config['num_attention_heads'],
+        intermediate_size=config['intermediate_size'],
+        hidden_act=config['hidden_act'],
+        dropout_rate=0.1
+    )
+    return model
