@@ -1,5 +1,18 @@
-# bert4keras
+## bert4keras
 Our light reimplement of bert for keras
+更清晰、更轻量级的keras版bert
+
+### 说明
+这是笔者重新实现的keras版的bert，致力于用尽可能少的代码来实现keras下调用bert。
+
+本项目的初衷是为了修改、定制上的方便，所以可能会频繁更新。因此欢迎star，但不建议fork，因为你fork下来的版本可能很快就过期了。
+
+### 背景
+之前一直用CyberZHG大佬的<a href="https://github.com/CyberZHG/keras-bert">keras-bert</a>，如果纯粹只是为了在keras下对bert进行调用和fine tune来说，keras-bert已经足够能让人满意了。
+
+然而，如果想要在加载官方预训练权重的基础上，对bert的内部结构进行修改，那么keras-bert就比较难满足我们的需求了，因为keras-bert为了代码的复用性，几乎将每个小模块都封装为了一个单独的库，比如keras-bert依赖于keras-transformer，而keras-transformer依赖于keras-multi-head，keras-multi-head依赖于keras-self-attention，这样一重重依赖下去，改起来就相当头疼了。
+
+所以，我决定重新写一个keras版的bert，争取在几个文件内把它完整地实现出来，减少这些依赖性，并且保留可以加载官方预训练权重的特性。
 
 ### 鸣谢
 感谢CyberZHG大佬实现的<a href="https://github.com/CyberZHG/keras-bert">keras-bert</a>，本实现有不少地方参考了keras-bert的源码，在此衷心感谢大佬的无私奉献。
