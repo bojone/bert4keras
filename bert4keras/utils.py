@@ -4,10 +4,11 @@ import tensorflow as tf
 from functools import partial
 
 
-def load_weights_from_checkpoint(model, checkpoint_file, num_hidden_layers):
+def load_weights_from_checkpoint(model, checkpoint_file, config):
     """从预训练好的checkpoint中加载权重
     """
     loader = partial(tf.train.load_variable, checkpoint_file)
+    num_hidden_layers = config['num_hidden_layers']
 
     model.get_layer(name='Embedding-Token').set_weights([
         loader('bert/embeddings/word_embeddings'),
