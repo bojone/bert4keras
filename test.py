@@ -1,4 +1,5 @@
 #! -*- coding: utf-8 -*-
+# 测试代码可用性
 
 import codecs, json
 from bert4keras.bert import get_bert_encoder_from_config
