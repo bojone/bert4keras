@@ -12,6 +12,9 @@
 
 因此欢迎star，但不建议fork，因为你fork下来的版本可能很快就过期了。
 
+## 使用
+参考<a href="https://github.com/bojone/bert4keras/blob/master/test.py">test.py</a>
+
 ## 背景
 之前一直用CyberZHG大佬的<a href="https://github.com/CyberZHG/keras-bert">keras-bert</a>，如果纯粹只是为了在keras下对bert进行调用和fine tune来说，keras-bert已经足够能让人满意了。
 
