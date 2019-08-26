@@ -4,6 +4,7 @@
 import codecs, json
 from bert4keras.bert import get_bert_encoder_from_config
 from bert4keras.utils import SimpleTokenizer, load_weights_from_checkpoint
+import numpy as np
 
 
 config_path = '../../kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
