@@ -12,7 +12,7 @@ dict_path = '../../kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
 token_dict = load_vocab(dict_path) # 读取词典
 tokenizer = SimpleTokenizer(token_dict) # 建立分词器
-model = load_pretrained_model(config_path, checkpoint_path) # 建立模型，加载权重
+model = load_pretrained_encoder(config_path, checkpoint_path) # 建立模型，加载权重
 
 # 编码测试
 token_ids, segment_ids = tokenizer.encode(u'语言模型')
