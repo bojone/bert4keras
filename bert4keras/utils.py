@@ -49,3 +49,14 @@ class SimpleTokenizer:
             ])
             segment_ids.extend([1] * (len(second) + 1))
         return token_ids, segment_ids
+
+
+def load_vocab(dict_path):
+    """从bert的词典文件中读取词典
+    """
+    token_dict = {}
+    with codecs.open(dict_path, encoding='utf-8') as reader:
+        for line in reader:
+            token = line.strip()
+            token_dict[token] = len(token_dict)
+    return token_dict
