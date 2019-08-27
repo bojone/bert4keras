@@ -1,5 +1,7 @@
 #! -*- coding: utf-8 -*-
 
+import unicodedata
+
 
 class SimpleTokenizer:
     """简单的分词器，直接将文本分割为单字符序列，
