@@ -7,9 +7,13 @@ from keras.layers import *
 from keras.models import Model
 
 
-# gelu有两个实现版本
-# 一是利用Erf直接计算，二是利用Tanh做近似，
-# 两者会有一点差异。
+"""
+gelu有两个实现版本，
+一是利用Erf直接计算，二是利用Tanh做近似，
+两者会有一点差异。
+官方早期放出的代码是用Erf函数实现的，
+但当前版本已经改为了Tanh版本。
+"""
 gelu_version = 1
 
 
@@ -95,7 +99,13 @@ class MultiHeadAttention(OurLayer):
         self.v_dense = Dense(self.out_dim)
         self.o_dense = Dense(self.out_dim)
 
-    def call(self, inputs):
+    def call(self, inputs, mask=None):
+        """实现多头注意力
+        注意：这个mask输入是对Attention矩阵的mask。
+              如果mask是None或True，则忽略；如果mask是True，
+              则自动mask掉将来信息；如果mask是一个张量，则
+              直接用这个张量来mask。
+        """
         q, k, v = inputs[:3]
         v_mask = q_mask = None
         if len(inputs) > 3:
@@ -117,6 +127,13 @@ class MultiHeadAttention(OurLayer):
         # Attention
         a = K.batch_dot(qw, kw, [3, 3]) / np.sqrt(self.key_size)
         a = add_mask(a, v_mask, 1, -1)
+        if (mask is not None) or (mask is not False):
+            if mask is True:
+                ones = K.ones_like(a[:1, :1])
+                mask = (ones - tf.matrix_band_part(ones, -1, 0)) * 1e12
+                a = a - mask
+            else:
+                a = a - (1 - mask) * 1e12
         a = K.softmax(a)
         # 完成输出
         o = K.batch_dot(a, vw, [3, 2])
