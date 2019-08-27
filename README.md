@@ -6,14 +6,18 @@
 ## 说明
 这是笔者重新实现的keras版的bert，致力于用尽可能少的代码来实现keras下调用bert。
 
-目前已经基本实现bert，并且能成功加载官方权重，经验证模型输出跟keras-bert完全一致，大家可以放心使用。
+目前已经基本实现bert，并且能成功加载官方权重，经验证模型输出跟keras-bert一致，大家可以放心使用。
 
 本项目的初衷是为了修改、定制上的方便，所以可能会频繁更新。
 
 因此欢迎star，但不建议fork，因为你fork下来的版本可能很快就过期了。
 
 ## 使用
-参考<a href="https://github.com/bojone/bert4keras/blob/master/test.py">test.py</a>
+参考<a href="https://github.com/bojone/bert4keras/blob/master/test.py">test.py</a>。
+
+目前只保证支持Python 2.7，实验环境是Tesorflow 1.8+以及Keras 2.2.4+。
+
+当然，乐于贡献的朋友如果发现了某些bug的话，也欢迎指出修正甚至Pull Requests～
 
 ## 背景
 之前一直用CyberZHG大佬的<a href="https://github.com/CyberZHG/keras-bert">keras-bert</a>，如果纯粹只是为了在keras下对bert进行调用和fine tune来说，keras-bert已经足够能让人满意了。
