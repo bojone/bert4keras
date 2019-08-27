@@ -57,7 +57,7 @@ def get_bert_model(vocab_size, max_position_embeddings, hidden_size,
         xi = x
         x = MultiHeadAttention(heads=num_attention_heads,
                                head_size=attention_head_size,
-                               name=attention_name)([x, x, x, mask], a_mask)
+                               name=attention_name)([x, x, x, mask], mask=a_mask)
         if dropout_rate > 0:
             x = Dropout(rate=dropout_rate,
                         name='%s-Dropout' % attention_name)(x)
