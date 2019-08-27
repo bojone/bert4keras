@@ -1,6 +1,7 @@
 #! -*- coding: utf-8 -*-
 
 import unicodedata
+import codecs
 
 
 class SimpleTokenizer:
