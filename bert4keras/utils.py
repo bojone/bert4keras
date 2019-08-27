@@ -11,7 +11,7 @@ class SimpleTokenizer:
         self._token_dict = token_dict
         self._token_dict_inv = {v: k for k, v in token_dict.items()}
 
-    def _is_space(c):
+    def _is_space(self, c):
         """判断是否为空格
         """
         return c == ' ' or c == '\n' or c == '\r' or c == '\t' or \
