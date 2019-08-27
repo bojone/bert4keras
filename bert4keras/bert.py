@@ -67,8 +67,8 @@ def get_bert_encoder(vocab_size, max_position_embeddings, hidden_size,
 
 
 def get_bert_seq2seq(vocab_size, max_position_embeddings, hidden_size,
-                           num_hidden_layers, num_attention_heads,
-                           intermediate_size, hidden_act, dropout_rate):
+                     num_hidden_layers, num_attention_heads, intermediate_size,
+                     hidden_act, dropout_rate):
     """加载跟Bert一样结构的Transformer-based Seq2Seq模型，
     其实结构跟Bert完全一样，只不过用于Seq2Seq任务时需要在mask上有所改变。
     """
@@ -81,7 +81,7 @@ def get_bert_seq2seq(vocab_size, max_position_embeddings, hidden_size,
     s_in = Input(shape=(None, ), name='Input-Segment')
     x, s = x_in, s_in
 
-    # 自行构建Mask
+    # 自行构建mask
     mask = Lambda(lambda x: K.cast(K.greater(x, 0), 'float32'),
                   name='Input-Mask')(x)
 
@@ -216,11 +216,11 @@ def load_pretrained_encoder(config_path, checkpoint_file):
     return model
 
 
-def load_pretrained_encoder(config_path, checkpoint_file):
-    """根据配置文件和checkpoint文件来构建模型
+def load_pretrained_seq2seq(config_path, checkpoint_file):
+    """根据配置文件和checkpoint文件来加载Seq2Seq模型
     """
     config = json.load(open(config_path))
-    model = get_bert_encoder(
+    model = get_bert_seq2seq(
         vocab_size=config['vocab_size'],
         max_position_embeddings=config['max_position_embeddings'],
         hidden_size=config['hidden_size'],
