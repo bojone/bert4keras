@@ -15,6 +15,8 @@
 ## 使用
 参考<a href="https://github.com/bojone/bert4keras/blob/master/test.py">test.py</a>。
 
+之前基于keras-bert给出的<a href="https://github.com/bojone/bert_in_keras">例子</a>，仍适用于本项目，只需要将base_model的加载方式换成本项目的。
+
 目前只保证支持Python 2.7，实验环境是Tesorflow 1.8+以及Keras 2.2.4+。
 
 当然，乐于贡献的朋友如果发现了某些bug的话，也欢迎指出修正甚至Pull Requests～
