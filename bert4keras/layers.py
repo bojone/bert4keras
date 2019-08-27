@@ -127,7 +127,7 @@ class MultiHeadAttention(OurLayer):
         # Attention
         a = K.batch_dot(qw, kw, [3, 3]) / np.sqrt(self.key_size)
         a = add_mask(a, v_mask, 1, -1)
-        if (mask is not None) or (mask is not False):
+        if (mask is not None) and (mask is not False):
             if mask is True:
                 ones = K.ones_like(a[:1, :1])
                 mask = (ones - tf.matrix_band_part(ones, -1, 0)) * 1e12
