@@ -4,7 +4,7 @@
 - 个人博客：https://kexue.fm/
 
 ## 说明
-这是笔者重新实现的keras版的bert，致力于用尽可能少的代码来实现keras下调用bert。
+这是笔者重新实现的keras版的bert，致力于用尽可能清爽的代码来实现keras下调用bert。
 
 目前已经基本实现bert，并且能成功加载官方权重，经验证模型输出跟keras-bert一致，大家可以放心使用。
 
