@@ -1,7 +1,6 @@
 #! -*- coding: utf-8 -*-
 # 测试代码可用性
 
-import codecs
 from bert4keras.bert import load_pretrained_model
 from bert4keras.utils import SimpleTokenizer, load_vocab
 import numpy as np
