@@ -3,7 +3,7 @@
 
 import codecs
 from bert4keras.bert import load_pretrained_model
-from bert4keras.utils import SimpleTokenizer
+from bert4keras.utils import SimpleTokenizer, load_vocab
 import numpy as np
 
 
@@ -11,13 +11,7 @@ config_path = '../../kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
 checkpoint_path = '../../kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
 dict_path = '../../kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
-
-token_dict = {}
-with codecs.open(dict_path, 'r', encoding='utf-8') as reader:
-    for line in reader:
-        token = line.strip()
-        token_dict[token] = len(token_dict)
-
+token_dict = load_vocab(dict_path) # 读取词典
 tokenizer = SimpleTokenizer(token_dict) # 建立分词器
 model = load_pretrained_model(config_path, checkpoint_path) # 建立模型，加载权重
 
