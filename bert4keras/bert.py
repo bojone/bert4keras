@@ -130,7 +130,7 @@ def load_weights_from_checkpoint(model, checkpoint_file, config):
             ])
 
 
-def load_pretrained_model(config_path, checkpoint_file):
+def load_pretrained_encoder(config_path, checkpoint_file):
     """根据配置文件和checkpoint文件来构建模型
     """
     config = json.load(open(config_path))
