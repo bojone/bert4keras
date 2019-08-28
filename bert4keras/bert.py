@@ -171,5 +171,5 @@ def load_pretrained_model(config_path,
         hidden_act=config['hidden_act'],
         dropout_rate=0.1,
         seq2seq=seq2seq)
-    load_weights_from_checkpoint(model, checkpoint_file, config)
+    load_weights_from_checkpoint(model, checkpoint_file, config, keep_words)
     return model
