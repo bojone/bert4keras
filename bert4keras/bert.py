@@ -87,13 +87,13 @@ def load_weights_from_checkpoint(model,
     loader = partial(tf.train.load_variable, checkpoint_file)
     num_hidden_layers = config['num_hidden_layers']
 
-    if words is None:
+    if keep_words is None:
         model.get_layer(name='Embedding-Token').set_weights([
             loader('bert/embeddings/word_embeddings'),
         ])
     else:
         model.get_layer(name='Embedding-Token').set_weights([
-            loader('bert/embeddings/word_embeddings')[words],
+            loader('bert/embeddings/word_embeddings')[keep_words],
         ])
     model.get_layer(name='Embedding-Position').set_weights([
         loader('bert/embeddings/position_embeddings'),
