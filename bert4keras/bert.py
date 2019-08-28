@@ -28,7 +28,7 @@ def get_bert_model(vocab_size, max_position_embeddings, hidden_size,
     if seq2seq:
         seq_len = K.shape(s)[1]
         ones = K.ones((1, 1, seq_len, seq_len))
-        a_mask = (ones - tf.matrix_band_part(ones, -1, 0)) * 1e12
+        a_mask = tf.matrix_band_part(ones, -1, 0)
         s_ex = K.expand_dims(K.expand_dims(s, 1), 3)
         a_mask = 1 - s_ex + s_ex * a_mask
     else:
