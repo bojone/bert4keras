@@ -59,8 +59,14 @@ class SimpleTokenizer:
     def decode(self, token_ids, join_str=''):
         """简单的词id序列转文本函数
         """
-        tokens = [self._token_dict_inv.get(i, '') for i in token_ids]
-        return join_str.join([t for t in tokens if not self._is_special(t)])
+        tokens = []
+        for i in token_ids:
+            t = self._token_dict_inv.get(i, '')
+            if t == '[unused1]':
+                tokens.append(' ')
+            elif not self._is_special(t):
+                tokens.append(t)
+        return join_str.join(tokens)
         
 
 def load_vocab(dict_path):
