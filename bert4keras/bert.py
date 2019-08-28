@@ -26,7 +26,7 @@ def get_bert_model(vocab_size, max_position_embeddings, hidden_size,
     
     # Attention矩阵的mask，对s_in=1的部分mask掉未来信息
     if seq2seq:
-        seq_len = K.shape(s)[0]
+        seq_len = K.shape(s)[1]
         ones = K.ones((1, 1, seq_len, seq_len))
         a_mask = (ones - tf.matrix_band_part(ones, -1, 0)) * 1e12
         s_ex = K.expand_dims(K.expand_dims(s, 1), 3)
