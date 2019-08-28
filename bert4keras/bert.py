@@ -77,15 +77,24 @@ def get_bert_model(vocab_size, max_position_embeddings, hidden_size,
     return Model([x_in, s_in], x)
 
 
-def load_weights_from_checkpoint(model, checkpoint_file, config):
+def load_weights_from_checkpoint(model,
+                                 checkpoint_file,
+                                 config,
+                                 keep_words=None):
     """从预训练好的checkpoint中加载权重
+    words是词ID组成的list，为精简Embedding层而传入
     """
     loader = partial(tf.train.load_variable, checkpoint_file)
     num_hidden_layers = config['num_hidden_layers']
 
-    model.get_layer(name='Embedding-Token').set_weights([
-        loader('bert/embeddings/word_embeddings'),
-    ])
+    if words is None:
+        model.get_layer(name='Embedding-Token').set_weights([
+            loader('bert/embeddings/word_embeddings'),
+        ])
+    else:
+        model.get_layer(name='Embedding-Token').set_weights([
+            loader('bert/embeddings/word_embeddings')[words],
+        ])
     model.get_layer(name='Embedding-Position').set_weights([
         loader('bert/embeddings/position_embeddings'),
     ])
@@ -141,12 +150,19 @@ def load_weights_from_checkpoint(model, checkpoint_file, config):
             ])
 
 
-def load_pretrained_model(config_path, checkpoint_file, seq2seq=False):
+def load_pretrained_model(config_path,
+                          checkpoint_file,
+                          seq2seq=False,
+                          keep_words=None):
     """根据配置文件和checkpoint文件来加载模型
     """
     config = json.load(open(config_path))
+    if keep_words is None:
+        vocab_size = config['vocab_size']
+    else:
+        vocab_size = len(keep_words)
     model = get_bert_model(
-        vocab_size=config['vocab_size'],
+        vocab_size=vocab_size,
         max_position_embeddings=config['max_position_embeddings'],
         hidden_size=config['hidden_size'],
         num_hidden_layers=config['num_hidden_layers'],
