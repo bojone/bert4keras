@@ -19,6 +19,11 @@ class SimpleTokenizer:
         """
         return c == ' ' or c == '\n' or c == '\r' or c == '\t' or \
             unicodedata.category(c) == 'Zs'
+    
+    def _is_special(self, c):
+        """判断是否带方括号的特殊标记
+        """
+        return bool(c) and (c[0] == '[') and (c[-1] == ']')
 
     def tokenize(self, text, add_cls=True, add_sep=True):
         """按字分割
@@ -50,7 +55,13 @@ class SimpleTokenizer:
             ])
             segment_ids.extend([1] * (len(second) + 1))
         return token_ids, segment_ids
-
+    
+    def decode(self, token_ids, join_str=''):
+        """简单的词id序列转文本函数
+        """
+        tokens = [self._token_dict_inv.get(i, '') for i in token_ids]
+        return join_str.join([t for t in tokens if not self._is_special(t)])
+        
 
 def load_vocab(dict_path):
     """从bert的词典文件中读取词典
