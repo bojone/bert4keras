@@ -29,8 +29,9 @@ def get_bert_model(vocab_size, max_position_embeddings, hidden_size,
         seq_len = K.shape(s)[1]
         ones = K.ones((1, 1, seq_len, seq_len))
         a_mask = tf.matrix_band_part(ones, -1, 0)
-        s_ex = K.expand_dims(K.expand_dims(s, 1), 3)
-        a_mask = 1 - s_ex + s_ex * a_mask
+        s_ex12 = K.expand_dims(K.expand_dims(s, 1), 2)
+        s_ex13 = K.expand_dims(K.expand_dims(s, 1), 3)
+        a_mask = (1 - s_ex13) * (1 - s_ex12) + s_ex13 * a_mask
     else:
         a_mask = None
     
@@ -82,7 +83,7 @@ def load_weights_from_checkpoint(model,
                                  config,
                                  keep_words=None):
     """从预训练好的checkpoint中加载权重
-    words是词ID组成的list，为精简Embedding层而传入
+    keep_words是词ID组成的list，为精简Embedding层而传入
     """
     loader = partial(tf.train.load_variable, checkpoint_file)
     num_hidden_layers = config['num_hidden_layers']
