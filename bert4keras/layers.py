@@ -1,4 +1,5 @@
 #! -*- coding: utf-8 -*-
+# 自定义层
 
 import numpy as np
 import tensorflow as tf
@@ -12,7 +13,7 @@ gelu有两个实现版本，
 一是利用Erf直接计算，二是利用Tanh做近似，
 两者会有一点差异。
 官方早期放出的代码是用Erf函数实现的，
-但当前版本已经改为了Tanh版本。
+但当前的官方代码已经改为了Tanh版本。
 """
 gelu_version = 1
 
