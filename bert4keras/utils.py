@@ -1,4 +1,5 @@
 #! -*- coding: utf-8 -*-
+# 工具函数
 
 import unicodedata
 import codecs
