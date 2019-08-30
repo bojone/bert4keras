@@ -1,4 +1,5 @@
 #! -*- coding: utf-8 -*-
+# 主要模型
 
 from layers import *
 from functools import partial
