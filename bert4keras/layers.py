@@ -34,8 +34,8 @@ else:
     gelu = gelu_tanh
 
 
-def add_mask(x, mask, mode=0, axis=None):
-    """通用mask函数
+def add_seq_mask(x, mask, mode=0, axis=None):
+    """为序列条件mask的函数
     mask: 形如(batch_size, seq_len)的0-1矩阵；
     mode: 如果是0，则直接乘以mask；
           如果是1，则在padding部分减去一个大正数。
@@ -127,7 +127,7 @@ class MultiHeadAttention(OurLayer):
         vw = K.permute_dimensions(vw, (0, 2, 1, 3))
         # Attention
         a = K.batch_dot(qw, kw, [3, 3]) / np.sqrt(self.key_size)
-        a = add_mask(a, v_mask, 1, -1)
+        a = add_seq_mask(a, v_mask, 1, -1)
         if (mask is not None) and (mask is not False):
             if mask is True:
                 ones = K.ones_like(a[:1, :1])
@@ -141,7 +141,7 @@ class MultiHeadAttention(OurLayer):
         o = K.permute_dimensions(o, (0, 2, 1, 3))
         o = K.reshape(o, (-1, K.shape(o)[1], self.out_dim))
         o = self.reuse(self.o_dense, o)
-        o = add_mask(o, q_mask, 0)
+        o = add_seq_mask(o, q_mask, 0)
         return o
 
     def compute_output_shape(self, input_shape):
