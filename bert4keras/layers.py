@@ -103,9 +103,9 @@ class MultiHeadAttention(OurLayer):
     def call(self, inputs, mask=None):
         """实现多头注意力
         注意：这个mask输入是对Attention矩阵的mask。
-              如果mask是None或True，则忽略；如果mask是True，
-              则自动mask掉将来信息；如果mask是一个张量，则
-              直接用这个张量来mask。
+             如果mask是None或True，则忽略；如果mask是True，
+             则自动mask掉未来信息（做语言模型用）；如果mask
+             是一个张量，则直接用这个张量来mask。
         """
         q, k, v = inputs[:3]
         v_mask = q_mask = None
