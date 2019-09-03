@@ -80,6 +80,11 @@ class OurLayer(Layer):
         for w in layer.non_trainable_weights:
             if w not in self._non_trainable_weights:
                 self._non_trainable_weights.append(w)
+        for u in layer.updates:
+            if not hasattr(self, '_updates'):
+                self._updates = []
+            if u not in self._updates:
+                self._updates.append(u)
         return outputs
 
 
