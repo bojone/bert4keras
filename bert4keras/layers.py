@@ -130,8 +130,12 @@ class MultiHeadAttention(OurLayer):
         qw = K.permute_dimensions(qw, (0, 2, 1, 3))
         kw = K.permute_dimensions(kw, (0, 2, 1, 3))
         vw = K.permute_dimensions(vw, (0, 2, 1, 3))
+        # 转为三阶张量
+        qw = K.reshape(qw, (-1, K.shape(q)[1], self.key_size))
+        kw = K.reshape(kw, (-1, K.shape(k)[1], self.key_size))
+        vw = K.reshape(vw, (-1, K.shape(v)[1], self.head_size))
         # Attention
-        a = K.batch_dot(qw, kw, [3, 3]) / np.sqrt(self.key_size)
+        a = K.batch_dot(qw, kw, [2, 2]) / np.sqrt(self.key_size)
         a = add_seq_mask(a, v_mask, 1, -1)
         if (mask is not None) and (mask is not False):
             if mask is True:
@@ -142,7 +146,8 @@ class MultiHeadAttention(OurLayer):
                 a = a - (1 - mask) * 1e12
         a = K.softmax(a)
         # 完成输出
-        o = K.batch_dot(a, vw, [3, 2])
+        o = K.batch_dot(a, vw, [2, 1])
+        o = K.reshape(o, (-1, self.heads, K.shape(q)[1], self.head_size))
         o = K.permute_dimensions(o, (0, 2, 1, 3))
         o = K.reshape(o, (-1, K.shape(o)[1], self.out_dim))
         o = self.reuse(self.o_dense, o)
