@@ -123,9 +123,9 @@ class MultiHeadAttention(OurLayer):
         kw = self.reuse(self.k_dense, k)
         vw = self.reuse(self.v_dense, v)
         # 形状变换
-        qw = K.reshape(qw, (-1, K.shape(qw)[1], self.heads, self.key_size))
-        kw = K.reshape(kw, (-1, K.shape(kw)[1], self.heads, self.key_size))
-        vw = K.reshape(vw, (-1, K.shape(vw)[1], self.heads, self.head_size))
+        qw = K.reshape(qw, (-1, K.shape(q)[1], self.heads, self.key_size))
+        kw = K.reshape(kw, (-1, K.shape(k)[1], self.heads, self.key_size))
+        vw = K.reshape(vw, (-1, K.shape(v)[1], self.heads, self.head_size))
         # 维度置换
         qw = K.permute_dimensions(qw, (0, 2, 1, 3))
         kw = K.permute_dimensions(kw, (0, 2, 1, 3))
