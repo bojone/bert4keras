@@ -47,7 +47,7 @@ def add_seq_mask(x, mask, mode=0, axis=None, heads=1):
     else:
         if heads is not 1:
             mask = K.expand_dims(mask, 1)
-            mask = K.title(mask, (1, heads, 1))
+            mask = K.tile(mask, (1, heads, 1))
             mask = K.reshape(mask, (-1, K.shape(mask)[2]))
         if axis is None:
             axis = 1
