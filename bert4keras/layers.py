@@ -139,7 +139,7 @@ class MultiHeadAttention(OurLayer):
         a = add_seq_mask(a, v_mask, 1, -1)
         if (mask is not None) and (mask is not False):
             if mask is True:
-                ones = K.ones_like(a[:1, :1])
+                ones = K.ones_like(a[:1])
                 mask = (ones - tf.matrix_band_part(ones, -1, 0)) * 1e12
                 a = a - mask
             else:
