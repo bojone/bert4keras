@@ -45,6 +45,7 @@ class SimpleTokenizer:
 
     def encode(self, first, second=None, first_length=None):
         """输出文本对应token id和segment id
+        如果传入first_length，则强行padding第一个句子到指定长度
         """
         token_ids, segment_ids = [], []
         token_ids.extend([self._token_dict[c] for c in self.tokenize(first)])
