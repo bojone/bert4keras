@@ -34,16 +34,21 @@ else:
     gelu = gelu_tanh
 
 
-def add_seq_mask(x, mask, mode=0, axis=None):
+def add_seq_mask(x, mask, mode=0, axis=None, heads=1):
     """为序列条件mask的函数
     mask: 形如(batch_size, seq_len)的0-1矩阵；
     mode: 如果是0，则直接乘以mask；
           如果是1，则在padding部分减去一个大正数。
-    axis: 序列所在轴，默认为1
+    axis: 序列所在轴，默认为1；
+    heads: 相当于batch这一维要被重复的次数。
     """
     if mask is None or mode not in [0, 1]:
         return x
     else:
+        if heads is not 1:
+            mask = K.expand_dims(mask, 1)
+            mask = K.title(mask, (1, heads, 1))
+            mask = K.reshape(mask, (-1, K.shape(mask)[2]))
         if axis is None:
             axis = 1
         if axis == -1:
@@ -136,7 +141,7 @@ class MultiHeadAttention(OurLayer):
         vw = K.reshape(vw, (-1, K.shape(v)[1], self.head_size))
         # Attention
         a = K.batch_dot(qw, kw, [2, 2]) / np.sqrt(self.key_size)
-        a = add_seq_mask(a, v_mask, 1, -1)
+        a = add_seq_mask(a, v_mask, 1, -1, self.heads)
         if (mask is not None) and (mask is not False):
             if mask is True:
                 ones = K.ones_like(a[:1])
