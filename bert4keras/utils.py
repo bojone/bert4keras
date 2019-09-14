@@ -43,12 +43,15 @@ class SimpleTokenizer:
             R.append('[SEP]')
         return R
 
-    def encode(self, first, second=None):
+    def encode(self, first, second=None, first_length=None):
         """输出文本对应token id和segment id
         """
         token_ids, segment_ids = [], []
         token_ids.extend([self._token_dict[c] for c in self.tokenize(first)])
         segment_ids.extend([0] * (len(first) + 2))
+        if first_length is not None and len(token_ids) < first_length + 2:
+            token_ids.extend([0] * (first_length + 2 - len(token_ids)))
+            segment_ids.extend([0] * (first_length + 2 - len(segment_ids)))
         if second is not None:
             token_ids.extend([
                 self._token_dict[c]
