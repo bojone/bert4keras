@@ -13,7 +13,10 @@
 因此欢迎star，但不建议fork，因为你fork下来的版本可能很快就过期了。
 
 ## 使用
-参考<a href="https://github.com/bojone/bert4keras/blob/master/demo">demo</a>目录。
+快速安装：
+```pip install git+https://www.github.com/bojone/bert4keras.git```
+
+使用例子请参考<a href="https://github.com/bojone/bert4keras/blob/master/demo">demo</a>目录。
 
 之前基于keras-bert给出的<a href="https://github.com/bojone/bert_in_keras">例子</a>，仍适用于本项目，只需要将base_model的加载方式换成本项目的。
 
