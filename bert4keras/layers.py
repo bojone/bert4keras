@@ -242,3 +242,27 @@ class FeedForward(OurLayer):
         x = self.reuse(self.dense_1, inputs)
         x = self.reuse(self.dense_2, x)
         return x
+
+
+class EmbeddingDense(Layer):
+    """运算跟Dense一致，只不过kernel用Embedding层的embedding矩阵
+    """
+    def __init__(self, embedding_layer, activation='softmax', **kwargs):
+        super(EmbeddingDense, self).__init__(**kwargs)
+        self.kernel = K.transpose(embedding_layer.embeddings)
+        self.activation = activation
+
+    def build(self, input_shape):
+        super(EmbeddingDense, self).build(input_shape)
+        self.bias = self.add_weight(name='bias',
+                                    shape=(K.int_shape(self.kernel)[1],),
+                                    initializer='zeros')
+
+    def call(self, inputs):
+        outputs = K.dot(inputs, self.kernel)
+        outputs = K.bias_add(outputs, self.bias)
+        outputs = Activation(self.activation).call(outputs)
+        return outputs
+        
+    def compute_output_shape(self, input_shape):
+        return input_shape[:-1] + (K.int_shape(self.kernel)[1],)
