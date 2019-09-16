@@ -8,9 +8,10 @@ import json
 
 def get_bert_model(vocab_size, max_position_embeddings, hidden_size,
                    num_hidden_layers, num_attention_heads, intermediate_size,
-                   hidden_act, dropout_rate, seq2seq=False):
+                   hidden_act, dropout_rate, with_mlm=False, seq2seq=False):
     """构建跟Bert一样结构的Transformer-based模型
-    如果是seq2seq=True，则进行特殊的mask，使得它可以直接用于seq2seq用途
+    如果with_mlm=True，则添加 Masked Language Model (MLM) 相关的层；
+    如果seq2seq=True，则进行特殊的mask，使得它可以直接用于seq2seq用途
     """
     attention_head_size = hidden_size // num_attention_heads
 
@@ -27,6 +28,7 @@ def get_bert_model(vocab_size, max_position_embeddings, hidden_size,
     
     # Attention矩阵的mask，对s_in=1的部分mask掉未来信息
     if seq2seq:
+        with_mlm = True # seq2seq则自动沿用MLM的架构
         seq_len = K.shape(s)[1]
         ones = K.ones((1, num_attention_heads, seq_len, seq_len))
         a_mask = tf.matrix_band_part(ones, -1, 0)
