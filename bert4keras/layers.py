@@ -251,11 +251,12 @@ class EmbeddingDense(Layer):
         super(EmbeddingDense, self).__init__(**kwargs)
         self.kernel = K.transpose(embedding_layer.embeddings)
         self.activation = activation
+        self.units = K.int_shape(self.kernel)[1]
 
     def build(self, input_shape):
         super(EmbeddingDense, self).build(input_shape)
         self.bias = self.add_weight(name='bias',
-                                    shape=(K.int_shape(self.kernel)[1],),
+                                    shape=(self.units,),
                                     initializer='zeros')
 
     def call(self, inputs):
@@ -265,4 +266,4 @@ class EmbeddingDense(Layer):
         return outputs
         
     def compute_output_shape(self, input_shape):
-        return input_shape[:-1] + (K.int_shape(self.kernel)[1],)
+        return input_shape[:-1] + (self.units,)
