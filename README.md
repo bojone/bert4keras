@@ -14,8 +14,9 @@
 
 ## 使用
 快速安装：
-
-```pip install git+https://www.github.com/bojone/bert4keras.git```
+```shell
+pip install git+https://www.github.com/bojone/bert4keras.git
+```
 
 使用例子请参考<a href="https://github.com/bojone/bert4keras/blob/master/demo">demo</a>目录。
 
