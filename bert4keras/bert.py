@@ -40,9 +40,10 @@ def get_bert_model(vocab_size, max_position_embeddings, hidden_size,
         a_mask = None
     
     # Embedding部分
-    x = Embedding(input_dim=vocab_size,
-                  output_dim=hidden_size,
-                  name='Embedding-Token')(x)
+    token_embedding = Embedding(input_dim=vocab_size,
+                      output_dim=hidden_size,
+                      name='Embedding-Token')
+    x = token_embedding(x)
     s = Embedding(input_dim=2,
                   output_dim=hidden_size,
                   name='Embedding-Segment')(s)
@@ -78,7 +79,14 @@ def get_bert_model(vocab_size, max_position_embeddings, hidden_size,
                         name='%s-Dropout' % feed_forward_name)(x)
         x = Add(name='%s-Add' % feed_forward_name)([xi, x])
         x = LayerNormalization(name='%s-Norm' % feed_forward_name)(x)
-
+    
+    if with_mlm:
+        x = Dense(hidden_size,
+                  activation=hidden_act,
+                  name='MLM-Dense')(x)
+        x = LayerNormalization(name='MLM-Norm')(x)
+        x = EmbeddingDense(token_embedding, name='MLM-Proba')(x)
+    
     return Model([x_in, s_in], x)
 
 
