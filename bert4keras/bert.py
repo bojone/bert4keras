@@ -79,20 +79,21 @@ def get_bert_model(vocab_size, max_position_embeddings, hidden_size,
                         name='%s-Dropout' % feed_forward_name)(x)
         x = Add(name='%s-Add' % feed_forward_name)([xi, x])
         x = LayerNormalization(name='%s-Norm' % feed_forward_name)(x)
-    
+
     if with_mlm:
         x = Dense(hidden_size,
                   activation=hidden_act,
                   name='MLM-Dense')(x)
         x = LayerNormalization(name='MLM-Norm')(x)
         x = EmbeddingDense(token_embedding, name='MLM-Proba')(x)
-    
+
     return Model([x_in, s_in], x)
 
 
 def load_weights_from_checkpoint(model,
                                  checkpoint_file,
                                  config,
+                                 with_mlm=False,
                                  keep_words=None):
     """从预训练好的checkpoint中加载权重
     keep_words是词ID组成的list，为精简Embedding层而传入
@@ -162,18 +163,34 @@ def load_weights_from_checkpoint(model,
                 loader('bert/encoder/layer_%d/output/LayerNorm/beta' % i),
             ])
 
+    if with_mlm:
+        model.get_layer(name='MLM-Dense').set_weights([
+            loader('cls/predictions/transform/dense/kernel'),
+            loader('cls/predictions/transform/dense/bias'),
+        ])
+        model.get_layer(name='MLM-Norm').set_weights([
+            loader('cls/predictions/transform/LayerNorm/gamma'),
+            loader('cls/predictions/transform/LayerNorm/beta'),
+        ])
+        model.get_layer(name='MLM-Proba').set_weights([
+            loader('cls/predictions/output_bias'),
+        ])
+
 
 def load_pretrained_model(config_path,
                           checkpoint_file,
+                          with_mlm=False
                           seq2seq=False,
                           keep_words=None):
     """根据配置文件和checkpoint文件来加载模型
     """
     config = json.load(open(config_path))
+    
     if keep_words is None:
         vocab_size = config['vocab_size']
     else:
         vocab_size = len(keep_words)
+    
     model = get_bert_model(
         vocab_size=vocab_size,
         max_position_embeddings=config['max_position_embeddings'],
@@ -183,6 +200,9 @@ def load_pretrained_model(config_path,
         intermediate_size=config['intermediate_size'],
         hidden_act=config['hidden_act'],
         dropout_rate=0.1,
+        with_mlm=with_mlm
         seq2seq=seq2seq)
-    load_weights_from_checkpoint(model, checkpoint_file, config, keep_words)
+    
+    load_weights_from_checkpoint(model, checkpoint_file, config, with_mlm, keep_words)
+    
     return model
