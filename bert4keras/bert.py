@@ -179,7 +179,7 @@ def load_weights_from_checkpoint(model,
 
 def load_pretrained_model(config_path,
                           checkpoint_file,
-                          with_mlm=False
+                          with_mlm=False,
                           seq2seq=False,
                           keep_words=None):
     """根据配置文件和checkpoint文件来加载模型
@@ -200,7 +200,7 @@ def load_pretrained_model(config_path,
         intermediate_size=config['intermediate_size'],
         hidden_act=config['hidden_act'],
         dropout_rate=0.1,
-        with_mlm=with_mlm
+        with_mlm=with_mlm,
         seq2seq=seq2seq)
     
     load_weights_from_checkpoint(model, checkpoint_file, config, with_mlm, keep_words)
