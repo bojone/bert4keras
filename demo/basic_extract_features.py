@@ -1,5 +1,5 @@
 #! -*- coding: utf-8 -*-
-# 测试代码可用性
+# 测试代码可用性: 提取特征
 
 from bert4keras.bert import load_pretrained_model
 from bert4keras.utils import SimpleTokenizer, load_vocab
