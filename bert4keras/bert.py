@@ -6,6 +6,21 @@ from functools import partial
 import json
 
 
+gelu_version = 'erf'
+
+
+def get_gelu(version):
+    if gelu_version == 'erf':
+        return gelu_erf
+    else:
+        return gelu_tanh
+
+
+def set_gelu(version):
+    global gelu_version
+    gelu_version = version
+
+
 def get_bert_model(vocab_size, max_position_embeddings, hidden_size,
                    num_hidden_layers, num_attention_heads, intermediate_size,
                    hidden_act, dropout_rate, with_mlm=False, seq2seq=False):
@@ -16,7 +31,7 @@ def get_bert_model(vocab_size, max_position_embeddings, hidden_size,
     attention_head_size = hidden_size // num_attention_heads
 
     if hidden_act == 'gelu':
-        hidden_act = gelu
+        hidden_act = get_gelu()
 
     x_in = Input(shape=(None, ), name='Input-Token')
     s_in = Input(shape=(None, ), name='Input-Segment')
