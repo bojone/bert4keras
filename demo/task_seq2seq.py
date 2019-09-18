@@ -1,4 +1,6 @@
 #! -*- coding: utf-8 -*-
+# bert做Seq2Seq任务，采用UNILM方案
+# 介绍链接：https://kexue.fm/archives/6933
 
 import glob
 import numpy as np
