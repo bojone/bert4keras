@@ -8,16 +8,6 @@ from keras.layers import *
 from keras.models import Model
 
 
-"""
-gelu有两个实现版本，
-一是利用Erf直接计算，二是利用Tanh做近似，
-两者会有一点差异。
-官方早期放出的代码是用Erf函数实现的，
-但当前的官方代码已经改为了Tanh版本。
-"""
-gelu_version = 1
-
-
 def gelu_erf(x):
     return 0.5 * x * (1.0 + tf.math.erf(x / np.sqrt(2.0)))
 
@@ -28,10 +18,22 @@ def gelu_tanh(x):
     return x * cdf
 
 
-if gelu_version == 1:
-    gelu = gelu_erf
-else:
-    gelu = gelu_tanh
+def set_gelu(version='erf'):
+    """提供gelu版本切换功能
+    gelu有两个实现版本，一是利用Erf直接计算，
+    二是利用Tanh做近似，两者会有一点差异。
+    官方早期放出的代码是用Erf函数实现的，但当
+    前的官方代码已经改为了Tanh版本。
+    """
+    global gelu
+    if version == 'erf':
+        gelu = gelu_erf
+    elif version == 'tanh':
+        gelu = gelu_tanh
+
+
+gelu = None
+set_gelu('erf')
 
 
 def add_seq_mask(x, mask, mode=0, axis=None, heads=1):
