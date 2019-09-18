@@ -9,7 +9,7 @@ import json
 gelu_version = 'erf'
 
 
-def get_gelu(version):
+def get_gelu():
     if gelu_version == 'erf':
         return gelu_erf
     else:
