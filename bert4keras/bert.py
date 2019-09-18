@@ -17,6 +17,8 @@ def get_gelu():
 
 
 def set_gelu(version):
+    """提供gelu版本切换功能，默认为Erf版本
+    """
     global gelu_version
     gelu_version = version
 
