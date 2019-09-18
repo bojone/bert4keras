@@ -87,16 +87,16 @@ def padding(x):
 
 def data_generator():
     while True:
-        X, Y = [], []
+        X, S = [], []
         for a, b in read_text():
-            x, y = tokenizer.encode(a, b)
+            x, s = tokenizer.encode(a, b)
             X.append(x)
-            Y.append(y)
+            S.append(s)
             if len(X) == batch_size:
                 X = padding(X)
-                Y = padding(Y)
-                yield [X, Y], None
-                X, Y = [], []
+                S = padding(S)
+                yield [X, S], None
+                X, S = [], []
 
 
 model = load_pretrained_model(
