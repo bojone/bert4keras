@@ -101,19 +101,16 @@ class MultiHeadAttention(OurLayer):
         self.v_dense = Dense(self.out_dim)
         self.o_dense = Dense(self.out_dim)
 
-    def call(self, inputs, mask=None):
+    def call(self, inputs, v_mask=None, a_mask=None):
         """实现多头注意力
-        注意：这个mask输入是对Attention矩阵的mask。
-             如果mask是None或True，则忽略；如果mask是True，
-             则自动mask掉未来信息（做语言模型用）；如果mask
-             是一个张量，则直接用这个张量来mask。
+        v_mask: 对输入的value序列的mask。
+                主要是防止attention读取到padding信息。
+        a_mask: 对Attention矩阵的mask。
+                如果mask是None或True，则忽略；如果mask是True，
+                则自动mask掉未来信息（做语言模型用）；如果mask
+                是一个张量，则直接用这个张量来mask。
         """
-        q, k, v = inputs[:3]
-        v_mask = q_mask = None
-        if len(inputs) > 3:
-            v_mask = inputs[3]
-            if len(inputs) > 4:
-                q_mask = inputs[4]
+        q, k, v = inputs
         # 线性变换
         qw = self.reuse(self.q_dense, q)
         kw = self.reuse(self.k_dense, k)
@@ -133,13 +130,13 @@ class MultiHeadAttention(OurLayer):
         # Attention
         a = K.batch_dot(qw, kw, [2, 2]) / np.sqrt(self.key_size)
         a = add_seq_mask(a, v_mask, 1, -1, self.heads)
-        if (mask is not None) and (mask is not False):
-            if mask is True:
+        if (a_mask is not None) and (a_mask is not False):
+            if a_mask is True:
                 ones = K.ones_like(a[:1])
-                mask = (ones - tf.matrix_band_part(ones, -1, 0)) * 1e12
-                a = a - mask
+                a_mask = (ones - tf.matrix_band_part(ones, -1, 0)) * 1e12
+                a = a - a_mask
             else:
-                a = a - (1 - mask) * 1e12
+                a = a - (1 - a_mask) * 1e12
         a = K.softmax(a)
         # 完成输出
         o = K.batch_dot(a, vw, [2, 1])
@@ -147,7 +144,6 @@ class MultiHeadAttention(OurLayer):
         o = K.permute_dimensions(o, (0, 2, 1, 3))
         o = K.reshape(o, (-1, K.shape(o)[1], self.out_dim))
         o = self.reuse(self.o_dense, o)
-        o = add_seq_mask(o, q_mask, 0)
         return o
 
     def compute_output_shape(self, input_shape):
