@@ -101,8 +101,10 @@ class MultiHeadAttention(OurLayer):
         self.v_dense = Dense(self.out_dim)
         self.o_dense = Dense(self.out_dim)
 
-    def call(self, inputs, v_mask=None, a_mask=None):
+    def call(self, inputs, q_mask=None, v_mask=None, a_mask=None):
         """实现多头注意力
+        q_mask: 对输入的query序列的mask。
+                主要是将输出结果的padding部分置0。
         v_mask: 对输入的value序列的mask。
                 主要是防止attention读取到padding信息。
         a_mask: 对Attention矩阵的mask。
@@ -144,6 +146,7 @@ class MultiHeadAttention(OurLayer):
         o = K.permute_dimensions(o, (0, 2, 1, 3))
         o = K.reshape(o, (-1, K.shape(o)[1], self.out_dim))
         o = self.reuse(self.o_dense, o)
+        o = add_seq_mask(o, q_mask, 0)
         return o
 
     def compute_output_shape(self, input_shape):
