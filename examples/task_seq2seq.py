@@ -140,7 +140,9 @@ def gen_sent(s, topk=2):
         _topk_arg = _log_probas.argsort(axis=1)[:, -topk:] # 每一项选出topk
         _candidate_ids, _candidate_scores = [], []
         for j, (ids, sco) in enumerate(zip(target_ids, target_scores)):
-            if i == 0 and j > 1:
+            # 预测第一个字的时候，输入的topk事实上都是同一个，
+            # 所以只需要看第一个，不需要遍历后面的。
+            if i == 0 and j > 0:
                 continue
             for k in _topk_arg[j]:
                 _candidate_ids.append(ids + [k + 3])
