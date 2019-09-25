@@ -40,12 +40,11 @@ def get_bert_model(vocab_size, max_position_embeddings, hidden_size,
     x, s = x_in, s_in
 
     # 自行构建Mask
-    mask = Lambda(lambda x: K.cast(K.greater(x, 0), 'float32'),
-                  name='Input-Mask')(x)
-    
+    v_mask = K.cast(K.greater(x, 0), 'float32')
+
     # Attention矩阵的mask，对s_in=1的部分mask掉未来信息
     if seq2seq:
-        with_mlm = True # seq2seq则自动沿用MLM的架构
+        with_mlm = True  # seq2seq则自动沿用MLM的架构
         seq_len = K.shape(s)[1]
         ones = K.ones((1, num_attention_heads, seq_len, seq_len))
         a_mask = tf.matrix_band_part(ones, -1, 0)
@@ -55,11 +54,11 @@ def get_bert_model(vocab_size, max_position_embeddings, hidden_size,
         a_mask = K.reshape(a_mask, (-1, seq_len, seq_len))
     else:
         a_mask = None
-    
+
     # Embedding部分
     token_embedding = Embedding(input_dim=vocab_size,
-                      output_dim=hidden_size,
-                      name='Embedding-Token')
+                                output_dim=hidden_size,
+                                name='Embedding-Token')
     x = token_embedding(x)
     s = Embedding(input_dim=2,
                   output_dim=hidden_size,
@@ -80,7 +79,9 @@ def get_bert_model(vocab_size, max_position_embeddings, hidden_size,
         xi = x
         x = MultiHeadAttention(heads=num_attention_heads,
                                head_size=attention_head_size,
-                               name=attention_name)([x, x, x, mask], mask=a_mask)
+                               name=attention_name)([x, x, x],
+                                                    v_mask=v_mask,
+                                                    a_mask=a_mask)
         if dropout_rate > 0:
             x = Dropout(rate=dropout_rate,
                         name='%s-Dropout' % attention_name)(x)
