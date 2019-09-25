@@ -120,7 +120,7 @@ def load_weights_from_checkpoint(model,
     num_hidden_layers = config['num_hidden_layers']
 
     if keep_words is None:
-        keep_words = range(config['vocab_size'])
+        keep_words = slice(0, None)
         
     model.get_layer(name='Embedding-Token').set_weights([
         loader('bert/embeddings/word_embeddings')[keep_words],
