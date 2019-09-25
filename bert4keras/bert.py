@@ -120,13 +120,11 @@ def load_weights_from_checkpoint(model,
     num_hidden_layers = config['num_hidden_layers']
 
     if keep_words is None:
-        model.get_layer(name='Embedding-Token').set_weights([
-            loader('bert/embeddings/word_embeddings'),
-        ])
-    else:
-        model.get_layer(name='Embedding-Token').set_weights([
-            loader('bert/embeddings/word_embeddings')[keep_words],
-        ])
+        keep_words = range(config['vocab_size'])
+        
+    model.get_layer(name='Embedding-Token').set_weights([
+        loader('bert/embeddings/word_embeddings')[keep_words],
+    ])
     model.get_layer(name='Embedding-Position').set_weights([
         loader('bert/embeddings/position_embeddings'),
     ])
@@ -190,14 +188,9 @@ def load_weights_from_checkpoint(model,
             loader('cls/predictions/transform/LayerNorm/gamma'),
             loader('cls/predictions/transform/LayerNorm/beta'),
         ])
-        if keep_words is None:
-            model.get_layer(name='MLM-Proba').set_weights([
-                loader('cls/predictions/output_bias'),
-            ])
-        else:
-            model.get_layer(name='MLM-Proba').set_weights([
-                loader('cls/predictions/output_bias')[keep_words],
-            ])
+        model.get_layer(name='MLM-Proba').set_weights([
+            loader('cls/predictions/output_bias')[keep_words],
+        ])
 
 
 def load_pretrained_model(config_path,
