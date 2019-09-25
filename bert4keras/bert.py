@@ -190,9 +190,14 @@ def load_weights_from_checkpoint(model,
             loader('cls/predictions/transform/LayerNorm/gamma'),
             loader('cls/predictions/transform/LayerNorm/beta'),
         ])
-        model.get_layer(name='MLM-Proba').set_weights([
-            loader('cls/predictions/output_bias'),
-        ])
+        if keep_words is None:
+            model.get_layer(name='MLM-Proba').set_weights([
+                loader('cls/predictions/output_bias'),
+            ])
+        else:
+            model.get_layer(name='MLM-Proba').set_weights([
+                loader('cls/predictions/output_bias')[keep_words],
+            ])
 
 
 def load_pretrained_model(config_path,
@@ -208,6 +213,9 @@ def load_pretrained_model(config_path,
         vocab_size = config['vocab_size']
     else:
         vocab_size = len(keep_words)
+    
+    if seq2seq:
+        with_mlm = True
     
     model = get_bert_model(
         vocab_size=vocab_size,
