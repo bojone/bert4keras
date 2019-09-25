@@ -121,7 +121,6 @@ cross_entropy = K.sum(cross_entropy * y_mask) / K.sum(y_mask)
 
 model.add_loss(cross_entropy)
 model.compile(optimizer=Adam(1e-5))
-model.summary()
 
 
 def gen_sent(s, topk=2):
