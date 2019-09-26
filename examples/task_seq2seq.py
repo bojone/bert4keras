@@ -110,11 +110,9 @@ model = load_pretrained_model(
 
 model.summary()
 
+# 交叉熵作为loss，并mask掉输入部分的预测
 y_in = model.input[0][:, 1:] # 目标tokens
 y_mask = model.input[1][:, 1:]
-y = model.output[:, :-1] # 预测tokens，预测与目标错开一位
-
-# 交叉熵作为loss，并mask掉输入部分的预测
 y = model.output[:, :-1] # 预测tokens，预测与目标错开一位
 cross_entropy = K.sparse_categorical_crossentropy(y_in, y)
 cross_entropy = K.sum(cross_entropy * y_mask) / K.sum(y_mask)
