@@ -5,7 +5,6 @@ from .layers import *
 from functools import partial
 import json
 
-
 gelu_version = 'erf'
 
 
@@ -23,126 +22,167 @@ def set_gelu(version):
     gelu_version = version
 
 
-def get_bert_model(vocab_size, max_position_embeddings, hidden_size,
-                   num_hidden_layers, num_attention_heads, intermediate_size,
-                   hidden_act, dropout_rate, with_mlm=False, seq2seq=False):
+class BertModel(object):
     """构建跟Bert一样结构的Transformer-based模型
-    如果with_mlm=True，则添加 Masked Language Model (MLM) 相关的层；
-    如果seq2seq=True，则进行特殊的mask，使得它可以直接用于seq2seq用途
+    这是一个比较多接口的基础类，然后通过这个基础类衍生出更复杂的模型
     """
-    attention_head_size = hidden_size // num_attention_heads
+    def __init__(
+            self,
+            vocab_size,  # 词表大小
+            max_position_embeddings,  # 序列最大长度
+            hidden_size,  # 编码维度
+            num_hidden_layers,  # Transformer总层数
+            num_attention_heads,  # Attention的头数
+            intermediate_size,  # FeedForward的隐层维度
+            hidden_act,  # FeedForward隐层的激活函数
+            dropout_rate,  # Dropout比例
+            with_mlm=False,  # 是否包含MLM部分
+            keep_words=None,  # 要保留的词ID列表
+    ):
+        if keep_words is None:
+            self.vocab_size = vocab_size
+        else:
+            self.vocab_size = len(keep_words)
+        self.max_position_embeddings = max_position_embeddings
+        self.hidden_size = hidden_size
+        self.num_hidden_layers = num_hidden_layers
+        self.num_attention_heads = num_attention_heads
+        self.attention_head_size = hidden_size // num_attention_heads
+        self.intermediate_size = intermediate_size
+        self.dropout_rate = dropout_rate
+        self.with_mlm = with_mlm
+        if hidden_act == 'gelu':
+            self.hidden_act = get_gelu()
+        else:
+            self.hidden_act = hidden_act
+        self.keep_words = keep_words
+        self.additional_outputs = []
 
-    if hidden_act == 'gelu':
-        hidden_act = get_gelu()
+    def build(self):
+        """Bert模型构建函数
+        """
+        x_in = Input(shape=(None, ), name='Input-Token')
+        s_in = Input(shape=(None, ), name='Input-Segment')
+        x, s = x_in, s_in
 
-    x_in = Input(shape=(None, ), name='Input-Token')
-    s_in = Input(shape=(None, ), name='Input-Segment')
-    x, s = x_in, s_in
+        # 自行构建Mask
+        sequence_mask = K.cast(K.greater(x, 0), 'float32')
 
-    # 自行构建Mask
-    v_mask = K.cast(K.greater(x, 0), 'float32')
+        # Embedding部分
+        token_embedding = Embedding(input_dim=self.vocab_size,
+                                    output_dim=self.hidden_size,
+                                    name='Embedding-Token')
+        x = token_embedding(x)
+        s = Embedding(input_dim=2,
+                      output_dim=self.hidden_size,
+                      name='Embedding-Segment')(s)
+        x = Add(name='Embedding-Token-Segment')([x, s])
+        x = PositionEmbedding(input_dim=self.max_position_embeddings,
+                              output_dim=self.hidden_size,
+                              name='Embedding-Position')(x)
+        if self.dropout_rate > 0:
+            x = Dropout(rate=self.dropout_rate, name='Embedding-Dropout')(x)
+        x = LayerNormalization(name='Embedding-Norm')(x)
 
-    # Attention矩阵的mask，对s_in=1的部分mask掉未来信息
-    if seq2seq:
-        with_mlm = True  # seq2seq则自动沿用MLM的架构
-        seq_len = K.shape(s)[1]
-        ones = K.ones((1, num_attention_heads, seq_len, seq_len))
-        a_mask = tf.matrix_band_part(ones, -1, 0)
-        s_ex12 = K.expand_dims(K.expand_dims(s, 1), 2)
-        s_ex13 = K.expand_dims(K.expand_dims(s, 1), 3)
-        a_mask = (1 - s_ex13) * (1 - s_ex12) + s_ex13 * a_mask
-        a_mask = K.reshape(a_mask, (-1, seq_len, seq_len))
-    else:
-        a_mask = None
+        # 主要Transformer部分
+        for i in range(self.num_hidden_layers):
+            attention_name = 'Encoder-%d-MultiHeadSelfAttention' % (i + 1)
+            feed_forward_name = 'Encoder-%d-FeedForward' % (i + 1)
+            x = self.transformer_block(
+                inputs=x,
+                sequence_mask=sequence_mask,
+                attention_mask=self.compute_attention_mask(i, s_in),
+                attention_name=attention_name,
+                feed_forward_name=feed_forward_name)
+            x = self.post_processing(i, x)
 
-    # Embedding部分
-    token_embedding = Embedding(input_dim=vocab_size,
-                                output_dim=hidden_size,
-                                name='Embedding-Token')
-    x = token_embedding(x)
-    s = Embedding(input_dim=2,
-                  output_dim=hidden_size,
-                  name='Embedding-Segment')(s)
-    x = Add(name='Embedding-Token-Segment')([x, s])
-    x = PositionEmbedding(input_dim=max_position_embeddings,
-                          output_dim=hidden_size,
-                          name='Embedding-Position')(x)
-    if dropout_rate > 0:
-        x = Dropout(rate=dropout_rate, name='Embedding-Dropout')(x)
-    x = LayerNormalization(name='Embedding-Norm')(x)
+        if self.with_mlm:
+            # Masked Language Model 部分
+            x = Dense(self.hidden_size,
+                      activation=self.hidden_act,
+                      name='MLM-Dense')(x)
+            x = LayerNormalization(name='MLM-Norm')(x)
+            x = EmbeddingDense(token_embedding, name='MLM-Proba')(x)
 
-    # Transformer部分
-    for i in range(num_hidden_layers):
-        attention_name = 'Encoder-%d-MultiHeadSelfAttention' % (i + 1)
-        feed_forward_name = 'Encoder-%d-FeedForward' % (i + 1)
+        if self.additional_outputs:
+            self.model = Model([x_in, s_in], [x] + self.additional_outputs)
+        else:
+            self.model = Model([x_in, s_in], x)
+
+    def transformer_block(self,
+                          inputs,
+                          sequence_mask,
+                          attention_mask=None,
+                          attention_name='attention',
+                          feed_forward_name='feed-forward'):
+        """根据参数构建单个Transformer
+        """
+        x = inputs
         # Self Attention
         xi = x
-        x = MultiHeadAttention(heads=num_attention_heads,
-                               head_size=attention_head_size,
+        x = MultiHeadAttention(heads=self.num_attention_heads,
+                               head_size=self.attention_head_size,
                                name=attention_name)([x, x, x],
-                                                    v_mask=v_mask,
-                                                    a_mask=a_mask)
-        if dropout_rate > 0:
-            x = Dropout(rate=dropout_rate,
+                                                    v_mask=sequence_mask,
+                                                    a_mask=attention_mask)
+        if self.dropout_rate > 0:
+            x = Dropout(rate=self.dropout_rate,
                         name='%s-Dropout' % attention_name)(x)
         x = Add(name='%s-Add' % attention_name)([xi, x])
         x = LayerNormalization(name='%s-Norm' % attention_name)(x)
         # Feed Forward
         xi = x
-        x = FeedForward(units=intermediate_size,
-                        activation=hidden_act,
+        x = FeedForward(units=self.intermediate_size,
+                        activation=self.hidden_act,
                         name=feed_forward_name)(x)
-        if dropout_rate > 0:
-            x = Dropout(rate=dropout_rate,
+        if self.dropout_rate > 0:
+            x = Dropout(rate=self.dropout_rate,
                         name='%s-Dropout' % feed_forward_name)(x)
         x = Add(name='%s-Add' % feed_forward_name)([xi, x])
         x = LayerNormalization(name='%s-Norm' % feed_forward_name)(x)
+        return x
 
-    if with_mlm:
-        x = Dense(hidden_size,
-                  activation=hidden_act,
-                  name='MLM-Dense')(x)
-        x = LayerNormalization(name='MLM-Norm')(x)
-        x = EmbeddingDense(token_embedding, name='MLM-Proba')(x)
+    def compute_attention_mask(self, layer_id, segment_ids):
+        """定义每一层的Attention Mask，来实现不同的功能
+        """
+        return None
 
-    return Model([x_in, s_in], x)
+    def post_processing(self, layer_id, inputs):
+        """自定义每一个block的后处理操作
+        """
+        return inputs
 
+    def load_weights_from_checkpoint(self, checkpoint_file):
+        """从预训练好的Bert的checkpoint中加载权重
+        """
+        model = self.model
+        loader = partial(tf.train.load_variable, checkpoint_file)
 
-def load_weights_from_checkpoint(model,
-                                 checkpoint_file,
-                                 config,
-                                 with_mlm=False,
-                                 keep_words=None):
-    """从预训练好的checkpoint中加载权重
-    keep_words是词ID组成的list，为精简Embedding层而传入
-    """
-    loader = partial(tf.train.load_variable, checkpoint_file)
-    num_hidden_layers = config['num_hidden_layers']
+        if self.keep_words is None:
+            keep_words = slice(0, None)
+        else:
+            keep_words = self.keep_words
 
-    if keep_words is None:
-        keep_words = slice(0, None)
-        
-    model.get_layer(name='Embedding-Token').set_weights([
-        loader('bert/embeddings/word_embeddings')[keep_words],
-    ])
-    model.get_layer(name='Embedding-Position').set_weights([
-        loader('bert/embeddings/position_embeddings'),
-    ])
-    model.get_layer(name='Embedding-Segment').set_weights([
-        loader('bert/embeddings/token_type_embeddings'),
-    ])
-    model.get_layer(name='Embedding-Norm').set_weights([
-        loader('bert/embeddings/LayerNorm/gamma'),
-        loader('bert/embeddings/LayerNorm/beta'),
-    ])
+        model.get_layer(name='Embedding-Token').set_weights([
+            loader('bert/embeddings/word_embeddings')[keep_words],
+        ])
+        model.get_layer(name='Embedding-Position').set_weights([
+            loader('bert/embeddings/position_embeddings'),
+        ])
+        model.get_layer(name='Embedding-Segment').set_weights([
+            loader('bert/embeddings/token_type_embeddings'),
+        ])
+        model.get_layer(name='Embedding-Norm').set_weights([
+            loader('bert/embeddings/LayerNorm/gamma'),
+            loader('bert/embeddings/LayerNorm/beta'),
+        ])
 
-    for i in range(num_hidden_layers):
-        try:
-            model.get_layer(name='Encoder-%d-MultiHeadSelfAttention' % (i + 1))
-        except ValueError as e:
-            continue
-        model.get_layer(
-            name='Encoder-%d-MultiHeadSelfAttention' % (i + 1)).set_weights([
+        for i in range(self.num_hidden_layers):
+            try:
+                model.get_layer(name='Encoder-%d-MultiHeadSelfAttention' % (i + 1))
+            except ValueError as e:
+                continue
+            model.get_layer(name='Encoder-%d-MultiHeadSelfAttention' % (i + 1)).set_weights([
                 loader('bert/encoder/layer_%d/attention/self/query/kernel' % i),
                 loader('bert/encoder/layer_%d/attention/self/query/bias' % i),
                 loader('bert/encoder/layer_%d/attention/self/key/kernel' % i),
@@ -152,45 +192,64 @@ def load_weights_from_checkpoint(model,
                 loader('bert/encoder/layer_%d/attention/output/dense/kernel' % i),
                 loader('bert/encoder/layer_%d/attention/output/dense/bias' % i),
             ])
-        model.get_layer(
-            name='Encoder-%d-MultiHeadSelfAttention-Norm' %
-            (i + 1)).set_weights([
-                loader(
-                    'bert/encoder/layer_%d/attention/output/LayerNorm/gamma' % i),
-                loader(
-                    'bert/encoder/layer_%d/attention/output/LayerNorm/beta' % i),
+            model.get_layer(name='Encoder-%d-MultiHeadSelfAttention-Norm' % (i + 1)).set_weights([
+                loader('bert/encoder/layer_%d/attention/output/LayerNorm/gamma' % i),
+                loader('bert/encoder/layer_%d/attention/output/LayerNorm/beta' % i),
             ])
-        model.get_layer(
-            name='Encoder-%d-MultiHeadSelfAttention-Norm' % (i + 1)).set_weights([
-                loader(
-                    'bert/encoder/layer_%d/attention/output/LayerNorm/gamma' % i),
-                loader(
-                    'bert/encoder/layer_%d/attention/output/LayerNorm/beta' % i),
+            model.get_layer(name='Encoder-%d-MultiHeadSelfAttention-Norm' % (i + 1)).set_weights([
+                loader('bert/encoder/layer_%d/attention/output/LayerNorm/gamma' % i),
+                loader('bert/encoder/layer_%d/attention/output/LayerNorm/beta' % i),
             ])
-        model.get_layer(name='Encoder-%d-FeedForward' % (i + 1)).set_weights([
-            loader('bert/encoder/layer_%d/intermediate/dense/kernel' % i),
-            loader('bert/encoder/layer_%d/intermediate/dense/bias' % i),
-            loader('bert/encoder/layer_%d/output/dense/kernel' % i),
-            loader('bert/encoder/layer_%d/output/dense/bias' % i),
-        ])
-        model.get_layer(
-            name='Encoder-%d-FeedForward-Norm' % (i + 1)).set_weights([
-                loader('bert/encoder/layer_%d/output/LayerNorm/gamma' % i),
-                loader('bert/encoder/layer_%d/output/LayerNorm/beta' % i),
+            model.get_layer(
+                name='Encoder-%d-FeedForward' % (i + 1)).set_weights([
+                    loader('bert/encoder/layer_%d/intermediate/dense/kernel' % i),
+                    loader('bert/encoder/layer_%d/intermediate/dense/bias' % i),
+                    loader('bert/encoder/layer_%d/output/dense/kernel' % i),
+                    loader('bert/encoder/layer_%d/output/dense/bias' % i),
+                ])
+            model.get_layer(
+                name='Encoder-%d-FeedForward-Norm' % (i + 1)).set_weights([
+                    loader('bert/encoder/layer_%d/output/LayerNorm/gamma' % i),
+                    loader('bert/encoder/layer_%d/output/LayerNorm/beta' % i),
+                ])
+
+        if self.with_mlm:
+            model.get_layer(name='MLM-Dense').set_weights([
+                loader('cls/predictions/transform/dense/kernel'),
+                loader('cls/predictions/transform/dense/bias'),
+            ])
+            model.get_layer(name='MLM-Norm').set_weights([
+                loader('cls/predictions/transform/LayerNorm/gamma'),
+                loader('cls/predictions/transform/LayerNorm/beta'),
+            ])
+            model.get_layer(name='MLM-Proba').set_weights([
+                loader('cls/predictions/output_bias')[keep_words],
             ])
 
-    if with_mlm:
-        model.get_layer(name='MLM-Dense').set_weights([
-            loader('cls/predictions/transform/dense/kernel'),
-            loader('cls/predictions/transform/dense/bias'),
-        ])
-        model.get_layer(name='MLM-Norm').set_weights([
-            loader('cls/predictions/transform/LayerNorm/gamma'),
-            loader('cls/predictions/transform/LayerNorm/beta'),
-        ])
-        model.get_layer(name='MLM-Proba').set_weights([
-            loader('cls/predictions/output_bias')[keep_words],
-        ])
+
+class Bert4Seq2seq(BertModel):
+    """用来做seq2seq任务的Bert
+    """
+    def __init__(self, *args, **kwargs):
+        super(Bert4Seq2seq, self).__init__(*args, **kwargs)
+        self.with_mlm = True
+        self.attention_mask = None
+
+    def compute_attention_mask(self, layer_id, segment_ids):
+        """为seq2seq采用特定的attention mask
+        """
+        if self.attention_mask is None:
+            s = segment_ids
+            seq_len = K.shape(s)[1]
+            ones = K.ones((1, self.num_attention_heads, seq_len, seq_len))
+            a_mask = tf.matrix_band_part(ones, -1, 0)
+            s_ex12 = K.expand_dims(K.expand_dims(s, 1), 2)
+            s_ex13 = K.expand_dims(K.expand_dims(s, 1), 3)
+            a_mask = (1 - s_ex13) * (1 - s_ex12) + s_ex13 * a_mask
+            a_mask = K.reshape(a_mask, (-1, seq_len, seq_len))
+            self.attention_mask = a_mask
+
+        return self.attention_mask
 
 
 def load_pretrained_model(config_path,
@@ -201,27 +260,24 @@ def load_pretrained_model(config_path,
     """根据配置文件和checkpoint文件来加载模型
     """
     config = json.load(open(config_path))
-    
-    if keep_words is None:
-        vocab_size = config['vocab_size']
-    else:
-        vocab_size = len(keep_words)
-    
+
     if seq2seq:
-        with_mlm = True
-    
-    model = get_bert_model(
-        vocab_size=vocab_size,
-        max_position_embeddings=config['max_position_embeddings'],
-        hidden_size=config['hidden_size'],
-        num_hidden_layers=config['num_hidden_layers'],
-        num_attention_heads=config['num_attention_heads'],
-        intermediate_size=config['intermediate_size'],
-        hidden_act=config['hidden_act'],
-        dropout_rate=0.1,
-        with_mlm=with_mlm,
-        seq2seq=seq2seq)
-    
-    load_weights_from_checkpoint(model, checkpoint_file, config, with_mlm, keep_words)
-    
-    return model
+        Bert = Bert4Seq2seq
+    else:
+        Bert = BertModel
+
+    bert = Bert(vocab_size=config['vocab_size'],
+                max_position_embeddings=config['max_position_embeddings'],
+                hidden_size=config['hidden_size'],
+                num_hidden_layers=config['num_hidden_layers'],
+                num_attention_heads=config['num_attention_heads'],
+                intermediate_size=config['intermediate_size'],
+                hidden_act=config['hidden_act'],
+                dropout_rate=0.1,
+                with_mlm=with_mlm,
+                keep_words=keep_words)
+
+    bert.build()
+    bert.load_weights_from_checkpoint(checkpoint_file)
+
+    return bert.model
