@@ -108,7 +108,7 @@ class MultiHeadAttention(OurLayer):
         v_mask: 对输入的value序列的mask。
                 主要是防止attention读取到padding信息。
         a_mask: 对Attention矩阵的mask。
-                如果mask是None或True，则忽略；如果mask是True，
+                如果mask是None或False，则忽略；如果mask是True，
                 则自动mask掉未来信息（做语言模型用）；如果mask
                 是一个张量，则直接用这个张量来mask。
         """
