@@ -38,6 +38,7 @@ class BertModel(object):
             dropout_rate,  # Dropout比例
             with_mlm=False,  # 是否包含MLM部分
             keep_words=None,  # 要保留的词ID列表
+            block_sharing=False,  # 是否共享同一个transformer block
     ):
         if keep_words is None:
             self.vocab_size = vocab_size
@@ -56,6 +57,7 @@ class BertModel(object):
         else:
             self.hidden_act = hidden_act
         self.keep_words = keep_words
+        self.block_sharing = block_sharing
         self.additional_outputs = []
 
     def build(self):
@@ -83,18 +85,22 @@ class BertModel(object):
         if self.dropout_rate > 0:
             x = Dropout(rate=self.dropout_rate, name='Embedding-Dropout')(x)
         x = LayerNormalization(name='Embedding-Norm')(x)
+        layers = None
 
         # 主要Transformer部分
         for i in range(self.num_hidden_layers):
             attention_name = 'Encoder-%d-MultiHeadSelfAttention' % (i + 1)
             feed_forward_name = 'Encoder-%d-FeedForward' % (i + 1)
-            x = self.transformer_block(
+            x, layers = self.transformer_block(
                 inputs=x,
                 sequence_mask=sequence_mask,
                 attention_mask=self.compute_attention_mask(i, s_in),
                 attention_name=attention_name,
-                feed_forward_name=feed_forward_name)
+                feed_forward_name=feed_forward_name,
+                input_layers=layers)
             x = self.post_processing(i, x)
+            if not self.block_sharing:
+                layers = None
 
         if self.with_mlm:
             # Masked Language Model 部分
@@ -114,33 +120,46 @@ class BertModel(object):
                           sequence_mask,
                           attention_mask=None,
                           attention_name='attention',
-                          feed_forward_name='feed-forward'):
-        """根据参数构建单个Transformer
+                          feed_forward_name='feed-forward',
+                          input_layers=None):
+        """构建单个Transformer Block
+        如果没传入input_layers则新建层；如果传入则重用旧层。
         """
         x = inputs
+        if input_layers is None:
+            layers = [
+                MultiHeadAttention(heads=self.num_attention_heads,
+                                   head_size=self.attention_head_size,
+                                   name=attention_name),
+                Dropout(rate=self.dropout_rate,
+                        name='%s-Dropout' % attention_name),
+                Add(name='%s-Add' % attention_name),
+                LayerNormalization(name='%s-Norm' % attention_name),
+                FeedForward(units=self.intermediate_size,
+                            activation=self.hidden_act,
+                            name=feed_forward_name),
+                Dropout(rate=self.dropout_rate,
+                        name='%s-Dropout' % feed_forward_name),
+                Add(name='%s-Add' % feed_forward_name),
+                LayerNormalization(name='%s-Norm' % feed_forward_name),
+            ]
+        else:
+            layers = input_layers
         # Self Attention
         xi = x
-        x = MultiHeadAttention(heads=self.num_attention_heads,
-                               head_size=self.attention_head_size,
-                               name=attention_name)([x, x, x],
-                                                    v_mask=sequence_mask,
-                                                    a_mask=attention_mask)
+        x = layers[0]([x, x, x], v_mask=sequence_mask, a_mask=attention_mask)
         if self.dropout_rate > 0:
-            x = Dropout(rate=self.dropout_rate,
-                        name='%s-Dropout' % attention_name)(x)
-        x = Add(name='%s-Add' % attention_name)([xi, x])
-        x = LayerNormalization(name='%s-Norm' % attention_name)(x)
+            x = layers[1](x)
+        x = layers[2]([xi, x])
+        x = layers[3](x)
         # Feed Forward
         xi = x
-        x = FeedForward(units=self.intermediate_size,
-                        activation=self.hidden_act,
-                        name=feed_forward_name)(x)
+        x = layers[4](x)
         if self.dropout_rate > 0:
-            x = Dropout(rate=self.dropout_rate,
-                        name='%s-Dropout' % feed_forward_name)(x)
-        x = Add(name='%s-Add' % feed_forward_name)([xi, x])
-        x = LayerNormalization(name='%s-Norm' % feed_forward_name)(x)
-        return x
+            x = layers[5](x)
+        x = layers[6]([xi, x])
+        x = layers[7](x)
+        return x, layers
 
     def compute_attention_mask(self, layer_id, segment_ids):
         """定义每一层的Attention Mask，来实现不同的功能
