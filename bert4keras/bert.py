@@ -71,9 +71,16 @@ class BertModel(object):
         sequence_mask = K.cast(K.greater(x, 0), 'float32')
 
         # Embedding部分
-        token_embedding = Embedding(input_dim=self.vocab_size,
-                                    output_dim=self.hidden_size,
-                                    name='Embedding-Token')
+        if self.embedding_size == self.hidden_size:
+            token_embedding = Embedding(input_dim=self.vocab_size,
+                                        output_dim=self.embedding_size,
+                                        name='Embedding-Token')
+        else:
+            token_embedding = FactorizedEmbedding(
+                input_dim=self.vocab_size,
+                hidden_dim=self.embedding_size,
+                output_dim=self.hidden_size,
+                name='Embedding-Token')
         x = token_embedding(x)
         s = Embedding(input_dim=2,
                       output_dim=self.hidden_size,
@@ -182,9 +189,15 @@ class BertModel(object):
         else:
             keep_words = self.keep_words
 
-        model.get_layer(name='Embedding-Token').set_weights([
-            loader('bert/embeddings/word_embeddings')[keep_words],
-        ])
+        if self.embedding_size == self.hidden_size:
+            model.get_layer(name='Embedding-Token').set_weights([
+                loader('bert/embeddings/word_embeddings')[keep_words],
+            ])
+        else:
+            model.get_layer(name='Embedding-Token').set_weights([
+                loader('bert/embeddings/word_embeddings')[keep_words],
+                loader('bert/embeddings/word_embeddings_2'),
+            ])
         model.get_layer(name='Embedding-Position').set_weights([
             loader('bert/embeddings/position_embeddings'),
         ])
@@ -201,35 +214,43 @@ class BertModel(object):
                 model.get_layer(name='Encoder-%d-MultiHeadSelfAttention' % (i + 1))
             except ValueError as e:
                 continue
+            try:
+                layer_name = 'layer_%d' % i
+                loader('bert/encoder/%s/attention/self/query/kernel' % layer_name)
+            except:
+                layer_name = 'layer_shared'
+                loader('bert/encoder/%s/attention/self/query/kernel' % layer_name)
+            print(layer_name)
+            print(i)
             model.get_layer(name='Encoder-%d-MultiHeadSelfAttention' % (i + 1)).set_weights([
-                loader('bert/encoder/layer_%d/attention/self/query/kernel' % i),
-                loader('bert/encoder/layer_%d/attention/self/query/bias' % i),
-                loader('bert/encoder/layer_%d/attention/self/key/kernel' % i),
-                loader('bert/encoder/layer_%d/attention/self/key/bias' % i),
-                loader('bert/encoder/layer_%d/attention/self/value/kernel' % i),
-                loader('bert/encoder/layer_%d/attention/self/value/bias' % i),
-                loader('bert/encoder/layer_%d/attention/output/dense/kernel' % i),
-                loader('bert/encoder/layer_%d/attention/output/dense/bias' % i),
+                loader('bert/encoder/%s/attention/self/query/kernel' % layer_name),
+                loader('bert/encoder/%s/attention/self/query/bias' % layer_name),
+                loader('bert/encoder/%s/attention/self/key/kernel' % layer_name),
+                loader('bert/encoder/%s/attention/self/key/bias' % layer_name),
+                loader('bert/encoder/%s/attention/self/value/kernel' % layer_name),
+                loader('bert/encoder/%s/attention/self/value/bias' % layer_name),
+                loader('bert/encoder/%s/attention/output/dense/kernel' % layer_name),
+                loader('bert/encoder/%s/attention/output/dense/bias' % layer_name),
             ])
             model.get_layer(name='Encoder-%d-MultiHeadSelfAttention-Norm' % (i + 1)).set_weights([
-                loader('bert/encoder/layer_%d/attention/output/LayerNorm/gamma' % i),
-                loader('bert/encoder/layer_%d/attention/output/LayerNorm/beta' % i),
+                loader('bert/encoder/%s/attention/output/LayerNorm/gamma' % layer_name),
+                loader('bert/encoder/%s/attention/output/LayerNorm/beta' % layer_name),
             ])
             model.get_layer(name='Encoder-%d-MultiHeadSelfAttention-Norm' % (i + 1)).set_weights([
-                loader('bert/encoder/layer_%d/attention/output/LayerNorm/gamma' % i),
-                loader('bert/encoder/layer_%d/attention/output/LayerNorm/beta' % i),
+                loader('bert/encoder/%s/attention/output/LayerNorm/gamma' % layer_name),
+                loader('bert/encoder/%s/attention/output/LayerNorm/beta' % layer_name),
             ])
             model.get_layer(
                 name='Encoder-%d-FeedForward' % (i + 1)).set_weights([
-                    loader('bert/encoder/layer_%d/intermediate/dense/kernel' % i),
-                    loader('bert/encoder/layer_%d/intermediate/dense/bias' % i),
-                    loader('bert/encoder/layer_%d/output/dense/kernel' % i),
-                    loader('bert/encoder/layer_%d/output/dense/bias' % i),
+                    loader('bert/encoder/%s/intermediate/dense/kernel' % layer_name),
+                    loader('bert/encoder/%s/intermediate/dense/bias' % layer_name),
+                    loader('bert/encoder/%s/output/dense/kernel' % layer_name),
+                    loader('bert/encoder/%s/output/dense/bias' % layer_name),
                 ])
             model.get_layer(
                 name='Encoder-%d-FeedForward-Norm' % (i + 1)).set_weights([
-                    loader('bert/encoder/layer_%d/output/LayerNorm/gamma' % i),
-                    loader('bert/encoder/layer_%d/output/LayerNorm/beta' % i),
+                    loader('bert/encoder/%s/output/LayerNorm/gamma' % layer_name),
+                    loader('bert/encoder/%s/output/LayerNorm/beta' % layer_name),
                 ])
 
         if self.with_mlm:
@@ -275,7 +296,8 @@ def load_pretrained_model(config_path,
                           checkpoint_file,
                           with_mlm=False,
                           seq2seq=False,
-                          keep_words=None):
+                          keep_words=None,
+                          albert=False):
     """根据配置文件和checkpoint文件来加载模型
     """
     config = json.load(open(config_path))
@@ -294,7 +316,8 @@ def load_pretrained_model(config_path,
                 hidden_act=config['hidden_act'],
                 dropout_rate=0.1,
                 with_mlm=with_mlm,
-                keep_words=keep_words)
+                keep_words=keep_words,
+                block_sharing=albert)
 
     bert.build()
     bert.load_weights_from_checkpoint(checkpoint_file)
