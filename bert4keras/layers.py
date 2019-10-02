@@ -180,6 +180,41 @@ class LayerNormalization(Layer):
         return outputs
 
 
+class FactorizedEmbedding(Layer):
+    """基于低秩分解的Embedding层
+    """
+    def __init__(self, input_dim, output_dim, hidden_dim=None, **kwargs):
+        super(FactorizedEmbedding, self).__init__(**kwargs)
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        if hidden_dim is None:
+            self.hidden_dim = output_dim
+        else:
+            self.hidden_dim = hidden_dim
+
+    def build(self, input_shape):
+        super(FactorizedEmbedding, self).build(input_shape)
+        self._embeddings = self.add_weight(name='embeddings',
+                                           shape=(self.input_dim,
+                                                  self.hidden_dim),
+                                           initializer='uniform')
+        self._project_kernel = self.add_weight(name='project_kernel',
+                                               shape=(self.hidden_dim,
+                                                      self.output_dim),
+                                               initializer='glorot_uniform')
+        self.embeddings = K.dot(self._embeddings, self._project_kernel)
+
+    def call(self, inputs):
+        if K.dtype(inputs) != 'int32':
+            inputs = K.cast(inputs, 'int32')
+        outputs = K.gather(self._embeddings, inputs)
+        outputs = K.dot(outputs, self._project_kernel)
+        return outputs
+
+    def compute_output_shape(self, input_shape):
+        return input_shape + (self.output_dim, )
+
+
 class PositionEmbedding(Layer):
     """定义位置Embedding，这里的Embedding是可训练的。
     """
