@@ -36,6 +36,7 @@ class BertModel(object):
             intermediate_size,  # FeedForward的隐层维度
             hidden_act,  # FeedForward隐层的激活函数
             dropout_rate,  # Dropout比例
+            embedding_size=None,  # 是否指定embedding_size
             with_mlm=False,  # 是否包含MLM部分
             keep_words=None,  # 要保留的词ID列表
             block_sharing=False,  # 是否共享同一个transformer block
@@ -51,6 +52,10 @@ class BertModel(object):
         self.attention_head_size = hidden_size // num_attention_heads
         self.intermediate_size = intermediate_size
         self.dropout_rate = dropout_rate
+        if embedding_size:
+            self.embedding_size = embedding_size
+        else:
+            self.embedding_size = hidden_size
         self.with_mlm = with_mlm
         if hidden_act == 'gelu':
             self.hidden_act = get_gelu()
@@ -315,6 +320,7 @@ def load_pretrained_model(config_path,
                 intermediate_size=config['intermediate_size'],
                 hidden_act=config['hidden_act'],
                 dropout_rate=0.1,
+                embedding_size=config.get('embedding_size'),
                 with_mlm=with_mlm,
                 keep_words=keep_words,
                 block_sharing=albert)
