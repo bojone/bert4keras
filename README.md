@@ -28,6 +28,9 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 
 当然，乐于贡献的朋友如果发现了某些bug的话，也欢迎指出修正甚至Pull Requests～
 
+## 更新
+- 2019.10.02 : 适配albert，能成功加载<a href="https://github.com/brightmart/albert_zh">albert_zh</a>的权重，只需要在`load_pretrained_model`函数里加上`albert=True`。
+
 ## 背景
 之前一直用CyberZHG大佬的<a href="https://github.com/CyberZHG/keras-bert">keras-bert</a>，如果纯粹只是为了在keras下对bert进行调用和fine tune来说，keras-bert已经足够能让人满意了。
 
