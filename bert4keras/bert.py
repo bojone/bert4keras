@@ -225,8 +225,6 @@ class BertModel(object):
             except:
                 layer_name = 'layer_shared'
                 loader('bert/encoder/%s/attention/self/query/kernel' % layer_name)
-            print(layer_name)
-            print(i)
             model.get_layer(name='Encoder-%d-MultiHeadSelfAttention' % (i + 1)).set_weights([
                 loader('bert/encoder/%s/attention/self/query/kernel' % layer_name),
                 loader('bert/encoder/%s/attention/self/query/bias' % layer_name),
