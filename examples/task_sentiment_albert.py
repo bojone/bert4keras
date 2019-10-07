@@ -9,7 +9,7 @@ import re, os
 import codecs
 from bert4keras.bert import load_pretrained_model, set_gelu
 from bert4keras.utils import SimpleTokenizer, load_vocab
-from opt import *
+from bert4keras.train import PiecewiseLinearLearningRate
 set_gelu('tanh') # 切换gelu版本
 
 
