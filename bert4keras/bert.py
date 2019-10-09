@@ -1,10 +1,10 @@
 #! -*- coding: utf-8 -*-
 # 主要模型
 
+import tensorflow as tf
 from .layers import *
 from functools import partial
 import json
-import tensorflow as tf
 
 gelu_version = 'erf'
 
