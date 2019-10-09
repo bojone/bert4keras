@@ -74,7 +74,8 @@ class OurLayer(Layer):
                 input_shape = K.int_shape(inputs)
             layer.build(input_shape)
         outputs = layer.call(*args, **kwargs)
-        if LooseVersion(keras.__version__) >= LooseVersion('2.3.0'):
+        if LooseVersion(keras.__version__) >= LooseVersion('2.3.0')\
+                or 'tf' in keras.__version__:
             """Keras 2.3.x 引入了_layers属性，可以直接追踪使用过的层，
             从而不需要自定义OurLayer就可以实现“层中层”的效果了。目前保留
             OurLayer仅仅是为了兼容旧版本，后续可能会不再支持2.3之前版本。
