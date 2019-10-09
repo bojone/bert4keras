@@ -3,9 +3,11 @@
 
 import numpy as np
 import tensorflow as tf
+import keras
 import keras.backend as K
 from keras.layers import *
 from keras.models import Model
+from distutils.version import StrictVersion
 
 
 """提供gelu版本切换功能
@@ -70,6 +72,12 @@ class OurLayer(Layer):
                 input_shape = K.int_shape(inputs)
             layer.build(input_shape)
         outputs = layer.call(*args, **kwargs)
+        if StrictVersion(keras.__version__) >= StrictVersion('2.3.0'):
+            """Keras 2.3.x 引入了_layers属性，可以直接追踪使用过的层，
+            从而不需要自定义OurLayer就可以实现“层中层”的效果了。目前保留
+            OurLayer仅仅是为了兼容旧版本，后续可能会不再支持2.3之前版本。
+            """
+            return outputs
         for w in layer.trainable_weights:
             if w not in self._trainable_weights:
                 self._trainable_weights.append(w)
