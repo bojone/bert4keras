@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # 训练相关
 
-from .backend import *
+from .backend import keras, K
 
 # 等价于 from keras.optimizers import Optimizer
 globals()['Optimizer'] = keras.optimizers.__dict__['Optimizer']
