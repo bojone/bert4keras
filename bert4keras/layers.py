@@ -2,6 +2,7 @@
 # 自定义层
 
 import numpy as np
+import tensorflow as tf
 from .backend import keras, K
 from distutils.version import LooseVersion
 
