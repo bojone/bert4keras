@@ -1,7 +1,6 @@
 #! -*- coding: utf-8 -*-
 # 主要模型
 
-import tensorflow as tf
 from .layers import *
 from functools import partial
 import json
