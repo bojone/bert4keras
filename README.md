@@ -29,6 +29,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 当然，乐于贡献的朋友如果发现了某些bug的话，也欢迎指出修正甚至Pull Requests～
 
 ## 更新
+- 2019.10.09 : 已兼容Keras 2.3.x，但只是临时方案，后续可能直接移除掉2.3之前版本的支持。
 - 2019.10.02 : 适配albert，能成功加载<a href="https://github.com/brightmart/albert_zh">albert_zh</a>的权重，只需要在`load_pretrained_model`函数里加上`albert=True`。
 
 ## 背景
