@@ -2,7 +2,7 @@
 # 自定义层
 
 import numpy as np
-from .backend import *
+from .backend import keras, K
 from distutils.version import LooseVersion
 
 # 等价于 from keras.layers import *
