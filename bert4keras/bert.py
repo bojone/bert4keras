@@ -4,6 +4,7 @@
 from .layers import *
 from functools import partial
 import json
+import tensorflow as tf
 
 gelu_version = 'erf'
 
