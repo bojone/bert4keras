@@ -2,12 +2,13 @@
 # 自定义层
 
 import numpy as np
-import tensorflow as tf
-import keras
-import keras.backend as K
-from keras.layers import *
-from keras.models import Model
+from .backend import *
 from distutils.version import LooseVersion
+
+# 等价于 from keras.layers import *
+globals().update(keras.layers.__dict__)
+# 等价于 from keras.models import Model
+globals()['Model'] = keras.models.__dict__['Model']
 
 
 """提供gelu版本切换功能
@@ -16,6 +17,7 @@ gelu有两个实现版本，一是利用Erf直接计算，
 官方早期放出的代码是用Erf函数实现的，但当
 前的官方代码已经改为了Tanh版本。
 """
+
 
 def gelu_erf(x):
     return 0.5 * x * (1.0 + tf.math.erf(x / np.sqrt(2.0)))
