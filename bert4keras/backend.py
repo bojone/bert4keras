@@ -4,7 +4,6 @@
 
 import os
 from distutils.util import strtobool
-import tensorflow as tf
 
 
 if strtobool(os.environ.get('TF_KERAS', '0')):
