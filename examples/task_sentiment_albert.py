@@ -40,7 +40,7 @@ chars = {i: j for i, j in chars.items() if j >= 4}
 
 
 _token_dict = load_vocab(dict_path) # 读取词典
-token_dict, keep_words = {}, []
+token_dict, keep_words = {}, [] # keep_words是在bert中保留的词表
 
 for c in ['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[unused1]']:
     token_dict[c] = len(token_dict)
