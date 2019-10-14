@@ -296,7 +296,7 @@ class Bert4Seq2seq(BertModel):
 
 
 def load_pretrained_model(config_path,
-                          checkpoint_file,
+                          checkpoint_file=None,
                           with_mlm=False,
                           seq2seq=False,
                           keep_words=None,
@@ -324,6 +324,8 @@ def load_pretrained_model(config_path,
                 block_sharing=albert)
 
     bert.build()
-    bert.load_weights_from_checkpoint(checkpoint_file)
+    
+    if checkpoint_file is not None:
+        bert.load_weights_from_checkpoint(checkpoint_file)
 
     return bert.model
