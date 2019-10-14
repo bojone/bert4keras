@@ -66,7 +66,7 @@ dict_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/vocab.txt'
 
 
 _token_dict = load_vocab(dict_path) # 读取词典
-token_dict, keep_words = {}, []
+token_dict, keep_words = {}, [] # keep_words是在bert中保留的词表
 
 for c in ['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[unused1]']:
     token_dict[c] = len(token_dict)
