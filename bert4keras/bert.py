@@ -73,7 +73,8 @@ class BertModel(object):
         x, s = x_in, s_in
 
         # 自行构建Mask
-        sequence_mask = K.cast(K.greater(x, 0), 'float32')
+        sequence_mask = Lambda(lambda x: K.cast(K.greater(x, 0), 'float32'),
+                               name='Input-Mask')(x)
 
         # Embedding部分
         if self.embedding_size == self.hidden_size:
@@ -159,7 +160,12 @@ class BertModel(object):
             layers = input_layers
         # Self Attention
         xi = x
-        x = layers[0]([x, x, x], v_mask=sequence_mask, a_mask=attention_mask)
+        if attention_mask is None:
+            x = layers[0]([x, x, x, sequence_mask], v_mask=True)
+        else:
+            x = layers[0]([x, x, x, sequence_mask, attention_mask],
+                          v_mask=True,
+                          a_mask=True)
         if self.dropout_rate > 0:
             x = layers[1](x)
         x = layers[2]([xi, x])
