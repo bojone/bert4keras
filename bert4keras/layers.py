@@ -113,18 +113,34 @@ class MultiHeadAttention(OurLayer):
         self.v_dense = Dense(self.out_dim)
         self.o_dense = Dense(self.out_dim)
 
-    def call(self, inputs, q_mask=None, v_mask=None, a_mask=None):
+    def call(self, inputs, q_mask=False, v_mask=False, a_mask=False):
         """实现多头注意力
         q_mask: 对输入的query序列的mask。
                 主要是将输出结果的padding部分置0。
         v_mask: 对输入的value序列的mask。
                 主要是防止attention读取到padding信息。
-        a_mask: 对Attention矩阵的mask。
-                如果mask是None或False，则忽略；如果mask是True，
-                则自动mask掉未来信息（做语言模型用）；如果mask
-                是一个张量，则直接用这个张量来mask。
+        a_mask: 对attention矩阵的mask。
+                不同的attention mask对应不同的应用。
         """
-        q, k, v = inputs
+        q, k, v = inputs[:3]
+        idx = 3
+        if q_mask:
+            q_mask = inputs[idx]
+            idx += 1
+        else:
+            q_mask = None
+        if v_mask:
+            v_mask = inputs[idx]
+            idx += 1
+        else:
+            v_mask = None
+        if a_mask:
+            if len(inputs) > idx:
+                a_mask = inputs[idx]
+            else:
+                a_mask = 'history_only'
+        else:
+            a_mask = None
         # 线性变换
         qw = self.reuse(self.q_dense, q)
         kw = self.reuse(self.k_dense, k)
@@ -144,8 +160,8 @@ class MultiHeadAttention(OurLayer):
         # Attention
         a = K.batch_dot(qw, kw, [2, 2]) / np.sqrt(self.key_size)
         a = add_seq_mask(a, v_mask, 1, -1, self.heads)
-        if (a_mask is not None) and (a_mask is not False):
-            if a_mask is True:
+        if a_mask is not None:
+            if a_mask == 'history_only':
                 ones = K.ones_like(a[:1])
                 a_mask = (ones - tf.matrix_band_part(ones, -1, 0)) * 1e12
                 a = a - a_mask
