@@ -288,15 +288,19 @@ class Bert4Seq2seq(BertModel):
         """为seq2seq采用特定的attention mask
         """
         if self.attention_mask is None:
-            s = segment_ids
-            seq_len = K.shape(s)[1]
-            ones = K.ones((1, self.num_attention_heads, seq_len, seq_len))
-            a_mask = tf.matrix_band_part(ones, -1, 0)
-            s_ex12 = K.expand_dims(K.expand_dims(s, 1), 2)
-            s_ex13 = K.expand_dims(K.expand_dims(s, 1), 3)
-            a_mask = (1 - s_ex13) * (1 - s_ex12) + s_ex13 * a_mask
-            a_mask = K.reshape(a_mask, (-1, seq_len, seq_len))
-            self.attention_mask = a_mask
+
+            def seq2seq_attention_mask(s):
+                seq_len = K.shape(s)[1]
+                ones = K.ones((1, self.num_attention_heads, seq_len, seq_len))
+                a_mask = tf.matrix_band_part(ones, -1, 0)
+                s_ex12 = K.expand_dims(K.expand_dims(s, 1), 2)
+                s_ex13 = K.expand_dims(K.expand_dims(s, 1), 3)
+                a_mask = (1 - s_ex13) * (1 - s_ex12) + s_ex13 * a_mask
+                a_mask = K.reshape(a_mask, (-1, seq_len, seq_len))
+                return a_mask
+
+            self.attention_mask = Lambda(seq2seq_attention_mask,
+                                         name='Attention-Mask')(segment_ids)
 
         return self.attention_mask
 
