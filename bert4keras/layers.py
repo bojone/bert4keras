@@ -381,6 +381,8 @@ class EmbeddingDense(Layer):
 
 
 custom_objects = {
+    'gelu_erf': gelu_erf,
+    'gelu_tanh': gelu_tanh,
     'MultiHeadAttention': MultiHeadAttention,
     'LayerNormalization': LayerNormalization,
     'FactorizedEmbedding': FactorizedEmbedding,
