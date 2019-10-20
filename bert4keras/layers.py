@@ -9,22 +9,18 @@ from distutils.version import LooseVersion
 # 等价于 from keras.layers import *
 globals().update(keras.layers.__dict__)
 # 等价于 from keras.models import Model
-globals()['Model'] = keras.models.__dict__['Model']
-
-
-"""提供gelu版本切换功能
-gelu有两个实现版本，一是利用Erf直接计算，
-二是利用Tanh做近似，两者会有一点差异。
-官方早期放出的代码是用Erf函数实现的，但当
-前的官方代码已经改为了Tanh版本。
-"""
+globals()['Model'] = keras.models.Model
+# 等价于 from keras.utils import get_custom_objects
+globals()['get_custom_objects'] = keras.utils.get_custom_objects
 
 
 def gelu_erf(x):
+    # 基于Erf直接计算的gelu函数
     return 0.5 * x * (1.0 + tf.math.erf(x / np.sqrt(2.0)))
 
 
 def gelu_tanh(x):
+    # 基于Tanh近似计算的gelu函数
     cdf = 0.5 * (1.0 + K.tanh(
         (np.sqrt(2 / np.pi) * (x + 0.044715 * K.pow(x, 3)))))
     return x * cdf
@@ -123,6 +119,7 @@ class MultiHeadAttention(OurLayer):
                 不同的attention mask对应不同的应用。
         """
         q, k, v = inputs[:3]
+        # 处理mask
         idx = 3
         if q_mask:
             q_mask = inputs[idx]
@@ -179,6 +176,15 @@ class MultiHeadAttention(OurLayer):
 
     def compute_output_shape(self, input_shape):
         return (input_shape[0][0], input_shape[0][1], self.out_dim)
+
+    def get_config(self):
+        config = {
+            'heads': self.heads,
+            'head_size': self.head_size,
+            'key_size': self.key_size
+        }
+        base_config = super(MultiHeadAttention, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
 
 
 class LayerNormalization(Layer):
@@ -242,6 +248,15 @@ class FactorizedEmbedding(Layer):
     def compute_output_shape(self, input_shape):
         return input_shape + (self.output_dim, )
 
+    def get_config(self):
+        config = {
+            'input_dim': self.input_dim,
+            'output_dim': self.output_dim,
+            'hidden_dim': self.hidden_dim
+        }
+        base_config = super(FactorizedEmbedding, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
 
 class PositionEmbedding(Layer):
     """定义位置Embedding，这里的Embedding是可训练的。
@@ -276,6 +291,15 @@ class PositionEmbedding(Layer):
         else:
             return input_shape[:2] + (input_shape[2] + self.v_dim, )
 
+    def get_config(self):
+        config = {
+            'input_dim': self.input_dim,
+            'output_dim': self.output_dim,
+            'merge_mode': self.merge_mode
+        }
+        base_config = super(PositionEmbedding, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
 
 class FeedForward(OurLayer):
     """FeedForward层，其实就是两个Dense层的叠加
@@ -296,27 +320,73 @@ class FeedForward(OurLayer):
         x = self.reuse(self.dense_2, x)
         return x
 
+    def get_config(self):
+        config = {'units': self.units, 'activation': self.activation}
+        base_config = super(FeedForward, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
 
 class EmbeddingDense(Layer):
-    """运算跟Dense一致，只不过kernel用Embedding层的embedding矩阵
+    """运算跟Dense一致，但kernel用Embedding层的embeddings矩阵。
+    根据Embedding层的名字来搜索定位Embedding层。
     """
-    def __init__(self, embedding_layer, activation='softmax', **kwargs):
+    def __init__(self, embedding_name, activation='softmax', **kwargs):
         super(EmbeddingDense, self).__init__(**kwargs)
-        self.kernel = K.transpose(embedding_layer.embeddings)
+        self.embedding_name = embedding_name
         self.activation = activation
-        self.units = K.int_shape(self.kernel)[1]
-
-    def build(self, input_shape):
-        super(EmbeddingDense, self).build(input_shape)
-        self.bias = self.add_weight(name='bias',
-                                    shape=(self.units,),
-                                    initializer='zeros')
 
     def call(self, inputs):
+        if not hasattr(self, 'kernel'):
+            embedding_layer = inputs._keras_history[0]
+
+            if embedding_layer.name != self.embedding_name:
+
+                def recursive_search(layer):
+                    """递归向上搜索，根据名字找Embedding层
+                    """
+                    last_layers = layer._inbound_nodes[0].inbound_layers
+                    if last_layers:
+                        if last_layers[0].name == self.embedding_name:
+                            return last_layers[0]
+                        else:
+                            return recursive_search(last_layers[0])
+                    else:
+                        return None
+
+                embedding_layer = recursive_search(embedding_layer)
+                if embedding_layer is None:
+                    raise Exception, 'Embedding layer not found'
+
+                self.kernel = K.transpose(embedding_layer.embeddings)
+                self.units = K.int_shape(self.kernel)[1]
+                self.bias = self.add_weight(name='bias',
+                                            shape=(self.units, ),
+                                            initializer='zeros')
+
         outputs = K.dot(inputs, self.kernel)
         outputs = K.bias_add(outputs, self.bias)
         outputs = Activation(self.activation).call(outputs)
         return outputs
-        
+
     def compute_output_shape(self, input_shape):
-        return input_shape[:-1] + (self.units,)
+        return input_shape[:-1] + (self.units, )
+
+    def get_config(self):
+        config = {
+            'embedding_name': self.embedding_name,
+            'activation': self.activation
+        }
+        base_config = super(EmbeddingDense, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+
+custom_objects = {
+    'MultiHeadAttention': MultiHeadAttention,
+    'LayerNormalization': LayerNormalization,
+    'FactorizedEmbedding': FactorizedEmbedding,
+    'PositionEmbedding': PositionEmbedding,
+    'FeedForward': FeedForward,
+    'EmbeddingDense': EmbeddingDense
+}
+
+get_custom_objects().update(custom_objects)
