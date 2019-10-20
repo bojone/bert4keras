@@ -78,16 +78,14 @@ class BertModel(object):
 
         # Embedding部分
         if self.embedding_size == self.hidden_size:
-            token_embedding = Embedding(input_dim=self.vocab_size,
-                                        output_dim=self.embedding_size,
-                                        name='Embedding-Token')
+            x = Embedding(input_dim=self.vocab_size,
+                          output_dim=self.embedding_size,
+                          name='Embedding-Token')(x)
         else:
-            token_embedding = FactorizedEmbedding(
-                input_dim=self.vocab_size,
-                hidden_dim=self.embedding_size,
-                output_dim=self.hidden_size,
-                name='Embedding-Token')
-        x = token_embedding(x)
+            x = FactorizedEmbedding(input_dim=self.vocab_size,
+                                    hidden_dim=self.embedding_size,
+                                    output_dim=self.hidden_size,
+                                    name='Embedding-Token')(x)
         s = Embedding(input_dim=2,
                       output_dim=self.hidden_size,
                       name='Embedding-Segment')(s)
@@ -121,7 +119,8 @@ class BertModel(object):
                       activation=self.hidden_act,
                       name='MLM-Dense')(x)
             x = LayerNormalization(name='MLM-Norm')(x)
-            x = EmbeddingDense(token_embedding, name='MLM-Proba')(x)
+            x = EmbeddingDense(embedding_name='Embedding-Token',
+                               name='MLM-Proba')(x)
 
         if self.additional_outputs:
             self.model = Model([x_in, s_in], [x] + self.additional_outputs)
