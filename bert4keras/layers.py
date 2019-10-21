@@ -3,14 +3,14 @@
 
 import numpy as np
 import tensorflow as tf
-from .backend import keras, K
+from bert4keras.backend import keras, K, get_all_attributes
 
 # 等价于 from keras.layers import *
-globals().update(keras.layers.__dict__)
+locals().update(get_all_attributes(keras.layers))
 # 等价于 from keras.models import Model
-globals()['Model'] = keras.models.Model
+locals()['Model'] = keras.models.Model
 # 等价于 from keras.utils import get_custom_objects
-globals()['get_custom_objects'] = keras.utils.get_custom_objects
+locals()['get_custom_objects'] = keras.utils.get_custom_objects
 
 
 def gelu_erf(x):
