@@ -307,18 +307,20 @@ class EmbeddingDense(Layer):
                 def recursive_search(layer):
                     """递归向上搜索，根据名字找Embedding层
                     """
-                    last_layers = layer._inbound_nodes[0].inbound_layers
-                    if last_layers:
-                        if last_layers[0].name == self.embedding_name:
-                            return last_layers[0]
+                    last_layer = layer._inbound_nodes[0].inbound_layers
+                    if isinstance(last_layer, list):
+                        if len(last_layer) == 0:
+                            return None
                         else:
-                            return recursive_search(last_layers[0])
+                            last_layer = last_layer[0]
+                    if last_layer.name == self.embedding_name:
+                        return last_layer
                     else:
-                        return None
+                        return recursive_search(last_layer)
 
                 embedding_layer = recursive_search(embedding_layer)
                 if embedding_layer is None:
-                    raise Exception, 'Embedding layer not found'
+                    raise Exception('Embedding layer not found')
 
                 self.kernel = K.transpose(embedding_layer.embeddings)
                 self.units = K.int_shape(self.kernel)[1]
