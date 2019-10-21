@@ -114,7 +114,6 @@ from keras.layers import *
 from keras.models import Model
 import keras.backend as K
 from keras.optimizers import Adam
-from keras.models import load_model
 
 
 model = load_pretrained_model(
