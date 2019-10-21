@@ -22,13 +22,12 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 
 之前基于keras-bert给出的<a href="https://github.com/bojone/bert_in_keras">例子</a>，仍适用于本项目，只需要将`bert_model`的加载方式换成本项目的。
 
-目前只保证支持Python 2.7，实验环境是Tesorflow 1.8+以及Keras 2.2.4+（已经在2.2.4、2.2.5、2.3.0、2.3.1、tf.keras下测试通过）。
-
-（有朋友测试过，python 3也可以直接用，没报错，反正python 3的用户可以直接试试。但我自己没测试过，所以不保证。）
+理论上兼容Python2和Python3，实验环境是Python 2.7、Tesorflow 1.8+以及Keras 2.3.1（已经在2.3.0、2.3.1、tf.keras下测试通过）。
 
 当然，乐于贡献的朋友如果发现了某些bug的话，也欢迎指出修正甚至Pull Requests～
 
 ## 更新
+- 2019.10.21 : 为了简化代码结构，决定放弃keras 2.3.0之前的版本的支持，目前只支持keras 2.3.0+以及tf.keras。
 - 2019.10.20 : 应网友要求，现支持直接用`model.save`保存模型结构，用`load_model`加载整个模型（不需要额外写`custom_objects`）。
 - 2019.10.09 : 已兼容tf.keras，同时在tf 1.13和tf 2.0下的tf.keras测试通过，通过设置环境变量`TF_KERAS=1`来切换tf.keras。
 - 2019.10.09 : 已兼容Keras 2.3.x，但只是临时方案，后续可能直接移除掉2.3之前版本的支持。
