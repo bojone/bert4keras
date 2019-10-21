@@ -12,3 +12,10 @@ if strtobool(os.environ.get('TF_KERAS', '0')):
 else:
     import keras
     import keras.backend as K
+
+
+def get_all_attributes(something):
+    return {
+        name: getattr(something, name)
+        for name in dir(something) if name[:2] != '__' and name[-2:] != '__'
+    }
