@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # 训练相关
 
-from .backend import keras, K
+from bert4keras.backend import keras, K
 
 # 等价于 from keras.optimizers import Optimizer
 locals()['Optimizer'] = keras.optimizers.Optimizer
