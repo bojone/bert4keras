@@ -1,9 +1,10 @@
 #! -*- coding: utf-8 -*-
 # 主要模型
 
-from .layers import *
+from bert4keras.layers import *
 from functools import partial
 import json
+
 
 gelu_version = 'erf'
 
