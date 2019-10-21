@@ -4,7 +4,7 @@
 from .backend import keras, K
 
 # 等价于 from keras.optimizers import Optimizer
-globals()['Optimizer'] = keras.optimizers.__dict__['Optimizer']
+locals()['Optimizer'] = keras.optimizers.Optimizer
 
 
 class PiecewiseLinearLearningRate(Optimizer):
