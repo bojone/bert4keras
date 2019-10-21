@@ -91,7 +91,7 @@ class data_generator:
         return self.steps
     def __iter__(self):
         while True:
-            idxs = range(len(self.data))
+            idxs = list(range(len(self.data)))
             np.random.shuffle(idxs)
             X1, X2, Y = [], [], []
             for i in idxs:
@@ -114,6 +114,7 @@ from keras.layers import *
 from keras.models import Model
 import keras.backend as K
 from keras.optimizers import Adam
+from keras.models import load_model
 
 
 model = load_pretrained_model(
@@ -129,8 +130,8 @@ model = Model(model.input, output)
 
 model.compile(
     loss='binary_crossentropy',
-    optimizer=Adam(1e-5),  # 用足够小的学习率
-    # optimizer=PiecewiseLinearLearningRate(Adam(1e-5), {1000: 1e-5, 2000: 6e-5}),
+    # optimizer=Adam(1e-5),  # 用足够小的学习率
+    optimizer=PiecewiseLinearLearningRate(Adam(1e-4), {1000: 1e-4, 2000: 1e-5}),
     metrics=['accuracy']
 )
 model.summary()
