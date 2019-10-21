@@ -4,7 +4,6 @@
 import numpy as np
 import tensorflow as tf
 from .backend import keras, K
-from distutils.version import LooseVersion
 
 # 等价于 from keras.layers import *
 globals().update(keras.layers.__dict__)
@@ -56,43 +55,7 @@ def add_seq_mask(x, mask, mode=0, axis=None, heads=1):
             return x - (1 - mask) * 1e12
 
 
-class OurLayer(Layer):
-    """定义新的Layer，增加reuse方法，允许在定义Layer时调用现成的层
-    """
-    def reuse(self, layer, *args, **kwargs):
-        if not layer.built:
-            if len(args) > 0:
-                inputs = args[0]
-            else:
-                inputs = kwargs['inputs']
-            if isinstance(inputs, list):
-                input_shape = [K.int_shape(x) for x in inputs]
-            else:
-                input_shape = K.int_shape(inputs)
-            layer.build(input_shape)
-        outputs = layer.call(*args, **kwargs)
-        if LooseVersion(keras.__version__) >= LooseVersion('2.3.0')\
-                or 'tf' in keras.__version__:
-            """Keras 2.3.x 引入了_layers属性，可以直接追踪使用过的层，
-            从而不需要自定义OurLayer就可以实现“层中层”的效果了。目前保留
-            OurLayer仅仅是为了兼容旧版本，后续可能会不再支持2.3之前版本。
-            """
-            return outputs
-        for w in layer.trainable_weights:
-            if w not in self._trainable_weights:
-                self._trainable_weights.append(w)
-        for w in layer.non_trainable_weights:
-            if w not in self._non_trainable_weights:
-                self._non_trainable_weights.append(w)
-        for u in layer.updates:
-            if not hasattr(self, '_updates'):
-                self._updates = []
-            if u not in self._updates:
-                self._updates.append(u)
-        return outputs
-
-
-class MultiHeadAttention(OurLayer):
+class MultiHeadAttention(Layer):
     """多头注意力机制
     """
     def __init__(self, heads, head_size, key_size=None, **kwargs):
@@ -139,9 +102,9 @@ class MultiHeadAttention(OurLayer):
         else:
             a_mask = None
         # 线性变换
-        qw = self.reuse(self.q_dense, q)
-        kw = self.reuse(self.k_dense, k)
-        vw = self.reuse(self.v_dense, v)
+        qw = self.q_dense(q)
+        kw = self.k_dense(k)
+        vw = self.v_dense(v)
         # 形状变换
         qw = K.reshape(qw, (-1, K.shape(q)[1], self.heads, self.key_size))
         kw = K.reshape(kw, (-1, K.shape(k)[1], self.heads, self.key_size))
@@ -170,7 +133,7 @@ class MultiHeadAttention(OurLayer):
         o = K.reshape(o, (-1, self.heads, K.shape(q)[1], self.head_size))
         o = K.permute_dimensions(o, (0, 2, 1, 3))
         o = K.reshape(o, (-1, K.shape(o)[1], self.out_dim))
-        o = self.reuse(self.o_dense, o)
+        o = self.o_dense(o)
         o = add_seq_mask(o, q_mask, 0)
         return o
 
@@ -301,7 +264,7 @@ class PositionEmbedding(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
-class FeedForward(OurLayer):
+class FeedForward(Layer):
     """FeedForward层，其实就是两个Dense层的叠加
     """
     def __init__(self, units, activation='relu', **kwargs):
@@ -316,8 +279,8 @@ class FeedForward(OurLayer):
         self.dense_2 = Dense(output_dim)
 
     def call(self, inputs):
-        x = self.reuse(self.dense_1, inputs)
-        x = self.reuse(self.dense_2, x)
+        x = self.dense_1(inputs)
+        x = self.dense_2(x)
         return x
 
     def get_config(self):
