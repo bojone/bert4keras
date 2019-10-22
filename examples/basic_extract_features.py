@@ -3,6 +3,7 @@
 
 from bert4keras.bert import load_pretrained_model
 from bert4keras.utils import SimpleTokenizer, load_vocab
+from keras.models import load_model
 import numpy as np
 
 
@@ -16,6 +17,8 @@ model = load_pretrained_model(config_path, checkpoint_path) # 建立模型，加
 
 # 编码测试
 token_ids, segment_ids = tokenizer.encode(u'语言模型')
+
+print('\n ===== predicting =====\n')
 print(model.predict([np.array([token_ids]), np.array([segment_ids])]))
 
 """
@@ -33,3 +36,9 @@ print(model.predict([np.array([token_ids]), np.array([segment_ids])]))
   [-0.8741375  -0.21650358  1.338839   ...  0.5816864  -0.4373226
     0.56181806]]]
 """
+
+print('\n ===== reloading and predicting =====\n')
+model.save('test.model')
+del model
+model = load_model('test.model')
+print(model.predict([np.array([token_ids]), np.array([segment_ids])]))
