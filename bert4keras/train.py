@@ -43,7 +43,7 @@ class OptimizerWrapper(Optimizer):
 
 class PiecewiseLinearLearningRate(OptimizerWrapper):
     """分段线性学习率优化器
-    传入优化器，然后将优化器的学习率改为分段线性的，
+    传入优化器，然后将优化器的学习率改为分段线性的。
     其中schedule是形如{1000: 1, 2000: 0.1}的字典，
     表示0～1000步内学习率线性地从零增加到100%，然后
     1000～2000步内线性地降到10%，2000步以后保持10%.
@@ -83,7 +83,7 @@ class PiecewiseLinearLearningRate(OptimizerWrapper):
 
 class GradientAccumulation(OptimizerWrapper):
     """梯度累积优化器
-    将steps_per_update步的梯度平均起来，然后再更新模型。
+    将steps_per_update步的梯度平均起来，然后才更新模型。
     """
     def __init__(self, optimizer, steps_per_update=1, **kwargs):
         super(GradientAccumulation, self).__init__(optimizer, **kwargs)
