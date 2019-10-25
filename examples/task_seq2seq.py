@@ -10,7 +10,7 @@ import os, json, codecs
 from collections import Counter
 import uniout
 from bert4keras.bert import load_pretrained_model
-from bert4keras.utils import SimpleTokenizer, load_vocab
+from bert4keras.utils import Tokenizer, load_vocab
 from keras.layers import *
 from keras.models import Model
 from keras import backend as K
@@ -18,7 +18,7 @@ from keras.callbacks import Callback
 from keras.optimizers import Adam
 
 
-config_path = 'seq2seq_config.json'
+seq2seq_config = 'seq2seq_config.json'
 min_count = 32
 max_input_len = 256
 max_output_len = 32
@@ -26,9 +26,14 @@ batch_size = 16
 steps_per_epoch = 1000
 epochs = 10000
 
+# bert配置
+config_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/bert_config.json'
+checkpoint_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/bert_model.ckpt'
+dict_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/vocab.txt'
+
 
 def read_text():
-    txts = glob.glob('../THUCNews/*/*.txt')
+    txts = glob.glob('../../thuctc/THUCNews/*/*.txt')
     np.random.shuffle(txts)
     for txt in txts:
         d = open(txt).read()
@@ -41,44 +46,40 @@ def read_text():
                 yield content[:max_input_len], title
 
 
-if os.path.exists(config_path):
-    chars = json.load(open(config_path))
+_token_dict = load_vocab(dict_path) # 读取词典
+_tokenizer = Tokenizer(_token_dict) # 建立临时分词器
+
+if os.path.exists(seq2seq_config):
+    tokens = json.load(open(seq2seq_config))
 else:
-    chars = {}
-    for a in tqdm(read_text(), desc=u'构建字表中'):
+    tokens = {}
+    for a in tqdm(read_text(), desc=u'构建词汇表中'):
         for b in a:
-            for w in b: # 纯文本，不用分词
-                chars[w] = chars.get(w, 0) + 1
-    chars = [(i, j) for i, j in chars.items() if j >= min_count]
-    chars = sorted(chars, key=lambda c: - c[1])
-    chars = [c[0] for c in chars]
+            for t in _tokenizer.tokenize(b):
+                tokens[t] = tokens.get(t, 0) + 1
+    tokens = [(i, j) for i, j in tokens.items() if j >= min_count]
+    tokens = sorted(tokens, key=lambda t: - t[1])
+    tokens = [t[0] for t in tokens]
     json.dump(
-        chars,
-        codecs.open(config_path, 'w', encoding='utf-8'),
+        tokens,
+        codecs.open(seq2seq_config, 'w', encoding='utf-8'),
         indent=4,
         ensure_ascii=False
     )
 
 
-config_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/bert_model.ckpt'
-dict_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/vocab.txt'
-
-
-_token_dict = load_vocab(dict_path) # 读取词典
 token_dict, keep_words = {}, [] # keep_words是在bert中保留的字表
 
-for c in ['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[unused1]']:
-    token_dict[c] = len(token_dict)
-    keep_words.append(_token_dict[c])
+for t in ['[PAD]', '[UNK]', '[CLS]', '[SEP]']:
+    token_dict[t] = len(token_dict)
+    keep_words.append(_token_dict[t])
 
-for c in chars:
-    if c in _token_dict:
-        token_dict[c] = len(token_dict)
-        keep_words.append(_token_dict[c])
+for t in tokens:
+    if t in _token_dict and t not in token_dict:
+        token_dict[t] = len(token_dict)
+        keep_words.append(_token_dict[t])
 
-
-tokenizer = SimpleTokenizer(token_dict) # 建立分词器
+tokenizer = Tokenizer(token_dict) # 建立分词器
 
 
 def padding(x):
