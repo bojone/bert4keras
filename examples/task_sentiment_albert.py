@@ -8,7 +8,7 @@ from random import choice
 import re, os
 import codecs
 from bert4keras.bert import load_pretrained_model, set_gelu
-from bert4keras.utils import SimpleTokenizer, load_vocab
+from bert4keras.utils import Tokenizer, load_vocab
 from bert4keras.train import PiecewiseLinearLearningRate
 set_gelu('tanh') # 切换gelu版本
 
@@ -21,38 +21,34 @@ dict_path = '/root/kg/bert/albert_base_zh/vocab.txt'
 
 neg = pd.read_excel('datasets/neg.xls', header=None)
 pos = pd.read_excel('datasets/pos.xls', header=None)
-chars = {}
+data, tokens = [], {}
 
-
-data = []
+_token_dict = load_vocab(dict_path) # 读取词典
+_tokenizer = Tokenizer(_token_dict) # 建立临时分词器
 
 for d in neg[0]:
     data.append((d, 0))
-    for c in d:
-        chars[c] = chars.get(c, 0) + 1
+    for t in _tokenizer.tokenize(d):
+        tokens[t] = tokens.get(t, 0) + 1
 
 for d in pos[0]:
     data.append((d, 1))
-    for c in d:
-        chars[c] = chars.get(c, 0) + 1
+    for t in _tokenizer.tokenize(d):
+        tokens[t] = tokens.get(t, 0) + 1
 
-chars = {i: j for i, j in chars.items() if j >= 4}
-
-
-_token_dict = load_vocab(dict_path) # 读取词典
+tokens = {i: j for i, j in tokens.items() if j >= 4}
 token_dict, keep_words = {}, [] # keep_words是在bert中保留的字表
 
-for c in ['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[unused1]']:
-    token_dict[c] = len(token_dict)
-    keep_words.append(_token_dict[c])
+for t in ['[PAD]', '[UNK]', '[CLS]', '[SEP]']:
+    token_dict[t] = len(token_dict)
+    keep_words.append(_token_dict[t])
 
-for c in chars:
-    if c in _token_dict:
-        token_dict[c] = len(token_dict)
-        keep_words.append(_token_dict[c])
+for t in tokens:
+    if t in _token_dict and t not in token_dict:
+        token_dict[t] = len(token_dict)
+        keep_words.append(_token_dict[t])
 
-
-tokenizer = SimpleTokenizer(token_dict) # 建立分词器
+tokenizer = Tokenizer(token_dict) # 建立分词器
 
 
 if not os.path.exists('./random_order.json'):
@@ -97,7 +93,7 @@ class data_generator:
             for i in idxs:
                 d = self.data[i]
                 text = d[0][:maxlen]
-                x1, x2 = tokenizer.encode(first=text)
+                x1, x2 = tokenizer.encode(text)
                 y = d[1]
                 X1.append(x1)
                 X2.append(x2)
