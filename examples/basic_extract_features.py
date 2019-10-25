@@ -2,7 +2,7 @@
 # 测试代码可用性: 提取特征
 
 from bert4keras.bert import load_pretrained_model
-from bert4keras.utils import SimpleTokenizer, load_vocab
+from bert4keras.utils import Tokenizer, load_vocab
 from keras.models import load_model
 import numpy as np
 
