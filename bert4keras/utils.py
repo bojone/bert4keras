@@ -5,74 +5,183 @@ import unicodedata
 import codecs
 
 
-class SimpleTokenizer:
-    """简单的分词器，直接将文本分割为单字符序列，
-    专为中文处理设计，原则上只适用于中文模型。
+class Tokenizer(object):
+    """Bert原生分词器
+    修改自：https://github.com/CyberZHG/keras-bert/blob/master/keras_bert/tokenizer.py
     """
-    def __init__(self, token_dict):
+    def __init__(self, token_dict, case_sensitive=True):
         """初始化词典
         """
         self._token_dict = token_dict
         self._token_dict_inv = {v: k for k, v in token_dict.items()}
-
-    def _is_space(self, c):
-        """判断是否为空格
-        """
-        return c == ' ' or c == '\n' or c == '\r' or c == '\t' or \
-            unicodedata.category(c) == 'Zs'
-    
-    def _is_special(self, c):
-        """判断是否带方括号的特殊标记
-        """
-        return bool(c) and (c[0] == '[') and (c[-1] == ']')
+        self._token_cls = '[CLS]'
+        self._token_sep = '[SEP]'
+        self._token_unk = '[UNK]'
+        self._case_sensitive = case_sensitive
 
     def tokenize(self, text, add_cls=True, add_sep=True):
         """按字分割
         """
-        R = []
+        R = self._tokenize(text)
         if add_cls:
-            R.append('[CLS]')
-        for c in text:
-            if c in self._token_dict:
-                R.append(c)
-            elif self._is_space(c):
-                R.append('[unused1]')  # space类用未经训练的[unused1]表示
-            else:
-                R.append('[UNK]')  # 剩余的字符是[UNK]
+            R.insert(0, self._token_cls)
         if add_sep:
-            R.append('[SEP]')
+            R.append(self._token_sep)
         return R
 
-    def encode(self, first, second=None, first_length=None):
+    def tokens_to_ids(self, tokens):
+        """token序列转换为对应的id序列
+        """
+        unk_id = self._token_dict.get(self._token_unk)
+        return [self._token_dict.get(token, unk_id) for token in tokens]
+
+    def encode(self,
+               first_text,
+               second_text=None,
+               first_length=None,
+               second_length=None):
         """输出文本对应token id和segment id
-        如果传入first_length，则强行padding第一个句子到指定长度
+        如果传入first_length，则强行padding第一个句子到指定长度；
+        同理，如果传入second_length，则强行padding第二个句子到指定长度。
         """
-        token_ids, segment_ids = [], []
-        token_ids.extend([self._token_dict[c] for c in self.tokenize(first)])
-        segment_ids.extend([0] * (len(first) + 2))
-        if first_length is not None and len(token_ids) < first_length + 2:
-            token_ids.extend([0] * (first_length + 2 - len(token_ids)))
-            segment_ids.extend([0] * (first_length + 2 - len(segment_ids)))
-        if second is not None:
-            token_ids.extend([
-                self._token_dict[c]
-                for c in self.tokenize(second, add_cls=False)
-            ])
-            segment_ids.extend([1] * (len(second) + 1))
-        return token_ids, segment_ids
-    
-    def decode(self, token_ids, join_str=''):
-        """简单的词id序列转文本函数
+        first_tokens = self.tokenize(first_text)
+        first_token_ids = self.tokens_to_ids(first_tokens)
+        if first_length is not None:
+            first_token_ids = first_token_ids[:first_length]
+            first_token_ids.extend([0] * (first_length - len(first_token_ids)))
+        first_segment_ids = [0] * len(first_token_ids)
+
+        if second_text is not None:
+            second_tokens = self.tokenize(second_text, add_cls=False)
+            second_token_ids = self.tokens_to_ids(second_tokens)
+            if second_length is not None:
+                second_token_ids = second_token_ids[:second_length]
+                second_token_ids.extend(
+                    [0] * (second_length - len(second_token_ids)))
+            second_segment_ids = [1] * len(second_token_ids)
+
+            first_token_ids.extend(second_token_ids)
+            first_segment_ids.extend(second_segment_ids)
+
+        return first_token_ids, first_segment_ids
+
+    def ids_to_tokens(self, ids):
+        """id序列转换为对应的token序列
         """
+        tokens = [self._token_dict_inv[i] for i in ids]
+        return tokens
+
+    def decode(self, ids):
+        """转为可读文本
+        """
+        tokens = self.ids_to_tokens(ids)
+        tokens = [token for token in tokens if not self._is_special(token)]
+
+        text = ''
+        for i, token in enumerate(tokens):
+            if token[:2] == '##':
+                text += token[2:]
+                if i != len(tokens) - 1 and tokens[i + 1][:2] != '##':
+                    text += ' '
+            else:
+                text += token
+
+        return text
+
+    def _tokenize(self, text):
+        """基本分词函数
+        """
+        if not self._case_sensitive:
+            text = unicodedata.normalize('NFD', text)
+            text = ''.join([ch for ch in text if unicodedata.category(ch) != 'Mn'])
+            text = text.lower()
+
+        spaced = ''
+        for ch in text:
+            if self._is_punctuation(ch) or self._is_cjk_character(ch):
+                spaced += ' ' + ch + ' '
+            elif self._is_space(ch):
+                spaced += ' '
+            elif ord(ch) == 0 or ord(ch) == 0xfffd or self._is_control(ch):
+                continue
+            else:
+                spaced += ch
+
         tokens = []
-        for i in token_ids:
-            t = self._token_dict_inv.get(i, '')
-            if t == '[unused1]':
-                tokens.append(' ')
-            elif not self._is_special(t):
-                tokens.append(t)
-        return join_str.join(tokens)
-        
+        for word in spaced.strip().split():
+            tokens.extend(self._word_piece_tokenize(word))
+
+        return tokens
+
+    def _word_piece_tokenize(self, word):
+        """word内分成subword
+        """
+        if word in self._token_dict:
+            return [word]
+
+        tokens = []
+        start, stop = 0, 0
+        while start < len(word):
+            stop = len(word)
+            while stop > start:
+                sub = word[start:stop]
+                if start > 0:
+                    sub = '##' + sub
+                if sub in self._token_dict:
+                    break
+                stop -= 1
+            if start == stop:
+                stop += 1
+            tokens.append(sub)
+            start = stop
+
+        return tokens
+
+    @staticmethod
+    def _is_space(ch):
+        """空格类字符判断
+        """
+        return ch == ' ' or ch == '\n' or ch == '\r' or ch == '\t' or \
+            unicodedata.category(ch) == 'Zs'
+
+    @staticmethod
+    def _is_punctuation(ch):
+        """标点符号类字符判断（全/半角均在此内）
+        """
+        code = ord(ch)
+        return 33 <= code <= 47 or \
+            58 <= code <= 64 or \
+            91 <= code <= 96 or \
+            123 <= code <= 126 or \
+            unicodedata.category(ch).startswith('P')
+
+    @staticmethod
+    def _is_cjk_character(ch):
+        """CJK类字符判断（包括中文字符也在此列）
+        参考：https://en.wikipedia.org/wiki/CJK_Unified_Ideographs_(Unicode_block)
+        """
+        code = ord(ch)
+        return 0x4E00 <= code <= 0x9FFF or \
+            0x3400 <= code <= 0x4DBF or \
+            0x20000 <= code <= 0x2A6DF or \
+            0x2A700 <= code <= 0x2B73F or \
+            0x2B740 <= code <= 0x2B81F or \
+            0x2B820 <= code <= 0x2CEAF or \
+            0xF900 <= code <= 0xFAFF or \
+            0x2F800 <= code <= 0x2FA1F
+
+    @staticmethod
+    def _is_control(ch):
+        """控制类字符判断
+        """
+        return unicodedata.category(ch) in ('Cc', 'Cf')
+
+    @staticmethod
+    def _is_special(ch):
+        """判断是否带方括号的特殊标记
+        """
+        return bool(ch) and (ch[0] == '[') and (ch[-1] == ']')
+
 
 def load_vocab(dict_path):
     """从bert的词典文件中读取词典
@@ -82,4 +191,5 @@ def load_vocab(dict_path):
         for line in reader:
             token = line.strip()
             token_dict[token] = len(token_dict)
+
     return token_dict
