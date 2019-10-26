@@ -10,7 +10,7 @@ import os, json, codecs
 from collections import Counter
 import uniout
 from bert4keras.bert import load_pretrained_model
-from bert4keras.utils import Tokenizer, load_vocab, pool_map
+from bert4keras.utils import Tokenizer, load_vocab, parallel_apply
 from keras.layers import *
 from keras.models import Model
 from keras import backend as K
@@ -68,7 +68,7 @@ else:
             tokens[t] = tokens.get(t, 0) + v
 
     # 10进程来完成词频统计
-    pool_map(
+    parallel_apply(
         func=_tokenize_and_count,
         iterable=tqdm(read_text(), desc=u'构建词汇表中'),
         workers=10,
