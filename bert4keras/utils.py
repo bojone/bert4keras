@@ -232,7 +232,7 @@ def pool_map(func,
     # 后处理函数
     def process_out_queue():
         out_count = 0
-        while not out_queue.empty():
+        for _ in range(out_queue.qsize()):
             d = out_queue.get()
             out_count += 1
             if callback is None:
@@ -251,6 +251,8 @@ def pool_map(func,
                 break
             except queue.Full:
                 out_count += process_out_queue()
+        if in_count % max_queue_size == 0:
+            out_count += process_out_queue()
 
     while out_count != in_count:
         out_count += process_out_queue()
