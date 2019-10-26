@@ -195,15 +195,15 @@ def load_vocab(dict_path):
     return token_dict
 
 
-def pool_map(func,
-             iterable,
-             workers,
-             max_queue_size,
-             callback=None,
-             dummy=False):
-    """多进程或多线程的map函数
-    注意这个map是异步的，也就是说依次输入a,b,c，但是输出
-    可能是func(c), func(a), func(b)。
+def parallel_apply(func,
+                   iterable,
+                   workers,
+                   max_queue_size,
+                   callback=None,
+                   dummy=False):
+    """多进程或多线程地将func应用到iterable的每个元素中。
+    注意这个apply是异步且无序的，也就是说依次输入a,b,c，但是
+    输出可能是func(c), func(a), func(b)。
     参数：
         dummy: False是多进程/线性，True则是多线程/线性；
         callback: 处理单个输出的回调函数；
