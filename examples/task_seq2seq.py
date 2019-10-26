@@ -10,16 +10,15 @@ import os, json, codecs
 from collections import Counter
 import uniout
 from bert4keras.bert import load_pretrained_model
-from bert4keras.utils import Tokenizer, load_vocab
+from bert4keras.utils import Tokenizer, load_vocab, pool_map
 from keras.layers import *
 from keras.models import Model
 from keras import backend as K
 from keras.callbacks import Callback
 from keras.optimizers import Adam
 
-
 seq2seq_config = 'seq2seq_config.json'
-min_count = 32
+min_count = 40
 max_input_len = 256
 max_output_len = 32
 batch_size = 16
@@ -46,29 +45,46 @@ def read_text():
                 yield content[:max_input_len], title
 
 
-_token_dict = load_vocab(dict_path) # 读取词典
-_tokenizer = Tokenizer(_token_dict) # 建立临时分词器
+_token_dict = load_vocab(dict_path)  # 读取词典
+_tokenizer = Tokenizer(_token_dict)  # 建立临时分词器
 
 if os.path.exists(seq2seq_config):
+
     tokens = json.load(open(seq2seq_config))
+
 else:
-    tokens = {}
-    for a in tqdm(read_text(), desc=u'构建词汇表中'):
+
+    def _tokenize_and_count(a):
+        _tokens = {}
         for b in a:
             for t in _tokenizer.tokenize(b):
-                tokens[t] = tokens.get(t, 0) + 1
-    tokens = [(i, j) for i, j in tokens.items() if j >= min_count]
-    tokens = sorted(tokens, key=lambda t: - t[1])
-    tokens = [t[0] for t in tokens]
-    json.dump(
-        tokens,
-        codecs.open(seq2seq_config, 'w', encoding='utf-8'),
-        indent=4,
-        ensure_ascii=False
+                _tokens[t] = _tokens.get(t, 0) + 1
+        return _tokens
+
+    tokens = {}
+
+    def _total_count(b):
+        for t, v in b.items():
+            tokens[t] = tokens.get(t, 0) + v
+
+    # 10进程来完成词频统计
+    pool_map(
+        func=_tokenize_and_count,
+        iterable=tqdm(read_text(), desc=u'构建词汇表中'),
+        workers=10,
+        max_queue_size=100000,
+        callback=_total_count,
     )
 
+    tokens = [(i, j) for i, j in tokens.items() if j >= min_count]
+    tokens = sorted(tokens, key=lambda t: -t[1])
+    tokens = [t[0] for t in tokens]
+    json.dump(tokens,
+              codecs.open(seq2seq_config, 'w', encoding='utf-8'),
+              indent=4,
+              ensure_ascii=False)
 
-token_dict, keep_words = {}, [] # keep_words是在bert中保留的字表
+token_dict, keep_words = {}, []  # keep_words是在bert中保留的字表
 
 for t in ['[PAD]', '[UNK]', '[CLS]', '[SEP]']:
     token_dict[t] = len(token_dict)
@@ -79,7 +95,7 @@ for t in tokens:
         token_dict[t] = len(token_dict)
         keep_words.append(_token_dict[t])
 
-tokenizer = Tokenizer(token_dict) # 建立分词器
+tokenizer = Tokenizer(token_dict)  # 建立分词器
 
 
 def padding(x):
@@ -107,15 +123,15 @@ model = load_pretrained_model(
     config_path,
     checkpoint_path,
     seq2seq=True,
-    keep_words=keep_words, # 只保留keep_words中的字，精简原字表
+    keep_words=keep_words,  # 只保留keep_words中的字，精简原字表
 )
 
 model.summary()
 
 # 交叉熵作为loss，并mask掉输入部分的预测
-y_in = model.input[0][:, 1:] # 目标tokens
+y_in = model.input[0][:, 1:]  # 目标tokens
 y_mask = model.input[1][:, 1:]
-y = model.output[:, :-1] # 预测tokens，预测与目标错开一位
+y = model.output[:, :-1]  # 预测tokens，预测与目标错开一位
 cross_entropy = K.sparse_categorical_crossentropy(y_in, y)
 cross_entropy = K.sum(cross_entropy * y_mask) / K.sum(y_mask)
 
@@ -128,16 +144,15 @@ def gen_sent(s, topk=2):
     每次只保留topk个最优候选结果；如果topk=1，那么就是贪心搜索
     """
     token_ids, segment_ids = tokenizer.encode(s[:max_input_len])
-    target_ids = [[] for _ in range(topk)] # 候选答案id
-    target_scores = [0] * topk # 候选答案分数
-    for i in range(max_output_len): # 强制要求输出不超过max_output_len字
+    target_ids = [[] for _ in range(topk)]  # 候选答案id
+    target_scores = [0] * topk  # 候选答案分数
+    for i in range(max_output_len):  # 强制要求输出不超过max_output_len字
         _target_ids = [token_ids + t for t in target_ids]
         _segment_ids = [segment_ids + [1] * len(t) for t in target_ids]
-        _probas = model.predict(
-            [_target_ids, _segment_ids]
-        )[:, -1, 3:] # 直接忽略[PAD], [UNK], [CLS]
-        _log_probas = np.log(_probas + 1e-6) # 取对数，方便计算
-        _topk_arg = _log_probas.argsort(axis=1)[:, -topk:] # 每一项选出topk
+        _probas = model.predict([_target_ids, _segment_ids
+                                 ])[:, -1, 3:]  # 直接忽略[PAD], [UNK], [CLS]
+        _log_probas = np.log(_probas + 1e-6)  # 取对数，方便计算
+        _topk_arg = _log_probas.argsort(axis=1)[:, -topk:]  # 每一项选出topk
         _candidate_ids, _candidate_scores = [], []
         for j, (ids, sco) in enumerate(zip(target_ids, target_scores)):
             # 预测第一个字的时候，输入的topk事实上都是同一个，
@@ -147,7 +162,7 @@ def gen_sent(s, topk=2):
             for k in _topk_arg[j]:
                 _candidate_ids.append(ids + [k + 3])
                 _candidate_scores.append(sco + _log_probas[j][k])
-        _topk_arg = np.argsort(_candidate_scores)[-topk:] # 从中选出新的topk
+        _topk_arg = np.argsort(_candidate_scores)[-topk:]  # 从中选出新的topk
         for j, k in enumerate(_topk_arg):
             target_ids[j].append(_candidate_ids[k][-1])
             target_scores[j] = _candidate_scores[k]
@@ -170,6 +185,7 @@ def just_show():
 class Evaluate(Callback):
     def __init__(self):
         self.lowest = 1e10
+
     def on_epoch_end(self, epoch, logs=None):
         # 保存最优
         if logs['loss'] <= self.lowest:
@@ -183,12 +199,10 @@ if __name__ == '__main__':
 
     evaluator = Evaluate()
 
-    model.fit_generator(
-        data_generator(),
-        steps_per_epoch=steps_per_epoch,
-        epochs=epochs,
-        callbacks=[evaluator]
-    )
+    model.fit_generator(data_generator(),
+                        steps_per_epoch=steps_per_epoch,
+                        epochs=epochs,
+                        callbacks=[evaluator])
 
 else:
 
