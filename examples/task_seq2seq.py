@@ -54,6 +54,16 @@ if os.path.exists(seq2seq_config):
 
 else:
 
+    def _read_text():
+        texts = []
+        for t in read_text():
+            texts.extend(t)
+            if len(texts) == 1000:
+                yield texts
+                texts = []
+        if texts:
+            yield texts
+
     def _tokenize_and_count(a):
         _tokens = {}
         for b in a:
@@ -70,9 +80,9 @@ else:
     # 10进程来完成词频统计
     parallel_apply(
         func=_tokenize_and_count,
-        iterable=tqdm(read_text(), desc=u'构建词汇表中'),
+        iterable=tqdm(_read_text(), desc=u'构建词汇表中'),
         workers=10,
-        max_queue_size=100000,
+        max_queue_size=500,
         callback=_total_count,
     )
 
