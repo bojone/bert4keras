@@ -56,26 +56,26 @@ else:
 
     def _batch_texts():
         texts = []
-        for t in read_texts():
-            texts.extend(t)
+        for text in read_texts():
+            texts.extend(text)
             if len(texts) == 1000:
                 yield texts
                 texts = []
         if texts:
             yield texts
 
-    def _tokenize_and_count(a):
+    def _tokenize_and_count(texts):
         _tokens = {}
-        for b in a:
-            for t in _tokenizer.tokenize(b):
-                _tokens[t] = _tokens.get(t, 0) + 1
+        for text in texts:
+            for token in _tokenizer.tokenize(text):
+                _tokens[token] = _tokens.get(token, 0) + 1
         return _tokens
 
     tokens = {}
 
-    def _total_count(b):
-        for t, v in b.items():
-            tokens[t] = tokens.get(t, 0) + v
+    def _total_count(result):
+        for k, v in result.items():
+            tokens[k] = tokens.get(k, 0) + v
 
     # 10进程来完成词频统计
     parallel_apply(
