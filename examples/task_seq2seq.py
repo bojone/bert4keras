@@ -31,7 +31,7 @@ checkpoint_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/bert_model.ckpt'
 dict_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/vocab.txt'
 
 
-def read_text():
+def read_texts():
     txts = glob.glob('../../thuctc/THUCNews/*/*.txt')
     np.random.shuffle(txts)
     for txt in txts:
@@ -54,9 +54,9 @@ if os.path.exists(seq2seq_config):
 
 else:
 
-    def _read_text():
+    def _batch_texts():
         texts = []
-        for t in read_text():
+        for t in read_texts():
             texts.extend(t)
             if len(texts) == 1000:
                 yield texts
@@ -80,7 +80,7 @@ else:
     # 10进程来完成词频统计
     parallel_apply(
         func=_tokenize_and_count,
-        iterable=tqdm(_read_text(), desc=u'构建词汇表中'),
+        iterable=tqdm(_batch_texts(), desc=u'构建词汇表中'),
         workers=10,
         max_queue_size=500,
         callback=_total_count,
@@ -118,7 +118,7 @@ def padding(x):
 def data_generator():
     while True:
         X, S = [], []
-        for a, b in read_text():
+        for a, b in read_texts():
             x, s = tokenizer.encode(a, b)
             X.append(x)
             S.append(s)
