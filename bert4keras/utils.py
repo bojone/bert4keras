@@ -5,19 +5,27 @@ import unicodedata
 import codecs
 
 
-class Tokenizer(object):
-    """Bert原生分词器
-    修改自：https://github.com/CyberZHG/keras-bert/blob/master/keras_bert/tokenizer.py
+def load_vocab(dict_path):
+    """从bert的词典文件中读取词典
     """
-    def __init__(self, token_dict, case_sensitive=True):
-        """初始化词典
+    token_dict = {}
+    with codecs.open(dict_path, encoding='utf-8') as reader:
+        for line in reader:
+            token = line.strip()
+            token_dict[token] = len(token_dict)
+
+    return token_dict
+
+
+class BasicTokenizer(object):
+    """分词器基类
+    """
+    def __init__(self):
+        """初始化
         """
-        self._token_dict = token_dict
-        self._token_dict_inv = {v: k for k, v in token_dict.items()}
         self._token_cls = '[CLS]'
         self._token_sep = '[SEP]'
         self._token_unk = '[UNK]'
-        self._case_sensitive = case_sensitive
 
     def tokenize(self, text, add_cls=True, add_sep=True):
         """分词函数
@@ -32,8 +40,7 @@ class Tokenizer(object):
     def tokens_to_ids(self, tokens):
         """token序列转换为对应的id序列
         """
-        unk_id = self._token_dict.get(self._token_unk)
-        return [self._token_dict.get(token, unk_id) for token in tokens]
+        raise NotImplementedError
 
     def encode(self,
                first_text,
@@ -68,6 +75,42 @@ class Tokenizer(object):
     def ids_to_tokens(self, ids):
         """id序列转换为对应的token序列
         """
+        raise NotImplementedError
+
+    def decode(self, ids):
+        """转为可读文本
+        """
+        raise NotImplementedError
+
+    def _tokenize(self, text):
+        """基本分词函数
+        """
+        raise NotImplementedError
+
+
+class Tokenizer(BasicTokenizer):
+    """Bert原生分词器
+    纯Python实现，代码修改自keras_bert的tokenizer实现
+    """
+    def __init__(self, token_dict, case_sensitive=True):
+        """初始化
+        """
+        super(Tokenizer, self).__init__()
+        if isinstance(token_dict, basestring):
+            token_dict = load_vocab(token_dict)
+        self._token_dict = token_dict
+        self._token_dict_inv = {v: k for k, v in token_dict.items()}
+        self._case_sensitive = case_sensitive
+
+    def tokens_to_ids(self, tokens):
+        """token序列转换为对应的id序列
+        """
+        unk_id = self._token_dict.get(self._token_unk)
+        return [self._token_dict.get(token, unk_id) for token in tokens]
+
+    def ids_to_tokens(self, ids):
+        """id序列转换为对应的token序列
+        """
         tokens = [self._token_dict_inv[i] for i in ids]
         return tokens
 
@@ -93,7 +136,8 @@ class Tokenizer(object):
         """
         if not self._case_sensitive:
             text = unicodedata.normalize('NFD', text)
-            text = ''.join([ch for ch in text if unicodedata.category(ch) != 'Mn'])
+            text = ''.join(
+                [ch for ch in text if unicodedata.category(ch) != 'Mn'])
             text = text.lower()
 
         spaced = ''
@@ -178,21 +222,49 @@ class Tokenizer(object):
 
     @staticmethod
     def _is_special(ch):
-        """判断是否带方括号的特殊标记
+        """判断是不是有特殊含义的符号
         """
         return bool(ch) and (ch[0] == '[') and (ch[-1] == ']')
 
 
-def load_vocab(dict_path):
-    """从bert的词典文件中读取词典
+class SpmTokenizer(BasicTokenizer):
+    """基于SentencePiece模型的封装，使用上跟Tokenizer基本一致。
     """
-    token_dict = {}
-    with codecs.open(dict_path, encoding='utf-8') as reader:
-        for line in reader:
-            token = line.strip()
-            token_dict[token] = len(token_dict)
+    def __init__(self, sp_model_path):
+        super(SpmTokenizer, self).__init__()
+        import sentencepiece as spm
+        self.sp_model = spm.SentencePieceProcessor()
+        self.sp_model.Load(sp_model_path)
+        self._token_unk = self.sp_model.id_to_piece(self.sp_model.unk_id())
 
-    return token_dict
+    def tokens_to_ids(self, tokens):
+        """token序列转换为对应的id序列
+        """
+        return [self.sp_model.piece_to_id(token) for token in tokens]
+
+    def ids_to_tokens(self, ids):
+        """id序列转换为对应的token序列
+        """
+        return [self.sp_model.id_to_piece(i) for i in ids]
+
+    def decode(self, ids):
+        """转为可读文本
+        """
+        ids = [i for i in ids if not self._is_special(i)]
+        return self.sp_model.decode_ids(ids)
+
+    def _tokenize(self, text):
+        """基本分词函数
+        """
+        tokens = self.sp_model.encode_as_pieces(text)
+        return tokens
+
+    def _is_special(self, i):
+        """判断是不是有特殊含义的符号
+        """
+        return self.sp_model.is_control(i) or \
+            self.sp_model.is_unknown(i) or \
+            self.sp_model.is_unused(i)
 
 
 def parallel_apply(func,
