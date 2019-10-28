@@ -22,11 +22,11 @@ class Tokenizer(object):
     def tokenize(self, text, add_cls=True, add_sep=True):
         """按字分割
         """
-        R = self._tokenize(text)
+        tokens = self._tokenize(text)
         if add_cls:
-            R.insert(0, self._token_cls)
+            tokens.insert(0, self._token_cls)
         if add_sep:
-            R.append(self._token_sep)
+            tokens.append(self._token_sep)
         return R
 
     def tokens_to_ids(self, tokens):
