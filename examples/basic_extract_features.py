@@ -2,7 +2,7 @@
 # 测试代码可用性: 提取特征
 
 from bert4keras.bert import load_pretrained_model
-from bert4keras.utils import Tokenizer, load_vocab
+from bert4keras.utils import Tokenizer
 from keras.models import load_model
 import numpy as np
 
@@ -11,8 +11,7 @@ config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
 checkpoint_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
 dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
-token_dict = load_vocab(dict_path) # 读取词典
-tokenizer = Tokenizer(token_dict) # 建立分词器
+tokenizer = Tokenizer(dict_path) # 建立分词器
 model = load_pretrained_model(config_path, checkpoint_path) # 建立模型，加载权重
 
 # 编码测试
