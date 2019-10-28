@@ -27,7 +27,7 @@ class Tokenizer(object):
             tokens.insert(0, self._token_cls)
         if add_sep:
             tokens.append(self._token_sep)
-        return R
+        return tokens
 
     def tokens_to_ids(self, tokens):
         """token序列转换为对应的id序列
