@@ -6,9 +6,9 @@ from bert4keras.utils import Tokenizer, load_vocab
 import numpy as np
 
 
-config_path = '../../kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '../../kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
-dict_path = '../../kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
+config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
+checkpoint_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
+dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
 token_dict = load_vocab(dict_path) # 读取词典
 tokenizer = Tokenizer(token_dict) # 建立分词器
