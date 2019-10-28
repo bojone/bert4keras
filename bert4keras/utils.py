@@ -20,7 +20,7 @@ class Tokenizer(object):
         self._case_sensitive = case_sensitive
 
     def tokenize(self, text, add_cls=True, add_sep=True):
-        """按字分割
+        """分词函数
         """
         tokens = self._tokenize(text)
         if add_cls:
