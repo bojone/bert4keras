@@ -27,6 +27,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 当然，乐于贡献的朋友如果发现了某些bug的话，也欢迎指出修正甚至Pull Requests～
 
 ## 更新
+- <strong>2019.10.28</strong>: 支持使用基于<a href="https://github.com/google/sentencepiece">sentencepiece</a>的tokenizer。
 - <strong>2019.10.25</strong>: 引入原生tokenizer。
 - <strong>2019.10.22</strong>: 引入梯度累积优化器。
 - <strong>2019.10.21</strong>: 为了简化代码结构，决定放弃keras 2.3.0之前的版本的支持，目前只支持keras 2.3.0+以及tf.keras。
