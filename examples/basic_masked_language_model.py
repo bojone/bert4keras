@@ -17,7 +17,7 @@ model = load_pretrained_model(config_path, checkpoint_path, with_mlm=True) # 建
 token_ids, segment_ids = tokenizer.encode(u'科学技术是第一生产力')
 
 # mask掉“技术”
-token_ids[3] = token_ids[4] = token_dict['[MASK]']
+token_ids[3] = token_ids[4] = tokenizer._token_dict['[MASK]']
 
 # 用mlm模型预测被mask掉的部分
 probas = model.predict([np.array([token_ids]), np.array([segment_ids])])[0]
