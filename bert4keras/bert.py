@@ -94,12 +94,12 @@ class BertModel(object):
         x = PositionEmbedding(input_dim=self.max_position_embeddings,
                               output_dim=self.hidden_size,
                               name='Embedding-Position')(x)
+        x = LayerNormalization(name='Embedding-Norm')(x)
         if self.dropout_rate > 0:
             x = Dropout(rate=self.dropout_rate, name='Embedding-Dropout')(x)
-        x = LayerNormalization(name='Embedding-Norm')(x)
-        layers = None
 
         # 主要Transformer部分
+        layers = None
         for i in range(self.num_hidden_layers):
             attention_name = 'Encoder-%d-MultiHeadSelfAttention' % (i + 1)
             feed_forward_name = 'Encoder-%d-FeedForward' % (i + 1)
