@@ -6,7 +6,7 @@ import codecs
 import six
 
 
-if not sys.PY2:
+if not six.PY2:
     basestring = str
 
 
