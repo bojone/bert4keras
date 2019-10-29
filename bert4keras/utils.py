@@ -3,6 +3,11 @@
 
 import unicodedata
 import codecs
+import sys
+
+
+if sys.version_info > (2,):
+    basestring = str
 
 
 def load_vocab(dict_path):
