@@ -3,10 +3,10 @@
 
 import unicodedata
 import codecs
-import sys
+import six
 
 
-if sys.version_info > (2,):
+if not sys.PY2:
     basestring = str
 
 
@@ -289,7 +289,6 @@ def parallel_apply(func,
         from multiprocessing.dummy import Pool, Queue
     else:
         from multiprocessing import Pool, Queue
-    from six.moves import queue
 
     in_queue, out_queue = Queue(max_queue_size), Queue()
 
@@ -326,7 +325,7 @@ def parallel_apply(func,
             try:
                 in_queue.put(d, block=False)
                 break
-            except queue.Full:
+            except six.moves.queue.Full:
                 out_count += process_out_queue()
         if in_count % max_queue_size == 0:
             out_count += process_out_queue()
