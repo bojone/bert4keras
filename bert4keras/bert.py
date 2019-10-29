@@ -245,10 +245,6 @@ class BertModel(object):
                 loader('bert/encoder/%s/attention/output/LayerNorm/gamma' % layer_name),
                 loader('bert/encoder/%s/attention/output/LayerNorm/beta' % layer_name),
             ])
-            model.get_layer(name='Encoder-%d-MultiHeadSelfAttention-Norm' % (i + 1)).set_weights([
-                loader('bert/encoder/%s/attention/output/LayerNorm/gamma' % layer_name),
-                loader('bert/encoder/%s/attention/output/LayerNorm/beta' % layer_name),
-            ])
             model.get_layer(
                 name='Encoder-%d-FeedForward' % (i + 1)).set_weights([
                     loader('bert/encoder/%s/intermediate/dense/kernel' % layer_name),
