@@ -75,8 +75,7 @@ class BertModel(object):
 
         # 自行构建Mask
         sequence_mask = Lambda(lambda x: K.cast(K.greater(x, 0), 'float32'),
-                               name='Input-Mask')(x)
-        self.sequence_mask = sequence_mask
+                               name='Sequence-Mask')(x)
 
         # Embedding部分
         if self.embedding_size == self.hidden_size:
