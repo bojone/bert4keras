@@ -7,8 +7,6 @@ from bert4keras.backend import keras, K, get_all_attributes
 
 # 等价于 from keras.layers import *
 locals().update(get_all_attributes(keras.layers))
-# 等价于 from keras.utils import get_custom_objects
-locals()['get_custom_objects'] = keras.utils.get_custom_objects
 
 
 def gelu_erf(x):
@@ -354,4 +352,4 @@ custom_objects = {
     'EmbeddingDense': EmbeddingDense
 }
 
-get_custom_objects().update(custom_objects)
+keras.utils.get_custom_objects().update(custom_objects)
