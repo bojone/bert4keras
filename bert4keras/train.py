@@ -1,15 +1,10 @@
 # -*- coding: utf-8 -*-
 # 训练相关
 
-from bert4keras.backend import keras, K, get_all_attributes
-
-# 等价于 from keras.optimizers import Optimizer
-locals()['Optimizer'] = keras.optimizers.Optimizer
-# 等价于 from keras.utils import get_custom_objects
-locals()['get_custom_objects'] = keras.utils.get_custom_objects
+from bert4keras.backend import keras, K
 
 
-class OptimizerWrapper(Optimizer):
+class OptimizerWrapper(keras.optimizers.Optimizer):
     """优化器包装，主要为了方便做一些修改原有优化器的工作
     """
     def __init__(self, optimizer, **kwargs):
@@ -134,4 +129,4 @@ custom_objects = {
     'GradientAccumulation': GradientAccumulation,
 }
 
-get_custom_objects().update(custom_objects)
+keras.utils.get_custom_objects().update(custom_objects)
