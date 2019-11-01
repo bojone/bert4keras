@@ -5,10 +5,8 @@ from bert4keras.layers import *
 from functools import partial
 import json
 
-# 等价于 from keras.models import Model
+
 Model = keras.models.Model
-
-
 gelu_version = 'erf'
 
 
