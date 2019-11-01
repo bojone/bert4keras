@@ -147,9 +147,7 @@ class TrainingDataset:
         dataset = dataset.shuffle(batch_size * 1000) # 打乱
         dataset = dataset.batch(batch_size) # 成批
 
-        iterator = dataset.make_one_shot_iterator()
-        next_batch = iterator.get_next() # 返回数据张量
-        return next_batch
+        return dataset
 
 
 if __name__ == '__main__':
