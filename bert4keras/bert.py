@@ -301,13 +301,13 @@ class Bert4Seq2seq(BertModel):
         return self.attention_mask
 
 
-def load_pretrained_model(config_path,
-                          checkpoint_file=None,
-                          with_mlm=False,
-                          seq2seq=False,
-                          keep_words=None,
-                          albert=False):
-    """根据配置文件和checkpoint文件来加载模型
+def build_bert_model(config_path,
+                     checkpoint_file=None,
+                     with_mlm=False,
+                     seq2seq=False,
+                     keep_words=None,
+                     albert=False):
+    """根据配置文件构建bert模型，可选加载checkpoint权重
     """
     config = json.load(open(config_path))
 
