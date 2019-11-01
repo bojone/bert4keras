@@ -3,6 +3,7 @@
 
 import numpy as np
 import tensorflow as tf
+from bert4keras.utils import parallel_apply
 
 
 class TrainingDataset:
@@ -124,14 +125,14 @@ class TrainingDataset:
         print('write %s examples into %s' % (count, record_name))
 
     @staticmethod
-    def load_dataset(record_names, padding_length, batch_size):
+    def load_tfrecord(record_names, padding_length, batch_size):
         """加载处理成tfrecord格式的语料
         """
         if not isinstance(record_names, list):
             record_names = [record_names]
-    
+
         dataset = tf.data.TFRecordDataset(record_names)
-        
+
         # 解析函数
         def _parse_function(example_proto):
             features = {
@@ -140,7 +141,7 @@ class TrainingDataset:
             }
             parsed_features = tf.io.parse_single_example(example_proto, features)
             return parsed_features['token_ids'], parsed_features['mask_ids']
-        
+
         dataset = dataset.map(_parse_function) # 解析
         dataset = dataset.repeat() # 循环
         dataset = dataset.shuffle(batch_size * 1000) # 打乱
@@ -173,4 +174,4 @@ if __name__ == '__main__':
         return jieba.lcut(text)
 
     TD = TrainingDataset(tokenizer, word_segment, padding_length=256)
-    TD.apply_on(tqdm(some_texts()), '../../test.tfrecord')
+    TD.process(tqdm(some_texts()), '../../test.tfrecord')
