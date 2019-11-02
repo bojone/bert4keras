@@ -126,6 +126,7 @@ class Tokenizer(BasicTokenizer):
         self._token_sep_id = token_dict[self._token_sep]
         self._token_unk_id = token_dict[self._token_unk]
         self._token_mask_id = token_dict[self._token_mask]
+        self._vocab_size = len(token_dict)
 
     def token_to_id(self, token):
         """token转换为对应的id
@@ -265,6 +266,7 @@ class SpmTokenizer(BasicTokenizer):
         self._token_sep_id = self.sp_model.piece_to_id(self._token_sep)
         self._token_unk_id = self.sp_model.piece_to_id(self._token_unk)
         self._token_mask_id = self.sp_model.piece_to_id(self._token_mask)
+        self._vocab_size = self.sp_model.get_piece_size()
 
     def token_to_id(self, token):
         """token转换为对应的id
