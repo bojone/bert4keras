@@ -105,7 +105,7 @@ class MultiHeadAttention(Layer):
         if a_mask is not None:
             if a_mask == 'history_only':
                 ones = K.ones_like(a[:1])
-                a_mask = (ones - tf.matrix_band_part(ones, -1, 0)) * 1e12
+                a_mask = (ones - tf.linalg.band_part(ones, -1, 0)) * 1e12
                 a = a - a_mask
             else:
                 a = a - (1 - a_mask) * 1e12
