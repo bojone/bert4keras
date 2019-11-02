@@ -24,6 +24,7 @@ def get_all_attributes(something):
         for name in dir(something) if name[:2] != '__' and name[-2:] != '__'
     }
 
+
 def gelu_erf(x):
     """基于Erf直接计算的gelu函数
     """
