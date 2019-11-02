@@ -28,6 +28,7 @@ class BasicTokenizer(object):
     def __init__(self):
         """初始化
         """
+        self._token_pad = '[PAD]'
         self._token_cls = '[CLS]'
         self._token_sep = '[SEP]'
         self._token_unk = '[UNK]'
@@ -43,10 +44,15 @@ class BasicTokenizer(object):
             tokens.append(self._token_sep)
         return tokens
 
+    def token_to_id(self, token):
+        """token转换为对应的id
+        """
+        raise NotImplementedError
+
     def tokens_to_ids(self, tokens):
         """token序列转换为对应的id序列
         """
-        raise NotImplementedError
+        return [self.token_to_id(token) for token in tokens]
 
     def encode(self,
                first_text,
@@ -61,7 +67,7 @@ class BasicTokenizer(object):
         first_token_ids = self.tokens_to_ids(first_tokens)
         if first_length is not None:
             first_token_ids = first_token_ids[:first_length]
-            first_token_ids.extend([0] * (first_length - len(first_token_ids)))
+            first_token_ids.extend([self._token_pad_id] * (first_length - len(first_token_ids)))
         first_segment_ids = [0] * len(first_token_ids)
 
         if second_text is not None:
@@ -70,7 +76,7 @@ class BasicTokenizer(object):
             if second_length is not None:
                 second_token_ids = second_token_ids[:second_length]
                 second_token_ids.extend(
-                    [0] * (second_length - len(second_token_ids)))
+                    [self._token_pad_id] * (second_length - len(second_token_ids)))
             second_segment_ids = [1] * len(second_token_ids)
 
             first_token_ids.extend(second_token_ids)
@@ -78,10 +84,15 @@ class BasicTokenizer(object):
 
         return first_token_ids, first_segment_ids
 
+    def id_to_token(self, i):
+        """id序列为对应的token
+        """
+        raise NotImplementedError
+
     def ids_to_tokens(self, ids):
         """id序列转换为对应的token序列
         """
-        raise NotImplementedError
+        return [self.id_to_token(i) for i in ids]
 
     def decode(self, ids):
         """转为可读文本
@@ -107,18 +118,21 @@ class Tokenizer(BasicTokenizer):
         self._token_dict = token_dict
         self._token_dict_inv = {v: k for k, v in token_dict.items()}
         self._case_sensitive = case_sensitive
+        self._token_pad_id = token_dict[self._token_pad]
+        self._token_cls_id = token_dict[self._token_cls]
+        self._token_sep_id = token_dict[self._token_sep]
+        self._token_unk_id = token_dict[self._token_unk]
+        self._token_mask_id = token_dict[self._token_mask]
 
-    def tokens_to_ids(self, tokens):
-        """token序列转换为对应的id序列
+    def token_to_id(self, token):
+        """token转换为对应的id
         """
-        unk_id = self._token_dict.get(self._token_unk)
-        return [self._token_dict.get(token, unk_id) for token in tokens]
+        return self._token_dict.get(token, self._token_unk_id)
 
-    def ids_to_tokens(self, ids):
-        """id序列转换为对应的token序列
+    def id_to_token(self, i):
+        """id转换为对应的token
         """
-        tokens = [self._token_dict_inv[i] for i in ids]
-        return tokens
+        return self._token_dict_inv[i]
 
     def decode(self, ids):
         """转为可读文本
@@ -241,17 +255,23 @@ class SpmTokenizer(BasicTokenizer):
         import sentencepiece as spm
         self.sp_model = spm.SentencePieceProcessor()
         self.sp_model.Load(sp_model_path)
+        self._token_pad = '<pad>'
         self._token_unk = self.sp_model.id_to_piece(self.sp_model.unk_id())
+        self._token_pad_id = self.sp_model.piece_to_id(self._token_pad)
+        self._token_cls_id = self.sp_model.piece_to_id(self._token_cls)
+        self._token_sep_id = self.sp_model.piece_to_id(self._token_sep)
+        self._token_unk_id = self.sp_model.piece_to_id(self._token_unk)
+        self._token_mask_id = self.sp_model.piece_to_id(self._token_mask)
 
-    def tokens_to_ids(self, tokens):
-        """token序列转换为对应的id序列
+    def token_to_id(self, token):
+        """token转换为对应的id
         """
-        return [self.sp_model.piece_to_id(token) for token in tokens]
+        return self.sp_model.piece_to_id(token)
 
-    def ids_to_tokens(self, ids):
-        """id序列转换为对应的token序列
+    def id_to_token(self, i):
+        """id转换为对应的token
         """
-        return [self.sp_model.id_to_piece(i) for i in ids]
+        return self.sp_model.id_to_piece(i)
 
     def decode(self, ids):
         """转为可读文本
