@@ -5,7 +5,6 @@ import unicodedata
 import codecs
 import six
 
-
 if not six.PY2:
     basestring = str
 
@@ -67,7 +66,9 @@ class BasicTokenizer(object):
         first_token_ids = self.tokens_to_ids(first_tokens)
         if first_length is not None:
             first_token_ids = first_token_ids[:first_length]
-            first_token_ids.extend([self._token_pad_id] * (first_length - len(first_token_ids)))
+            first_token_ids.extend(
+                [self._token_pad_id] * (first_length - len(first_token_ids))
+            )
         first_segment_ids = [0] * len(first_token_ids)
 
         if second_text is not None:
@@ -76,7 +77,8 @@ class BasicTokenizer(object):
             if second_length is not None:
                 second_token_ids = second_token_ids[:second_length]
                 second_token_ids.extend(
-                    [self._token_pad_id] * (second_length - len(second_token_ids)))
+                    [self._token_pad_id] * (second_length - len(second_token_ids))
+                )
             second_segment_ids = [1] * len(second_token_ids)
 
             first_token_ids.extend(second_token_ids)
@@ -115,6 +117,7 @@ class Tokenizer(BasicTokenizer):
         super(Tokenizer, self).__init__()
         if isinstance(token_dict, basestring):
             token_dict = load_vocab(token_dict)
+
         self._token_dict = token_dict
         self._token_dict_inv = {v: k for k, v in token_dict.items()}
         self._case_sensitive = case_sensitive
@@ -255,7 +258,7 @@ class SpmTokenizer(BasicTokenizer):
         import sentencepiece as spm
         self.sp_model = spm.SentencePieceProcessor()
         self.sp_model.Load(sp_model_path)
-        self._token_pad = '<pad>'
+        self._token_pad = self.sp_model.id_to_piece(self.sp_model.pad_id())
         self._token_unk = self.sp_model.id_to_piece(self.sp_model.unk_id())
         self._token_pad_id = self.sp_model.piece_to_id(self._token_pad)
         self._token_cls_id = self.sp_model.piece_to_id(self._token_cls)
