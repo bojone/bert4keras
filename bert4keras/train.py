@@ -4,6 +4,7 @@
 from bert4keras.backend import keras, K
 from bert4keras.backend import get_all_attributes
 from bert4keras.backend import piecewise_linear
+import re
 
 
 class OptimizerWrapper(keras.optimizers.Optimizer):
@@ -103,6 +104,29 @@ class GradientAccumulation(OptimizerWrapper):
         config = {'steps_per_update': self.steps_per_update}
         base_config = super(GradientAccumulation, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
+
+
+def add_weight_decay_into(model, weght_decay_rate, exclude_from=None):
+    """往模型加入权重衰减（权重衰减不等价于L2正则）
+    """
+    if exclude_from is None:
+        exclude_from = []
+
+    def need_to_do_weight_decay(w):
+        if weight_decay_rate == 0.:
+            return True
+        for n in exclude_from:
+            if re.search(n, w.name):
+                return False
+        return True
+
+    weight_decay_updates = []
+    factor = 1 - weight_decay_rate
+    for w in model.trainable_weights:
+        if need_to_do_weight_decay(w):
+            weight_decay_updates.append(K.update(w, w * factor))
+
+    model.add_update(weight_decay_updates)
 
 
 custom_objects = {
