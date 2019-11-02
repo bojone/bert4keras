@@ -7,21 +7,6 @@ import json
 
 
 Model = keras.models.Model
-gelu_version = 'erf'
-
-
-def get_gelu():
-    if gelu_version == 'erf':
-        return gelu_erf
-    else:
-        return gelu_tanh
-
-
-def set_gelu(version):
-    """提供gelu版本切换功能，默认为Erf版本
-    """
-    global gelu_version
-    gelu_version = version
 
 
 class BertModel(object):
@@ -59,10 +44,7 @@ class BertModel(object):
         else:
             self.embedding_size = hidden_size
         self.with_mlm = with_mlm
-        if hidden_act == 'gelu':
-            self.hidden_act = get_gelu()
-        else:
-            self.hidden_act = hidden_act
+        self.hidden_act = hidden_act
         self.keep_words = keep_words
         self.block_sharing = block_sharing
         self.additional_outputs = []
