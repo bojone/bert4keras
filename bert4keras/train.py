@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# 训练相关（不适用于tf.keras中的OptimizerV2优化器类）
+# 训练相关（不适用于tf.keras中的OptimizerV2类优化器）
 
 from bert4keras.backend import keras, K
 
