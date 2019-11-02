@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 # 训练相关（不适用于tf.keras中的OptimizerV2类优化器）
 
-from bert4keras.backend import keras, K, get_all_attributes
+from bert4keras.backend import keras, K
+from bert4keras.backend import get_all_attributes
+from bert4keras.backend import piecewise_linear
 
 
 class OptimizerWrapper(keras.optimizers.Optimizer):
@@ -46,29 +48,8 @@ class PiecewiseLinearLearningRate(OptimizerWrapper):
     def __init__(self, optimizer, schedule=None, **kwargs):
         super(PiecewiseLinearLearningRate, self).__init__(optimizer, **kwargs)
         self.schedule = {int(i): j for i, j in schedule.items()}
-        self.learning_rate = self.learning_rate * self.get_multiplier()
-
-    def get_multiplier(self):
-        """根据schedule定义分段线性函数
-        """
-        schedule = sorted(self.schedule.items())
-        if schedule[0][0] != 0:
-            schedule = [(0, 0.)] + schedule
-        lr = K.constant(schedule[0][1], dtype='float32')
-        t = K.cast(self.iterations, 'float32')
-        for i in range(len(schedule)):
-            if i == len(schedule) - 1:
-                x = K.constant(schedule[i][1], dtype='float32')
-                t0 = schedule[i][0]
-            else:
-                dx = schedule[i + 1][1] - schedule[i][1]
-                dt = schedule[i + 1][0] - schedule[i][0]
-                k = 1. * dx / dt
-                t0 = schedule[i][0]
-                x0 = schedule[i][1]
-                x = x0 + k * (t - t0)
-            lr = K.switch(t >= t0, x, lr)
-        return lr
+        factor = piecewise_linear(self.iterations, self.schedule)
+        self.learning_rate = self.learning_rate * factor
 
     def get_config(self):
         config = {'schedule': self.schedule}
