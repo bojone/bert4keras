@@ -106,7 +106,7 @@ class GradientAccumulation(OptimizerWrapper):
         return dict(list(base_config.items()) + list(config.items()))
 
 
-def add_weight_decay_into(model, weght_decay_rate, exclude_from=None):
+def add_weight_decay_into(model, weight_decay_rate, exclude_from=None):
     """往模型加入权重衰减（权重衰减不等价于L2正则）
     """
     if exclude_from is None:
