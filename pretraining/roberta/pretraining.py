@@ -9,6 +9,7 @@ from data_utils import TrainingDataset
 from bert4keras.bert import build_bert_model
 from bert4keras.backend import keras, K
 from bert4keras.backend import piecewise_linear
+from bert4keras.train import add_weight_decay_into
 from tensorflow.python.framework import ops
 
 
@@ -108,21 +109,8 @@ def build_train_bert_model():
     train_model.add_metric(mlm_acc, name='accuracy', aggregation='mean')
 
     # 添加权重衰减
-    def do_weight_decay(w):
-        if weight_decay_rate == 0.:
-            return True
-        for n in exclude_from_weight_decay:
-            if re.search(n, w.name):
-                return False
-        return True
-
-    weight_decay_updates = []
-    factor = 1 - weight_decay_rate
-    for w in train_model.trainable_weights:
-        if do_weight_decay(w):
-            weight_decay_updates.append(K.update(w, w * factor))
-
-    train_model.add_update(weight_decay_updates)
+    add_weight_decay_into(train_model, weight_decay_rate,
+                          exclude_from_weight_decay)
 
     # 模型定型
     train_model.compile(optimizer=optimizer)
