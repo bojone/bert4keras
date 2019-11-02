@@ -39,6 +39,17 @@ def gelu_tanh(x):
     return x * cdf
 
 
+def set_gelu(version):
+    """设置gelu版本
+    """
+    version = version.lower()
+    assert version in ['erf', 'tanh'], 'gelu version must be erf or tanh'
+    if version == 'erf':
+        keras.utils.get_custom_objects()['gelu'] = gelu_erf
+    else:
+        keras.utils.get_custom_objects()['gelu'] = gelu_tanh
+
+
 def piecewise_linear(t, schedule):
     """分段线性函数
     其中schedule是形如{1000: 1, 2000: 0.1}的字典，
@@ -65,17 +76,6 @@ def piecewise_linear(t, schedule):
         x = K.switch(t >= t_begin, x, x_begin)
 
     return x
-
-
-def set_gelu(version):
-    """设置gelu版本
-    """
-    version = version.lower()
-    assert version in ['erf', 'tanh'], 'gelu version must be erf or tanh'
-    if version == 'erf':
-        keras.utils.get_custom_objects()['gelu'] = gelu_erf
-    else:
-        keras.utils.get_custom_objects()['gelu'] = gelu_tanh
 
 
 custom_objects = {
