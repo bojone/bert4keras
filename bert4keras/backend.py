@@ -41,9 +41,9 @@ def gelu_tanh(x):
 def set_gelu(version):
     """设置gelu版本
     """
-    verision = verision.lower()
+    version = version.lower()
     assert version in ['erf', 'tanh'], 'gelu version must be erf or tanh'
-    if verision == 'erf':
+    if version == 'erf':
         keras.utils.get_custom_objects()['gelu'] = gelu_erf
     else:
         keras.utils.get_custom_objects()['gelu'] = gelu_tanh
