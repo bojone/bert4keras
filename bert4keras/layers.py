@@ -100,7 +100,7 @@ class MultiHeadAttention(Layer):
         kw = K.reshape(kw, (-1, K.shape(k)[1], self.key_size))
         vw = K.reshape(vw, (-1, K.shape(v)[1], self.head_size))
         # Attention
-        a = K.batch_dot(qw, kw, [2, 2]) / K.sqrt(self.key_size)
+        a = K.batch_dot(qw, kw, [2, 2]) / self.key_size**0.5
         a = sequence_masking(a, v_mask, 1, -1, self.heads)
         if a_mask is not None:
             if a_mask == 'history_only':
