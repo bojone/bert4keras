@@ -1,6 +1,7 @@
 #! -*- coding: utf-8 -*-
 # 测试代码可用性: 提取特征
 
+from bert4keras.backend import keras
 from bert4keras.bert import build_bert_model
 from bert4keras.utils import Tokenizer
 import numpy as np
