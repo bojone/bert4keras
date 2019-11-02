@@ -4,24 +4,11 @@
 import numpy as np
 import tensorflow as tf
 from bert4keras.backend import keras, K, get_all_attributes
-
 # 等价于 from keras.layers import *
 locals().update(get_all_attributes(keras.layers))
 
 
-def gelu_erf(x):
-    # 基于Erf直接计算的gelu函数
-    return 0.5 * x * (1.0 + tf.math.erf(x / np.sqrt(2.0)))
-
-
-def gelu_tanh(x):
-    # 基于Tanh近似计算的gelu函数
-    cdf = 0.5 * (1.0 + K.tanh(
-        (np.sqrt(2 / np.pi) * (x + 0.044715 * K.pow(x, 3)))))
-    return x * cdf
-
-
-def add_seq_mask(x, mask, mode=0, axis=None, heads=1):
+def sequence_masking(x, mask, mode=0, axis=None, heads=1):
     """为序列条件mask的函数
     mask: 形如(batch_size, seq_len)的0-1矩阵；
     mode: 如果是0，则直接乘以mask；
@@ -115,7 +102,7 @@ class MultiHeadAttention(Layer):
         vw = K.reshape(vw, (-1, K.shape(v)[1], self.head_size))
         # Attention
         a = K.batch_dot(qw, kw, [2, 2]) / np.sqrt(self.key_size)
-        a = add_seq_mask(a, v_mask, 1, -1, self.heads)
+        a = sequence_masking(a, v_mask, 1, -1, self.heads)
         if a_mask is not None:
             if a_mask == 'history_only':
                 ones = K.ones_like(a[:1])
@@ -130,7 +117,7 @@ class MultiHeadAttention(Layer):
         o = K.permute_dimensions(o, (0, 2, 1, 3))
         o = K.reshape(o, (-1, K.shape(o)[1], self.out_dim))
         o = self.o_dense(o)
-        o = add_seq_mask(o, q_mask, 0)
+        o = sequence_masking(o, q_mask, 0)
         return o
 
     def compute_output_shape(self, input_shape):
@@ -342,8 +329,6 @@ class EmbeddingDense(Layer):
 
 
 custom_objects = {
-    'gelu_erf': gelu_erf,
-    'gelu_tanh': gelu_tanh,
     'MultiHeadAttention': MultiHeadAttention,
     'LayerNormalization': LayerNormalization,
     'FactorizedEmbedding': FactorizedEmbedding,
