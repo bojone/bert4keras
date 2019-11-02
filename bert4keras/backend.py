@@ -4,6 +4,7 @@
 
 import os
 from distutils.util import strtobool
+import tensorflow as tf
 
 
 if strtobool(os.environ.get('TF_KERAS', '0')):
@@ -15,7 +16,30 @@ else:
 
 
 def get_all_attributes(something):
+    """获取类下的所有属性和方法
+    """
     return {
         name: getattr(something, name)
         for name in dir(something) if name[:2] != '__' and name[-2:] != '__'
     }
+
+def gelu_erf(x):
+    """基于Erf直接计算的gelu函数
+    """
+    return 0.5 * x * (1.0 + tf.math.erf(x / np.sqrt(2.0)))
+
+
+def gelu_tanh(x):
+    """基于Tanh近似计算的gelu函数
+    """
+    cdf = 0.5 * (1.0 + K.tanh(
+        (np.sqrt(2 / np.pi) * (x + 0.044715 * K.pow(x, 3)))))
+    return x * cdf
+
+
+custom_objects = {
+    'gelu_erf': gelu_erf,
+    'gelu_tanh': gelu_tanh,
+}
+
+keras.utils.get_custom_objects().update(custom_objects)
