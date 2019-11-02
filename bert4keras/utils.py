@@ -31,6 +31,7 @@ class BasicTokenizer(object):
         self._token_cls = '[CLS]'
         self._token_sep = '[SEP]'
         self._token_unk = '[UNK]'
+        self._token_mask = '[MASK]'
 
     def tokenize(self, text, add_cls=True, add_sep=True):
         """分词函数
