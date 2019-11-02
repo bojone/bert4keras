@@ -1,15 +1,15 @@
 #! -*- coding: utf-8 -*-
 # RoBERTa预训练脚本，多GPU版
 
-import os
-os.environ['TF_KERAS'] = '1' # 必须使用tf.keras
+import os, re
+os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
 
+import tensorflow as tf
 from data_utils import TrainingDataset
 from bert4keras.bert import build_bert_model
 from bert4keras.backend import keras, K
-from bert4keras.train import PiecewiseLinearLearningRate
-from bert4keras.train import GradientAccumulation
-import tensorflow as tf
+from bert4keras.backend import piecewise_linear
+from tensorflow.python.framework import ops
 
 
 # 自定义配置
@@ -18,9 +18,13 @@ padding_length = 256
 batch_size = 32
 token_mask_id = 103
 config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
-optimizer = keras.optimizers.Adam(1e-5)
+learning_rate = 5e-5
+weight_decay_rate = 0.01
+num_warmup_steps = 10000
+num_train_steps = 1000000
 steps_per_epoch = 2000
-epochs = 1000
+epochs = num_train_steps // steps_per_epoch
+exclude_from_weight_decay = ['Norm', 'bias']
 
 
 # 准备一些变量
@@ -37,6 +41,33 @@ dataset = TrainingDataset.load_tfrecord(
     batch_size=batch_size,
 )
 
+
+# 构建优化器
+
+LearningRateSchedule = keras.optimizers.schedules.LearningRateSchedule
+
+
+class PiecewiseLinear(LearningRateSchedule):
+    """为tf.keras的OptimizerV2所写的分段线性学习率
+    """
+    def __init__(self, schedule, name=None):
+        super(PiecewiseLinear, self).__init__()
+        self.schedule = {int(i): j for i, j in schedule.items()}
+        self.name = name
+
+    def __call__(self, step):
+        with ops.name_scope_v2(self.name or "PiecewiseLinear") as name:
+            return piecewise_linear(step, self.schedule)
+
+    def get_config(self):
+        return {'schedule': self.schedule, 'name': self.name}
+
+
+lr_schedule = {num_warmup_steps: learning_rate, num_train_steps: 0.}
+optimizer = keras.optimizers.Adam(learning_rate=PiecewiseLinear(lr_schedule))
+
+
+# 构建模型
 
 def build_train_bert_model():
 
@@ -76,11 +107,29 @@ def build_train_bert_model():
     mlm_acc = K.mean(mlm_acc)
     train_model.add_metric(mlm_acc, name='accuracy', aggregation='mean')
 
+    # 添加权重衰减
+    def do_weight_decay(w):
+        if weight_decay_rate == 0.:
+            return True
+        for n in exclude_from_weight_decay:
+            if re.search(n, w.name):
+                return False
+        return True
+
+    weight_decay_updates = []
+    factor = 1 - weight_decay_rate
+    for w in train_model.trainable_weights:
+        if do_weight_decay(w):
+            weight_decay_updates.append(K.update(w, w * factor))
+
+    train_model.add_update(weight_decay_updates)
+
     # 模型定型
     train_model.compile(optimizer=optimizer)
     return train_model
 
 
+# 多GPU模式
 strategy = tf.distribute.MirroredStrategy()
 
 with strategy.scope():
