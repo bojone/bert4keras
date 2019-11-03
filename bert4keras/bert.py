@@ -172,7 +172,6 @@ class BertModel(object):
         """
         return inputs
     
-    @staticmethod
     def load_weights_from_checkpoint(self, checkpoint_file):
         """从预训练好的Bert的checkpoint中加载权重
         """
