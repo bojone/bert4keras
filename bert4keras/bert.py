@@ -49,6 +49,11 @@ class BertModel(object):
         self.block_sharing = block_sharing
         self.additional_outputs = []
 
+        def load_weights_from(checkpoint_file):
+            BertModel.load_weights_from_checkpoint(self.model, checkpoint_file)
+
+        self.load_weights_from_checkpoint = load_weights_from
+
     def build(self):
         """Bert模型构建函数
         """
@@ -171,11 +176,11 @@ class BertModel(object):
         """自定义每一个block的后处理操作
         """
         return inputs
-
-    def load_weights_from_checkpoint(self, checkpoint_file):
+    
+    @staticmethod
+    def load_weights_from_checkpoint(self, model, checkpoint_file):
         """从预训练好的Bert的checkpoint中加载权重
         """
-        model = self.model
         loader = partial(tf.train.load_variable, checkpoint_file)
 
         if self.keep_words is None:
