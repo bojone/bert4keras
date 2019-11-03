@@ -15,9 +15,8 @@ from tensorflow.python.framework import ops
 
 # 自定义配置
 corpus_path = '../../test.tfrecord'
-padding_length = 256
-batch_size = 32
-token_mask_id = 103
+sequence_length = 256
+batch_size = 64
 config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
 learning_rate = 5e-5
 weight_decay_rate = 0.01
@@ -33,12 +32,13 @@ Input = keras.layers.Input
 Lambda = keras.layers.Lambda
 Model = keras.models.Model
 sparse_categorical_accuracy = keras.metrics.sparse_categorical_accuracy
+ModelCheckpoint = keras.callbacks.ModelCheckpoint
 
 
 # 读取数据集，构建数据张量
 dataset = TrainingDataset.load_tfrecord(
     record_names=corpus_path,
-    padding_length=padding_length,
+    sequence_length=sequence_length,
     batch_size=batch_size,
 )
 
@@ -81,13 +81,15 @@ def build_train_bert_model():
     # RoBERTa模式直接使用全零segment_ids
     segment_ids = Lambda(lambda x: K.zeros_like(x, dtype='int32'), )(token_ids)
 
+    # 是否被mask的标记
+    is_masked = Lambda(lambda x: K.not_equal(x, 0))(mask_ids)
+
     # 将指定token替换为mask
     def random_mask(inputs):
-        token_ids, mask_ids = inputs
-        cond = K.equal(mask_ids, 1)
-        return K.switch(cond, mask_ids, token_ids)
+        token_ids, mask_ids, is_masked = inputs
+        return K.switch(is_masked, mask_ids - 1, token_ids)
 
-    masked_token_ids = Lambda(random_mask)([token_ids, mask_ids])
+    masked_token_ids = Lambda(random_mask)([token_ids, mask_ids, is_masked])
 
     # 计算概率
     proba = bert_model([masked_token_ids, segment_ids])
@@ -96,7 +98,7 @@ def build_train_bert_model():
     train_model = Model([token_ids, mask_ids], proba)
 
     # 提取被mask部分，然后构建loss
-    indices = tf.where(tf.equal(mask_ids, 1))
+    indices = tf.where(is_masked)
     y_pred = tf.gather_nd(proba, indices)
     y_true = tf.gather_nd(token_ids, indices)
     mlm_loss = K.sparse_categorical_crossentropy(y_true, y_pred)
