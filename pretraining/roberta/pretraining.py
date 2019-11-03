@@ -34,6 +34,7 @@ Lambda = keras.layers.Lambda
 Model = keras.models.Model
 sparse_categorical_accuracy = keras.metrics.sparse_categorical_accuracy
 ModelCheckpoint = keras.callbacks.ModelCheckpoint
+CSVLogger = keras.callbacks.CSVLogger
 
 
 # 读取数据集，构建数据张量
@@ -131,18 +132,18 @@ with strategy.scope():
     train_model = build_train_bert_model()
 
 # 模型回调
-filepath = 'saved_model/bert_model.ckpt'
 checkpoint = ModelCheckpoint(
-    filepath=filepath,
+    filepath='saved_model/bert_model.ckpt',
     monitor='loss',
     save_weights_only=True,
     save_best_only=True,
 )
+csv_logger = CSVLogger('training.log')
 
 # 模型训练
 train_model.fit(
     dataset,
     steps_per_epoch=steps_per_epoch,
     epochs=epochs,
-    callbacks=[checkpoint],
+    callbacks=[checkpoint, csv_logger],
 )
