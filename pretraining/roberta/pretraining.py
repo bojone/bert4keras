@@ -17,7 +17,8 @@ from tensorflow.python.framework import ops
 corpus_path = '../../test.tfrecord'
 sequence_length = 256
 batch_size = 64
-config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
+config_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_config.json'
+checkpoint_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt'
 learning_rate = 5e-5
 weight_decay_rate = 0.01
 num_warmup_steps = 10000
@@ -45,10 +46,7 @@ dataset = TrainingDataset.load_tfrecord(
 
 # 构建优化器
 
-LearningRateSchedule = keras.optimizers.schedules.LearningRateSchedule
-
-
-class PiecewiseLinear(LearningRateSchedule):
+class PiecewiseLinear(keras.optimizers.schedules.LearningRateSchedule):
     """为tf.keras的OptimizerV2所写的分段线性学习率
     """
     def __init__(self, schedule, name=None):
@@ -66,6 +64,7 @@ class PiecewiseLinear(LearningRateSchedule):
 
 lr_schedule = {num_warmup_steps: learning_rate, num_train_steps: 0.}
 optimizer = keras.optimizers.Adam(learning_rate=PiecewiseLinear(lr_schedule))
+learning_rate = optimizer._decayed_lr(tf.float32)
 
 
 # 构建模型
@@ -73,7 +72,8 @@ optimizer = keras.optimizers.Adam(learning_rate=PiecewiseLinear(lr_schedule))
 def build_train_bert_model():
 
     # 基本模型
-    bert_model = build_bert_model(config_path, with_mlm=True)
+    bert = build_bert_model(config_path, with_mlm=True, return_keras_model=False)
+    bert_model = bert.model
 
     token_ids = Input(shape=(None, ), dtype='int32')  # 原始token_ids
     mask_ids = Input(shape=(None, ), dtype='int32')  # 被mask的token的标记
@@ -111,11 +111,16 @@ def build_train_bert_model():
     train_model.add_metric(mlm_acc, name='accuracy', aggregation='mean')
 
     # 添加权重衰减
-    add_weight_decay_into(train_model, weight_decay_rate,
+    add_weight_decay_into(train_model, weight_decay_rate * learning_rate,
                           exclude_from_weight_decay)
 
     # 模型定型
     train_model.compile(optimizer=optimizer)
+
+    # 如果传入权重，则加载。注：须在此处加载，才保证不报错。
+    if checkpoint_path is not None:
+        bert.load_weights_from_checkpoint(checkpoint_path)
+
     return train_model
 
 
@@ -125,5 +130,19 @@ strategy = tf.distribute.MirroredStrategy()
 with strategy.scope():
     train_model = build_train_bert_model()
 
+# 模型回调
+filepath = 'saved_model/bert_model.ckpt'
+checkpoint = ModelCheckpoint(
+    filepath=filepath,
+    monitor='loss',
+    save_weights_only=True,
+    save_best_only=True,
+)
+
 # 模型训练
-train_model.fit(dataset, steps_per_epoch=steps_per_epoch, epochs=epochs)
+train_model.fit(
+    dataset,
+    steps_per_epoch=steps_per_epoch,
+    epochs=epochs,
+    callbacks=[checkpoint],
+)
