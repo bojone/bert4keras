@@ -113,8 +113,6 @@ def add_weight_decay_into(model, weight_decay_rate, exclude_from=None):
         exclude_from = []
 
     def need_to_do_weight_decay(w):
-        if weight_decay_rate == 0.:
-            return True
         for n in exclude_from:
             if re.search(n, w.name):
                 return False
