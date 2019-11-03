@@ -171,12 +171,12 @@ class BertModel(object):
         """自定义每一个block的后处理操作
         """
         return inputs
-    
-    def load_weights_from_checkpoint(self, checkpoint_file):
+
+    def load_weights_from_checkpoint(self, checkpoint_path):
         """从预训练好的Bert的checkpoint中加载权重
         """
         model = self.model
-        loader = partial(tf.train.load_variable, checkpoint_file)
+        loader = partial(tf.train.load_variable, checkpoint_path)
 
         if self.keep_words is None:
             keep_words = slice(0, None)
@@ -285,11 +285,12 @@ class Bert4Seq2seq(BertModel):
 
 
 def build_bert_model(config_path,
-                     checkpoint_file=None,
+                     checkpoint_path=None,
                      with_mlm=False,
                      seq2seq=False,
                      keep_words=None,
-                     albert=False):
+                     albert=False,
+                     return_keras_model=True):
     """根据配置文件构建bert模型，可选加载checkpoint权重
     """
     config = json.load(open(config_path))
@@ -313,8 +314,11 @@ def build_bert_model(config_path,
                 block_sharing=albert)
 
     bert.build()
-    
-    if checkpoint_file is not None:
-        bert.load_weights_from_checkpoint(checkpoint_file)
 
-    return bert.model
+    if checkpoint_path is not None:
+        bert.load_weights_from_checkpoint(checkpoint_path)
+
+    if return_keras_model:
+        return bert.model
+    else:
+        return bert
