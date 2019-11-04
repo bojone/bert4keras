@@ -96,7 +96,7 @@ else:
 
 token_dict, keep_words = {}, []  # keep_words是在bert中保留的字表
 
-for t in ['[PAD]', '[UNK]', '[CLS]', '[SEP]']:
+for t in ['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[MASK]']:
     token_dict[t] = len(token_dict)
     keep_words.append(_token_dict[t])
 
