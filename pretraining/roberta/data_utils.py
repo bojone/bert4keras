@@ -171,7 +171,7 @@ class TrainingDataset:
                 'mask_ids': FixedLenFeature,
             }
             parsed_features = tf.io.parse_single_example(serialized, features)
-            return parsed_features['token_ids'], parsed_features['mask_ids']
+            return parsed_features
 
         dataset = dataset.map(_parse_function)  # 解析
         dataset = dataset.repeat()  # 循环
