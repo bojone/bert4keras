@@ -76,21 +76,21 @@ def build_train_bert_model():
     bert = build_bert_model(config_path, with_mlm=True, return_keras_model=False)
     bert_model = bert.model
 
-    token_ids = Input(shape=(None, ), dtype='int32')  # 原始token_ids
-    mask_ids = Input(shape=(None, ), dtype='int32')  # 被mask的token的标记
+    token_ids = Input(shape=(None, ), dtype='int32', name='token_ids')  # 原始token_ids
+    mask_ids = Input(shape=(None, ), dtype='int32', name='mask_ids')  # 被mask的token的标记
 
     # RoBERTa模式直接使用全零segment_ids
-    segment_ids = Lambda(lambda x: K.zeros_like(x, dtype='int32'), )(token_ids)
+    segment_ids = Lambda(lambda x: K.zeros_like(x, dtype='int32'), name='segment_ids')(token_ids)
 
     # 是否被mask的标记
-    is_masked = Lambda(lambda x: K.not_equal(x, 0))(mask_ids)
+    is_masked = Lambda(lambda x: K.not_equal(x, 0), name='is_masked')(mask_ids)
 
     # 将指定token替换为mask
     def random_mask(inputs):
         token_ids, mask_ids, is_masked = inputs
         return K.switch(is_masked, mask_ids - 1, token_ids)
 
-    masked_token_ids = Lambda(random_mask)([token_ids, mask_ids, is_masked])
+    masked_token_ids = Lambda(random_mask, name='masked_token_ids')([token_ids, mask_ids, is_masked])
 
     # 计算概率
     proba = bert_model([masked_token_ids, segment_ids])
