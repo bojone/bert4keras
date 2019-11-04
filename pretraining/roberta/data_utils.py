@@ -190,7 +190,7 @@ if __name__ == '__main__':
     import jieba_fast as jieba
     from tqdm import tqdm
 
-    dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
+    dict_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/vocab.txt'
     tokenizer = Tokenizer(dict_path)
     sequence_length = 256
 
@@ -205,7 +205,7 @@ if __name__ == '__main__':
     TD = TrainingDataset(tokenizer, word_segment, sequence_length=256)
     TD.process(
         corpus=tqdm(some_texts()),
-        record_name='../../test2.tfrecord',
+        record_name='../../test.tfrecord',
         workers=20,
         max_queue_size=20000,
     )
