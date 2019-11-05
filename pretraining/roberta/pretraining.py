@@ -87,7 +87,7 @@ def build_train_bert_model():
         is_masked = K.cast(is_masked, K.floatx())
         loss = K.sparse_categorical_crossentropy(y_true, y_pred)
         loss = K.sum(loss * is_masked) / (K.sum(is_masked) + K.epsilon())
-        return K.reshape(loss, (1, 1))
+        return loss
 
     def mlm_acc(inputs):
         """计算准确率的函数，需要封装为一个层
@@ -97,7 +97,7 @@ def build_train_bert_model():
         y_true = K.cast(y_true, K.floatx())
         acc = sparse_categorical_accuracy(y_true, y_pred)
         acc = K.sum(acc * is_masked) / (K.sum(is_masked) + K.epsilon())
-        return K.reshape(acc, (1, 1))
+        return acc
 
     loss = Lambda(mlm_loss, name='mlm_loss')([token_ids, proba, is_masked])
     acc = Lambda(mlm_acc, name='mlm_acc')([token_ids, proba, is_masked])
