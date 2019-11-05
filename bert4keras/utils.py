@@ -123,7 +123,8 @@ class Tokenizer(BasicTokenizer):
         self._case_sensitive = case_sensitive
         for _token in ['_pad', '_cls', '_sep', '_unk', '_mask']:
             try:
-                setattr(self, '_token_%s_id' % _token, token_dict[getattr(self, _token)])
+                _token_id = token_dict[getattr(self, '_token_%s' % _token)]
+                setattr(self, '_token_%s_id' % _token, _token_id)
             except:
                 pass
 
