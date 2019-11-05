@@ -224,7 +224,7 @@ class BertModel(object):
                 model.get_layer(name='Encoder-%d-MultiHeadSelfAttention' % (i + 1))
             except ValueError:
                 continue
-            if 'bert/encoder/layer_0/attention/self/query/kernel' in variable_names:
+            if ('bert/encoder/layer_%d/attention/self/query/kernel' % i) in variable_names:
                 layer_name = 'layer_%d' % i
             else:
                 layer_name = 'transformer/group_0/inner_group_0'
