@@ -121,12 +121,11 @@ class Tokenizer(BasicTokenizer):
         self._token_dict = token_dict
         self._token_dict_inv = {v: k for k, v in token_dict.items()}
         self._case_sensitive = case_sensitive
-        self._token_pad_id = token_dict[self._token_pad]
-        self._token_cls_id = token_dict[self._token_cls]
-        self._token_sep_id = token_dict[self._token_sep]
-        self._token_unk_id = token_dict[self._token_unk]
-        self._token_mask_id = token_dict[self._token_mask]
-        self._vocab_size = len(token_dict)
+        for _token in ['_token_pad', '_token_cls', '_token_sep', '_token_unk', '_token_mask']:
+            try:
+                setattr(self, _token + '_id') = token_dict[getattr(self, _token)]
+            except:
+                pass
 
     def token_to_id(self, token):
         """token转换为对应的id
