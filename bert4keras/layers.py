@@ -286,7 +286,6 @@ class EmbeddingDense(Layer):
 custom_objects = {
     'MultiHeadAttention': MultiHeadAttention,
     'LayerNormalization': LayerNormalization,
-    'FactorizedEmbedding': FactorizedEmbedding,
     'PositionEmbedding': PositionEmbedding,
     'FeedForward': FeedForward,
     'EmbeddingDense': EmbeddingDense
