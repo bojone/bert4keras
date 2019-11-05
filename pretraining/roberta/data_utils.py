@@ -4,6 +4,7 @@
 import numpy as np
 import tensorflow as tf
 from bert4keras.utils import parallel_apply
+from bert4keras.backend import K
 
 
 class TrainingDataset:
@@ -170,8 +171,23 @@ class TrainingDataset:
                 'token_ids': FixedLenFeature,
                 'mask_ids': FixedLenFeature,
             }
-            parsed_features = tf.io.parse_single_example(serialized, features)
-            return parsed_features
+            features = tf.io.parse_single_example(serialized, features)
+            token_ids = features['token_ids']
+            mask_ids = features['mask_ids']
+            segment_ids = K.zeros_like(token_ids, dtype='int64')
+            is_masked = K.not_equal(mask_ids, 0)
+            masked_token_ids = K.switch(is_masked, mask_ids - 1, token_ids)
+            x = {
+                'Input-Token': masked_token_ids,
+                'Input-Segment': segment_ids,
+                'token_ids': token_ids,
+                'is_masked': is_masked,
+            }
+            y = {
+                'mlm_loss': K.zeros([1]),
+                'mlm_acc': K.zeros([1]),
+            }
+            return x, y
 
         dataset = dataset.map(_parse_function)  # 解析
         dataset = dataset.repeat()  # 循环
