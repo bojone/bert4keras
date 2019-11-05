@@ -1,6 +1,7 @@
 #! -*- coding: utf-8 -*-
 # 主要模型
 
+import numpy as np
 from bert4keras.layers import *
 from functools import partial
 import json
@@ -61,25 +62,22 @@ class BertModel(object):
                                name='Sequence-Mask')(x)
 
         # Embedding部分
-        if self.embedding_size == self.hidden_size:
-            x = Embedding(input_dim=self.vocab_size,
-                          output_dim=self.embedding_size,
-                          name='Embedding-Token')(x)
-        else:
-            x = FactorizedEmbedding(input_dim=self.vocab_size,
-                                    hidden_dim=self.embedding_size,
-                                    output_dim=self.hidden_size,
-                                    name='Embedding-Token')(x)
+        x = Embedding(input_dim=self.vocab_size,
+                      output_dim=self.embedding_size,
+                      name='Embedding-Token')(x)
         s = Embedding(input_dim=2,
-                      output_dim=self.hidden_size,
+                      output_dim=self.embedding_size,
                       name='Embedding-Segment')(s)
         x = Add(name='Embedding-Token-Segment')([x, s])
         x = PositionEmbedding(input_dim=self.max_position_embeddings,
-                              output_dim=self.hidden_size,
-                              name='Embedding-Position')(x)
+                              output_dim=self.embedding_size,
+                              name='Embedding-Position',
+                              merge_mode='add')(x)
         x = LayerNormalization(name='Embedding-Norm')(x)
         if self.dropout_rate > 0:
             x = Dropout(rate=self.dropout_rate, name='Embedding-Dropout')(x)
+        if self.embedding_size != self.hidden_size:
+            x = Dense(self.hidden_size, name='Embedding-Mapping')(x)
 
         # 主要Transformer部分
         layers = None
@@ -172,26 +170,39 @@ class BertModel(object):
         """
         return inputs
 
-    def load_weights_from_checkpoint(self, checkpoint_path):
+    def load_weights_from_checkpoint(self, checkpoint_file):
         """从预训练好的Bert的checkpoint中加载权重
+        为了简化写法，对变量名的匹配引入了一定的模糊匹配能力。
         """
         model = self.model
-        loader = partial(tf.train.load_variable, checkpoint_path)
+        load_variable = lambda name: tf.train.load_variable(checkpoint_file, name)
+        variable_names = [n[0] for n in tf.train.list_variables(checkpoint_file)]
+        variable_names = [n for n in variable_names if 'adam' not in n]
+
+        def similarity(a, b, n=4):
+            # 基于n-grams的jaccard相似度
+            a = set([a[i: i + n] for i in range(len(a) - n)])
+            b = set([b[i: i + n] for i in range(len(b) - n)])
+            a_and_b = a & b
+            if not a_and_b:
+                return 0.
+            a_or_b = a | b
+            return 1. * len(a_and_b) / len(a_or_b)
+
+        def loader(name):
+            sims = [similarity(name, n) for n in variable_names]
+            found_name = variable_names.pop(np.argmax(sims))
+            print('==> searching: %s, found name: %s' % (name, found_name))
+            return load_variable(found_name)
 
         if self.keep_words is None:
             keep_words = slice(0, None)
         else:
             keep_words = self.keep_words
 
-        if self.embedding_size == self.hidden_size:
-            model.get_layer(name='Embedding-Token').set_weights([
-                loader('bert/embeddings/word_embeddings')[keep_words],
-            ])
-        else:
-            model.get_layer(name='Embedding-Token').set_weights([
-                loader('bert/embeddings/word_embeddings')[keep_words],
-                loader('bert/embeddings/word_embeddings_2'),
-            ])
+        model.get_layer(name='Embedding-Token').set_weights([
+            loader('bert/embeddings/word_embeddings')[keep_words],
+        ])
         model.get_layer(name='Embedding-Position').set_weights([
             loader('bert/embeddings/position_embeddings'),
         ])
@@ -202,18 +213,21 @@ class BertModel(object):
             loader('bert/embeddings/LayerNorm/gamma'),
             loader('bert/embeddings/LayerNorm/beta'),
         ])
+        if self.embedding_size != self.hidden_size:
+            model.get_layer(name='Embedding-Mapping').set_weights([
+                loader('bert/encoder/embedding_hidden_mapping_in/kernel'),
+                loader('bert/encoder/embedding_hidden_mapping_in/bias'),
+            ])
 
         for i in range(self.num_hidden_layers):
             try:
                 model.get_layer(name='Encoder-%d-MultiHeadSelfAttention' % (i + 1))
-            except ValueError as e:
+            except ValueError:
                 continue
-            try:
+            if 'bert/encoder/layer_0/attention/self/query/kernel' in variable_names:
                 layer_name = 'layer_%d' % i
-                loader('bert/encoder/%s/attention/self/query/kernel' % layer_name)
-            except:
-                layer_name = 'layer_shared'
-                loader('bert/encoder/%s/attention/self/query/kernel' % layer_name)
+            else:
+                layer_name = 'transformer/group_0/inner_group_0'
             model.get_layer(name='Encoder-%d-MultiHeadSelfAttention' % (i + 1)).set_weights([
                 loader('bert/encoder/%s/attention/self/query/kernel' % layer_name),
                 loader('bert/encoder/%s/attention/self/query/bias' % layer_name),
