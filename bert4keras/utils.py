@@ -121,10 +121,10 @@ class Tokenizer(BasicTokenizer):
         self._token_dict = token_dict
         self._token_dict_inv = {v: k for k, v in token_dict.items()}
         self._case_sensitive = case_sensitive
-        for _token in ['pad', 'cls', 'sep', 'unk', 'mask']:
+        for token in ['pad', 'cls', 'sep', 'unk', 'mask']:
             try:
-                _token_id = token_dict[getattr(self, '_token_%s' % _token)]
-                setattr(self, '_token_%s_id' % _token, _token_id)
+                _token_id = token_dict[getattr(self, '_token_%s' % token)]
+                setattr(self, '_token_%s_id' % token, _token_id)
             except:
                 pass
 
