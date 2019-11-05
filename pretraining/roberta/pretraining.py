@@ -69,7 +69,7 @@ def build_train_bert_model():
     """构建训练模型，通用于TPU/GPU
     注意全程要用keras标准的层写法，一些比较灵活的“移花接木”式的
     写法可能会在TPU上训练失败。此外，要注意的是TPU并非支持所有
-    tensorflow算子，尤其不支持动态（变长）算子，因此编写相应函数
+    tensorflow算子，尤其不支持动态（变长）算子，因此编写相应运算
     时要格外留意。
     """
     bert = build_bert_model(config_path, with_mlm=True, return_keras_model=False)
