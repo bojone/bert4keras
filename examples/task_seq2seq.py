@@ -10,7 +10,7 @@ import os, json, codecs
 from collections import Counter
 import uniout
 from bert4keras.bert import build_bert_model
-from bert4keras.utils import Tokenizer, parallel_apply
+from bert4keras.utils import Tokenizer, load_vocab, parallel_apply
 from keras.layers import *
 from keras.models import Model
 from keras import backend as K
@@ -45,7 +45,8 @@ def read_texts():
                 yield content[:max_input_len], title
 
 
-_tokenizer = Tokenizer(dict_path)  # 建立临时分词器
+_token_dict = load_vocab(dict_path) # 读取词典
+_tokenizer = Tokenizer(_token_dict) # 建立临时分词器
 
 if os.path.exists(seq2seq_config):
 
