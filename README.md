@@ -27,6 +27,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 当然，乐于贡献的朋友如果发现了某些bug的话，也欢迎指出修正甚至Pull Requests～
 
 ## 更新
+- <strong>2019.11.05</strong>: 适配<a href="https://github.com/google-research/google-research/tree/master/albert">google版albert</a>，不再支持<a href="https://github.com/brightmart/roberta_zh">旧版albert_zh</a>。
 - <strong>2019.11.05</strong>: 以RoBERTa为例子的预训练代码开发完毕，同时支持TPU/多GPU训练，详见<a href="https://github.com/bojone/bert4keras/tree/master/pretraining/roberta/">roberta</a>。欢迎在此基础上构建够多的预训练代码。
 - <strong>2019.11.01</strong>: 逐步增加预训练相关代码，详见<a href="https://github.com/bojone/bert4keras/tree/master/pretraining">pretraining</a>。
 - <strong>2019.10.28</strong>: 支持使用基于<a href="https://github.com/google/sentencepiece">sentencepiece</a>的tokenizer。
