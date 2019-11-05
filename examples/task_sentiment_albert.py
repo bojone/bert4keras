@@ -8,7 +8,7 @@ from random import choice
 import re, os
 import codecs
 from bert4keras.backend import set_gelu
-from bert4keras.utils import Tokenizer
+from bert4keras.utils import Tokenizer, load_vocab
 from bert4keras.bert import build_bert_model
 from bert4keras.train import PiecewiseLinearLearningRate
 set_gelu('tanh') # 切换gelu版本
@@ -24,7 +24,8 @@ neg = pd.read_excel('datasets/neg.xls', header=None)
 pos = pd.read_excel('datasets/pos.xls', header=None)
 data, tokens = [], {}
 
-_tokenizer = Tokenizer(dict_path) # 建立临时分词器
+_token_dict = load_vocab(dict_path) # 读取词典
+_tokenizer = Tokenizer(_token_dict) # 建立临时分词器
 
 for d in neg[0]:
     data.append((d, 0))
