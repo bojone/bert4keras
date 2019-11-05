@@ -26,6 +26,15 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 
 当然，乐于贡献的朋友如果发现了某些bug的话，也欢迎指出修正甚至Pull Requests～
 
+## 权重
+
+目前支持加载的权重：
+- Google原版bert: https://github.com/google-research/bert
+- 徐亮版roberta: https://github.com/brightmart/roberta_zh
+- 哈工大版roberta: https://github.com/ymcui/Chinese-BERT-wwm
+- Google原版albert: https://github.com/google-research/google-research/tree/master/albert
+- 徐亮版albert(带google字眼): https://github.com/brightmart/albert_zh
+
 ## 更新
 - <strong>2019.11.05</strong>: 适配<a href="https://github.com/google-research/google-research/tree/master/albert">google版albert</a>，不再支持<a href="https://github.com/brightmart/roberta_zh">旧版albert_zh</a>。
 - <strong>2019.11.05</strong>: 以RoBERTa为例子的预训练代码开发完毕，同时支持TPU/多GPU训练，详见<a href="https://github.com/bojone/bert4keras/tree/master/pretraining/roberta/">roberta</a>。欢迎在此基础上构建够多的预训练代码。
