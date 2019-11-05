@@ -29,11 +29,13 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 ## 权重
 
 目前支持加载的权重：
-- Google原版bert: https://github.com/google-research/bert
-- 徐亮版roberta: https://github.com/brightmart/roberta_zh
-- 哈工大版roberta: https://github.com/ymcui/Chinese-BERT-wwm
-- Google原版albert: https://github.com/google-research/google-research/tree/master/albert
-- 徐亮版albert(带google字眼): https://github.com/brightmart/albert_zh
+- <strong>Google原版bert</strong>: https://github.com/google-research/bert
+- <strong>徐亮版roberta</strong>: https://github.com/brightmart/roberta_zh
+- <strong>哈工大版roberta</strong>: https://github.com/ymcui/Chinese-BERT-wwm
+- <strong>Google原版albert</strong>: https://github.com/google-research/google-research/tree/master/albert
+- <strong>徐亮版albert</strong>: https://github.com/brightmart/albert_zh
+
+（注：徐亮版albert的开源时间早于Google版albert，这导致早期徐亮版albert的权重与Google版的不完全一致，换言之两者不能直接相互替换。为了减少代码冗余，bert4keras 0.2.4及后续版本均只支持加载<u>Google版</u>以徐亮版中<u>带Google字眼</u>的权重。）
 
 ## 更新
 - <strong>2019.11.05</strong>: 适配<a href="https://github.com/google-research/google-research/tree/master/albert">google版albert</a>，不再支持<a href="https://github.com/brightmart/roberta_zh">旧版albert_zh</a>。
