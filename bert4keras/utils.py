@@ -144,16 +144,17 @@ class Tokenizer(BasicTokenizer):
         tokens = self.ids_to_tokens(ids)
         tokens = [token for token in tokens if not self._is_special(token)]
 
-        text = ''
+        text, flag = '', False
         for i, token in enumerate(tokens):
             if token[:2] == '##':
                 text += token[2:]
-                if i != len(tokens) - 1 and tokens[i + 1][:2] != '##':
-                    text += ' '
+            elif len(token) == 1 and self._is_cjk_character(token):
+                text += token
             else:
+                text += ' '
                 text += token
 
-        return text
+        return text.strip()
 
     def _tokenize(self, text):
         """基本分词函数
@@ -251,11 +252,11 @@ class Tokenizer(BasicTokenizer):
         return bool(ch) and (ch[0] == '[') and (ch[-1] == ']')
 
 
-class SpmTokenizer(BasicTokenizer):
+class SpTokenizer(BasicTokenizer):
     """基于SentencePiece模型的封装，使用上跟Tokenizer基本一致。
     """
     def __init__(self, sp_model_path):
-        super(SpmTokenizer, self).__init__()
+        super(SpTokenizer, self).__init__()
         import sentencepiece as spm
         self.sp_model = spm.SentencePieceProcessor()
         self.sp_model.Load(sp_model_path)
