@@ -17,7 +17,7 @@ from tensorflow.python.framework import ops
 # 如果是TPU训练，那么语料必须存放在Google Cloud Storage上面，
 # 路径必须以gs://开通；如果是GPU训练，改为普通路径即可。
 corpus_path = 'gs://xxxx/bert4keras/test.tfrecord'
-saved_path = 'gs://xxx/bert4keras/saved_model/bert_model.ckpt'
+saved_model_path = 'gs://xxxx/bert4keras/saved_model/bert_model.ckpt'
 
 # 其他配置
 sequence_length = 256
@@ -32,7 +32,6 @@ steps_per_epoch = 2000
 epochs = num_train_steps // steps_per_epoch
 exclude_from_weight_decay = ['Norm', 'bias']
 tpu_address = 'grpc://xxx.xxx.xxx.xxx:8470' # 如果用多GPU跑，直接设为None
-model_saved_path = 'gs://xxx/bert4keras/saved_model/bert_model.ckpt'
 
 # 准备变量
 Input = keras.layers.Input
@@ -146,7 +145,7 @@ with strategy.scope():
 
 # 模型回调
 checkpoint = ModelCheckpoint(
-    filepath='gs://bert4keras/bert4keras/saved_model/bert_model.ckpt',
+    filepath=saved_model_path,
     monitor='mlm_loss_loss',
     save_weights_only=True,
     save_best_only=True,
