@@ -1,5 +1,5 @@
 #! -*- coding: utf-8 -*-
-# RoBERTa预训练脚本，多GPU版
+# RoBERTa预训练脚本，多GPU版/TPU版本
 
 import os, re
 os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
@@ -13,12 +13,17 @@ from bert4keras.train import add_weight_decay_into
 from tensorflow.python.framework import ops
 
 
-# 自定义配置
-corpus_path = '../../test.tfrecord'
+# 语料路径和模型保存路径
+# 如果是TPU训练，那么语料必须存放在Google Cloud Storage上面，
+# 路径必须以gs://开通；如果是GPU训练，改为普通路径即可。
+corpus_path = 'gs://xxxx/bert4keras/test.tfrecord'
+saved_path = 'gs://xxx/bert4keras/saved_model/bert_model.ckpt'
+
+# 其他配置
 sequence_length = 256
-batch_size = 64
-config_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt'
+batch_size = 512
+config_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_config.json'
+checkpoint_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt'
 learning_rate = 5e-5
 weight_decay_rate = 0.01
 num_warmup_steps = 10000
@@ -26,16 +31,16 @@ num_train_steps = 1000000
 steps_per_epoch = 2000
 epochs = num_train_steps // steps_per_epoch
 exclude_from_weight_decay = ['Norm', 'bias']
+tpu_address = 'grpc://xxx.xxx.xxx.xxx:8470' # 如果用多GPU跑，直接设为None
+model_saved_path = 'gs://xxx/bert4keras/saved_model/bert_model.ckpt'
 
-
-# 准备一些变量
+# 准备变量
 Input = keras.layers.Input
 Lambda = keras.layers.Lambda
 Model = keras.models.Model
 sparse_categorical_accuracy = keras.metrics.sparse_categorical_accuracy
 ModelCheckpoint = keras.callbacks.ModelCheckpoint
 CSVLogger = keras.callbacks.CSVLogger
-
 
 # 读取数据集，构建数据张量
 dataset = TrainingDataset.load_tfrecord(
@@ -44,8 +49,6 @@ dataset = TrainingDataset.load_tfrecord(
     batch_size=batch_size,
 )
 
-
-# 构建优化器
 
 class PiecewiseLinear(keras.optimizers.schedules.LearningRateSchedule):
     """为tf.keras的OptimizerV2所写的分段线性学习率
@@ -63,60 +66,63 @@ class PiecewiseLinear(keras.optimizers.schedules.LearningRateSchedule):
         return {'schedule': self.schedule, 'name': self.name}
 
 
-lr_schedule = {num_warmup_steps: learning_rate, num_train_steps: 0.}
-optimizer = keras.optimizers.Adam(learning_rate=PiecewiseLinear(lr_schedule))
-learning_rate = optimizer._decayed_lr(tf.float32)
-
-
-# 构建模型
-
 def build_train_bert_model():
-
-    # 基本模型
+    """构建训练模型，通用于TPU/GPU
+    注意全程要用keras标准的层写法，一些比较灵活的“移花接木”式的
+    写法可能会在TPU上训练失败。此外，要注意的是TPU并非支持所有
+    tensorflow算子，尤其不支持动态（变长）算子，因此编写相应函数
+    时要格外留意。
+    """
     bert = build_bert_model(config_path, with_mlm=True, return_keras_model=False)
     bert_model = bert.model
+    proba = bert_model.output
 
-    token_ids = Input(shape=(None, ), dtype='int32', name='token_ids')  # 原始token_ids
-    mask_ids = Input(shape=(None, ), dtype='int32', name='mask_ids')  # 被mask的token的标记
+    # 辅助输入
+    token_ids = Input(shape=(None, ), dtype='int64', name='token_ids') # 目标id
+    is_masked = Input(shape=(None, ), dtype='bool', name='is_masked') # mask标记
 
-    # RoBERTa模式直接使用全零segment_ids
-    segment_ids = Lambda(lambda x: K.zeros_like(x, dtype='int32'), name='segment_ids')(token_ids)
+    def mlm_loss(inputs):
+        """计算loss的函数，需要封装为一个层
+        """
+        y_true, y_pred, is_masked = inputs
+        is_masked = K.cast(is_masked, K.floatx())
+        loss = K.sparse_categorical_crossentropy(y_true, y_pred)
+        loss = K.sum(loss * is_masked) / (K.sum(is_masked) + K.epsilon())
+        return K.reshape(loss, (1, 1))
 
-    # 是否被mask的标记
-    is_masked = Lambda(lambda x: K.not_equal(x, 0), name='is_masked')(mask_ids)
+    def mlm_acc(inputs):
+        """计算准确率的函数，需要封装为一个层
+        """
+        y_true, y_pred, is_masked = inputs
+        is_masked = K.cast(is_masked, K.floatx())
+        y_true = K.cast(y_true, K.floatx())
+        acc = sparse_categorical_accuracy(y_true, y_pred)
+        acc = K.sum(acc * is_masked) / (K.sum(is_masked) + K.epsilon())
+        return K.reshape(acc, (1, 1))
 
-    # 将指定token替换为mask
-    def random_mask(inputs):
-        token_ids, mask_ids, is_masked = inputs
-        return K.switch(is_masked, mask_ids - 1, token_ids)
+    loss = Lambda(mlm_loss, name='mlm_loss')([token_ids, proba, is_masked])
+    acc = Lambda(mlm_acc, name='mlm_acc')([token_ids, proba, is_masked])
 
-    masked_token_ids = Lambda(random_mask, name='masked_token_ids')([token_ids, mask_ids, is_masked])
+    train_model = Model(bert_model.inputs + [token_ids, is_masked], [loss, acc])
 
-    # 计算概率
-    proba = bert_model([masked_token_ids, segment_ids])
-
-    # 构建训练模型
-    train_model = Model([token_ids, mask_ids], proba)
-
-    # 提取被mask部分，然后构建loss
-    indices = tf.where(is_masked)
-    y_pred = tf.gather_nd(proba, indices)
-    y_true = tf.gather_nd(token_ids, indices)
-    mlm_loss = K.sparse_categorical_crossentropy(y_true, y_pred)
-    mlm_loss = K.mean(mlm_loss)
-    train_model.add_loss(mlm_loss)
-
-    # 计算accuracy
-    mlm_acc = sparse_categorical_accuracy(K.cast(y_true, K.floatx()), y_pred)
-    mlm_acc = K.mean(mlm_acc)
-    train_model.add_metric(mlm_acc, name='accuracy', aggregation='mean')
+    # 优化器
+    global learning_rate
+    lr_schedule = {num_warmup_steps: learning_rate, num_train_steps: 0.}
+    optimizer = keras.optimizers.Adam(learning_rate=PiecewiseLinear(lr_schedule))
+    learning_rate = optimizer._decayed_lr(tf.float32)
 
     # 添加权重衰减
-    add_weight_decay_into(train_model, weight_decay_rate * learning_rate,
+    add_weight_decay_into(bert_model, weight_decay_rate * learning_rate,
                           exclude_from_weight_decay)
 
     # 模型定型
-    train_model.compile(optimizer=optimizer)
+    train_model.compile(
+        loss={
+            'mlm_loss': lambda y_true, y_pred: y_pred,
+            'mlm_acc': lambda y_true, y_pred: K.stop_gradient(y_pred),
+        },
+        optimizer=optimizer,
+    )
 
     # 如果传入权重，则加载。注：须在此处加载，才保证不报错。
     if checkpoint_path is not None:
@@ -125,20 +131,27 @@ def build_train_bert_model():
     return train_model
 
 
-# 多GPU模式
-strategy = tf.distribute.MirroredStrategy()
+if tpu_address is None:
+    # 单机多卡模式（多机多卡也类似，但需要硬软件配合，请参考tf.wiki）
+    strategy = tf.distribute.MirroredStrategy()
+else:
+    # TPU模式
+    resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu=tpu_address)
+    tf.config.experimental_connect_to_host(resolver.master())
+    tf.tpu.experimental.initialize_tpu_system(resolver)
+    strategy = tf.distribute.experimental.TPUStrategy(resolver)
 
 with strategy.scope():
     train_model = build_train_bert_model()
 
 # 模型回调
 checkpoint = ModelCheckpoint(
-    filepath='saved_model/bert_model.ckpt',
-    monitor='loss',
+    filepath='gs://bert4keras/bert4keras/saved_model/bert_model.ckpt',
+    monitor='mlm_loss_loss',
     save_weights_only=True,
     save_best_only=True,
 )
-csv_logger = CSVLogger('training.log')
+csv_logger = CSVLogger('training.log') # 记录训练日志
 
 # 模型训练
 train_model.fit(
