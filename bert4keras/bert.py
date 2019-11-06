@@ -24,6 +24,7 @@ class BertModel(object):
             intermediate_size,  # FeedForward的隐层维度
             hidden_act,  # FeedForward隐层的激活函数
             dropout_rate,  # Dropout比例
+            initializer_range=0.02,  # 权重初始化方差
             embedding_size=None,  # 是否指定embedding_size
             with_mlm=False,  # 是否包含MLM部分
             keep_words=None,  # 要保留的词ID列表
@@ -40,6 +41,7 @@ class BertModel(object):
         self.attention_head_size = hidden_size // num_attention_heads
         self.intermediate_size = intermediate_size
         self.dropout_rate = dropout_rate
+        self.initializer_range = initializer_range
         if embedding_size:
             self.embedding_size = embedding_size
         else:
@@ -64,20 +66,25 @@ class BertModel(object):
         # Embedding部分
         x = Embedding(input_dim=self.vocab_size,
                       output_dim=self.embedding_size,
+                      embeddings_initializer=self.initializer,
                       name='Embedding-Token')(x)
         s = Embedding(input_dim=2,
                       output_dim=self.embedding_size,
+                      embeddings_initializer=self.initializer,
                       name='Embedding-Segment')(s)
         x = Add(name='Embedding-Token-Segment')([x, s])
         x = PositionEmbedding(input_dim=self.max_position_embeddings,
                               output_dim=self.embedding_size,
-                              name='Embedding-Position',
-                              merge_mode='add')(x)
+                              merge_mode='add',
+                              embeddings_initializer=self.initializer,
+                              name='Embedding-Position')(x)
         x = LayerNormalization(name='Embedding-Norm')(x)
         if self.dropout_rate > 0:
             x = Dropout(rate=self.dropout_rate, name='Embedding-Dropout')(x)
         if self.embedding_size != self.hidden_size:
-            x = Dense(self.hidden_size, name='Embedding-Mapping')(x)
+            x = Dense(self.hidden_size,
+                      kernel_initializer=self.initializer,
+                      name='Embedding-Mapping')(x)
 
         # 主要Transformer部分
         layers = None
@@ -99,6 +106,7 @@ class BertModel(object):
             # Masked Language Model 部分
             x = Dense(self.hidden_size,
                       activation=self.hidden_act,
+                      kernel_initializer=self.initializer,
                       name='MLM-Dense')(x)
             x = LayerNormalization(name='MLM-Norm')(x)
             x = EmbeddingDense(embedding_name='Embedding-Token',
@@ -124,6 +132,7 @@ class BertModel(object):
             layers = [
                 MultiHeadAttention(heads=self.num_attention_heads,
                                    head_size=self.attention_head_size,
+                                   kernel_initializer=self.initializer,
                                    name=attention_name),
                 Dropout(rate=self.dropout_rate,
                         name='%s-Dropout' % attention_name),
@@ -131,6 +140,7 @@ class BertModel(object):
                 LayerNormalization(name='%s-Norm' % attention_name),
                 FeedForward(units=self.intermediate_size,
                             activation=self.hidden_act,
+                            kernel_initializer=self.initializer,
                             name=feed_forward_name),
                 Dropout(rate=self.dropout_rate,
                         name='%s-Dropout' % feed_forward_name),
@@ -169,6 +179,13 @@ class BertModel(object):
         """自定义每一个block的后处理操作
         """
         return inputs
+
+    @property
+    def initializer(self):
+        """默认使用截断正态分布初始化
+        """
+        return keras.initializers.TruncatedNormal(
+            stddev=self.initializer_range)
 
     def load_weights_from_checkpoint(self, checkpoint_file):
         """从预训练好的Bert的checkpoint中加载权重
