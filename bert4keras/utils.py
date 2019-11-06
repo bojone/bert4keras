@@ -150,6 +150,9 @@ class Tokenizer(BasicTokenizer):
                 text += token[2:]
             elif len(token) == 1 and self._is_cjk_character(token):
                 text += token
+            elif len(token) == 1 and self._is_punctuation(token):
+                text += token
+                text += ' '
             else:
                 text += ' '
                 text += token
