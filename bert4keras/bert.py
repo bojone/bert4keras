@@ -24,7 +24,7 @@ class BertModel(object):
             intermediate_size,  # FeedForward的隐层维度
             hidden_act,  # FeedForward隐层的激活函数
             dropout_rate,  # Dropout比例
-            initializer_range=0.02,  # 权重初始化方差
+            initializer_range=None,  # 权重初始化方差
             embedding_size=None,  # 是否指定embedding_size
             with_mlm=False,  # 是否包含MLM部分
             keep_words=None,  # 要保留的词ID列表
@@ -41,7 +41,10 @@ class BertModel(object):
         self.attention_head_size = hidden_size // num_attention_heads
         self.intermediate_size = intermediate_size
         self.dropout_rate = dropout_rate
-        self.initializer_range = initializer_range
+        if initializer_range:
+            self.initializer_range = initializer_range
+        else:
+            self.initializer_range = 0.02
         if embedding_size:
             self.embedding_size = embedding_size
         else:
@@ -339,6 +342,7 @@ def build_bert_model(config_path,
                 intermediate_size=config['intermediate_size'],
                 hidden_act=config['hidden_act'],
                 dropout_rate=config['hidden_dropout_prob'],
+                initializer_range=config.get('initializer_range'),
                 embedding_size=config.get('embedding_size'),
                 with_mlm=with_mlm,
                 keep_words=keep_words,
