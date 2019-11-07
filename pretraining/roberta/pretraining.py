@@ -9,7 +9,7 @@ from data_utils import TrainingDataset
 from bert4keras.bert import build_bert_model
 from bert4keras.backend import keras, K
 from bert4keras.backend import piecewise_linear
-from bert4keras.train import add_weight_decay_into
+from bert4keras.train import LAMB, add_weight_decay_into
 from tensorflow.python.framework import ops
 
 
@@ -23,7 +23,7 @@ saved_model_path = 'gs://xxxx/bert4keras/saved_model/bert_model.ckpt'
 sequence_length = 256
 batch_size = 512
 config_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt'
+checkpoint_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt' # 如果从零训练，就设为None
 learning_rate = 5e-5
 weight_decay_rate = 0.01
 num_warmup_steps = 10000
@@ -32,10 +32,13 @@ steps_per_epoch = 2000
 epochs = num_train_steps // steps_per_epoch
 exclude_from_weight_decay = ['Norm', 'bias']
 tpu_address = 'grpc://xxx.xxx.xxx.xxx:8470' # 如果用多GPU跑，直接设为None
+which_optimizer = 'adam'  # adam 或 lamb，均自带weight decay
+lr_schedule = {num_warmup_steps: learning_rate, num_train_steps: 0.}
 
 # 准备变量
 Input = keras.layers.Input
 Lambda = keras.layers.Lambda
+Adam = keras.optimizers.Adam
 Model = keras.models.Model
 sparse_categorical_accuracy = keras.metrics.sparse_categorical_accuracy
 ModelCheckpoint = keras.callbacks.ModelCheckpoint
@@ -105,14 +108,16 @@ def build_train_bert_model():
     train_model = Model(bert_model.inputs + [token_ids, is_masked], [loss, acc])
 
     # 优化器
-    global learning_rate
-    lr_schedule = {num_warmup_steps: learning_rate, num_train_steps: 0.}
-    optimizer = keras.optimizers.Adam(learning_rate=PiecewiseLinear(lr_schedule))
-    learning_rate = optimizer._decayed_lr(tf.float32)
-
-    # 添加权重衰减
-    add_weight_decay_into(bert_model, weight_decay_rate * learning_rate,
-                          exclude_from_weight_decay)
+    if which_optimizer == 'adam':
+        optimizer = Adam(learning_rate=PiecewiseLinear(lr_schedule))
+        learning_rate = optimizer._decayed_lr(tf.float32)
+        # 添加权重衰减
+        add_weight_decay_into(bert_model, weight_decay_rate * learning_rate,
+                              exclude_from_weight_decay)
+    else:
+        optimizer = LAMB(learning_rate=PiecewiseLinear(lr_schedule),
+                         weight_decay_rate=weight_decay_rate,
+                         exclude_from_weight_decay=exclude_from_weight_decay)
 
     # 模型定型
     train_model.compile(
@@ -131,7 +136,7 @@ def build_train_bert_model():
 
 
 if tpu_address is None:
-    # 单机多卡模式（多机多卡也类似，但需要硬软件配合，请参考tf.wiki）
+    # 单机多卡模式（多机多卡也类似，但需要硬软件配合，请参考https://tf.wiki）
     strategy = tf.distribute.MirroredStrategy()
 else:
     # TPU模式
