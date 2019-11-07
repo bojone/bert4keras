@@ -132,7 +132,7 @@ def data_generator():
 model = build_bert_model(
     config_path,
     checkpoint_path,
-    seq2seq=True,
+    application='seq2seq',
     keep_words=keep_words,  # 只保留keep_words中的字，精简原字表
 )
 
