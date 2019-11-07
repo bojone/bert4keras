@@ -17,6 +17,7 @@ from keras import backend as K
 from keras.callbacks import Callback
 from keras.optimizers import Adam
 
+
 seq2seq_config = 'seq2seq_config.json'
 min_count = 40
 max_input_len = 256
