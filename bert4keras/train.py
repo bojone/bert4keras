@@ -131,7 +131,7 @@ def add_weight_decay_into(model, weight_decay_rate, exclude_from=None):
 class LAMB(keras.optimizers.Optimizer):
     """LAMB优化器，只支持tf.keras
     直接复制自：https://github.com/tensorflow/addons/blob/master/tensorflow_addons/optimizers/lamb.py
-    下面是原介绍：
+    复制到此主要是免得大家要安装tensorflow-addons了。下面是原介绍：
     Optimizer that implements the LAMB (Layer-wise Adaptive Moments)
     optimizer as TF2 tf.keras.optimizers.
     See paper [Large Batch Optimization for Deep Learning: Training BERT
