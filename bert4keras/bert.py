@@ -329,7 +329,7 @@ class Bert4LM(BertModel):
         self.attention_mask = 'history_only'
 
     def compute_attention_mask(self, layer_id, segment_ids):
-        reutrn self.attention_mask
+        return self.attention_mask
 
 
 def build_bert_model(config_path,
