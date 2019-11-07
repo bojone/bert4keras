@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 # 训练相关
 
+import tensorflow as tf
 from bert4keras.backend import keras, K
 from bert4keras.backend import get_all_attributes
 from bert4keras.backend import piecewise_linear
+from tensorflow.python.ops import array_ops
 import re
 
 
@@ -128,12 +130,28 @@ def add_weight_decay_into(model, weight_decay_rate, exclude_from=None):
     model.add_update(weight_decay_updates)
 
 
-class LAMB(keras.optimizers.Optimizer):
+class OptimizerV2(keras.optimizers.Optimizer):
+    """修改优化器基类，主要是为了同时兼容tf 1.x和tf 2.0
+    下面两个方法都是直接从tf 2.0的OptimizerV2里边抄过来的。
+    """
+    def _prepare_local(self, var_device, var_dtype, apply_state):
+        if "learning_rate" in self._hyper:
+            lr_t = array_ops.identity(self._decayed_lr(var_dtype))
+            apply_state[(var_device, var_dtype)]["lr_t"] = lr_t
+
+    def _fallback_apply_state(self, var_device, var_dtype):
+        """Compatibility for subclasses that don't pass apply_state through."""
+        apply_state = {(var_device, var_dtype): {}}
+        self._prepare_local(var_device, var_dtype, apply_state)
+        return apply_state[(var_device, var_dtype)]
+
+
+class LAMB(OptimizerV2):
     """LAMB优化器，只支持tf.keras
     直接复制自：https://github.com/tensorflow/addons/blob/master/tensorflow_addons/optimizers/lamb.py
     复制到此主要是免得大家要安装tensorflow-addons了。
+
     下面是原文：
-    
     Optimizer that implements the LAMB (Layer-wise Adaptive Moments)
     optimizer as TF2 tf.keras.optimizers.
     See paper [Large Batch Optimization for Deep Learning: Training BERT
