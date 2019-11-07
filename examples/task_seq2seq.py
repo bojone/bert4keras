@@ -7,7 +7,6 @@ import glob
 import numpy as np
 from tqdm import tqdm
 import os, json, codecs
-from collections import Counter
 import uniout
 from bert4keras.bert import build_bert_model
 from bert4keras.utils import Tokenizer, load_vocab, parallel_apply
