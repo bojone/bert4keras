@@ -156,6 +156,8 @@ class BertModel(object):
         xi = x
         if attention_mask is None:
             x = layers[0]([x, x, x, sequence_mask], v_mask=True)
+        elif attention_mask is 'history_only':
+            x = layers[0]([x, x, x, sequence_mask], v_mask=True)
         else:
             x = layers[0]([x, x, x, sequence_mask, attention_mask],
                           v_mask=True,
@@ -318,21 +320,36 @@ class Bert4Seq2seq(BertModel):
         return self.attention_mask
 
 
+class Bert4LM(BertModel):
+    """用来做语言模型任务的Bert
+    """
+    def __init__(self, *args, **kwargs):
+        super(Bert4LM, self).__init__(*args, **kwargs)
+        self.with_mlm = True
+        self.attention_mask = 'history_only'
+
+    def compute_attention_mask(self, layer_id, segment_ids):
+        reutrn self.attention_mask
+
+
 def build_bert_model(config_path,
                      checkpoint_path=None,
                      with_mlm=False,
-                     seq2seq=False,
+                     application='encoder',
                      keep_words=None,
                      albert=False,
                      return_keras_model=True):
     """根据配置文件构建bert模型，可选加载checkpoint权重
     """
     config = json.load(open(config_path))
-
-    if seq2seq:
-        Bert = Bert4Seq2seq
-    else:
-        Bert = BertModel
+    mapping = {
+        'encoder': BertModel,
+        'seq2seq': Bert4Seq2seq,
+        'lm': Bert4LM,
+    }
+    
+    assert application in mapping, 'application must be one of %s' % list(mapping.keys())
+    Bert = mapping[application]
 
     bert = Bert(vocab_size=config['vocab_size'],
                 max_position_embeddings=config['max_position_embeddings'],
