@@ -175,10 +175,9 @@ def gen_sent(s, topk=2):
         _topk_arg = np.argsort(_candidate_scores)[-topk:]  # 从中选出新的topk
         target_ids = [_candidate_ids[k] for k in _topk_arg]
         target_scores = [_candidate_scores[k] for k in _topk_arg]
-        ends = [j for j, k in enumerate(target_ids) if k[-1] == 3]
-        if len(ends) > 0:
-            k = np.argmax([target_scores[j] for j in ends])
-            return tokenizer.decode(target_ids[ends[k]])
+        best_one = np.argmax(target_scores)
+        if target_ids[best_one][-1] == 3:
+            return tokenizer.decode(target_ids[best_one])
     # 如果max_output_len字都找不到结束符，直接返回
     return tokenizer.decode(target_ids[np.argmax(target_scores)])
 
