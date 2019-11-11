@@ -1,5 +1,5 @@
 #! -*- coding:utf-8 -*-
-# 情感分析类似，加载albert_zh权重(https://github.com/brightmart/albert_zh)
+# 情感分析例子，加载albert_zh权重(https://github.com/brightmart/albert_zh)
 
 import json
 import numpy as np
@@ -11,8 +11,8 @@ from bert4keras.bert import build_bert_model
 from bert4keras.train import PiecewiseLinearLearningRate
 from keras.layers import *
 from keras.models import Model
-import keras.backend as K
 from keras.optimizers import Adam
+from keras.callbacks import Callback
 
 set_gelu('tanh') # 切换gelu版本
 
@@ -35,36 +35,15 @@ def load_data(filename):
 train_data = load_data('datasets/sentiment/sentiment.train.data')
 valid_data = load_data('datasets/sentiment/sentiment.valid.data')
 test_data = load_data('datasets/sentiment/sentiment.test.data')
-
-
-_token_dict = load_vocab(dict_path) # 读取词典
-_tokenizer = Tokenizer(_token_dict) # 建立临时分词器
-tokens = {}
-
-for text, label in train_data:
-    for token in _tokenizer.tokenize(text):
-        tokens[token] = tokens.get(token, 0) + 1
-
-tokens = {i: j for i, j in tokens.items() if j >= 4}
-token_dict, keep_words = {}, [] # keep_words是在bert中保留的字表
-
-for token in ['[PAD]', '[UNK]', '[CLS]', '[SEP]']:
-    token_dict[token] = len(token_dict)
-    keep_words.append(_token_dict[token])
-
-for token in tokens:
-    if token in _token_dict and token not in token_dict:
-        token_dict[token] = len(token_dict)
-        keep_words.append(_token_dict[token])
-
-tokenizer = Tokenizer(token_dict) # 建立分词器
+tokenizer = Tokenizer(dict_path) # 建立分词器
 
 
 def seq_padding(X, padding=0):
     L = [len(x) for x in X]
     ML = max(L)
     return np.array([
-        np.concatenate([x, [padding] * (ML - len(x))]) if len(x) < ML else x for x in X
+        np.concatenate([x, [padding] * (ML - len(x))]) if len(x) < ML else x
+        for x in X
     ])
 
 
@@ -78,53 +57,73 @@ class data_generator:
     def __len__(self):
         return self.steps
     def __iter__(self):
+        idxs = list(range(len(self.data)))
+        np.random.shuffle(idxs)
+        batch_token_ids, batch_segment_ids, batch_labels = [], [], []
+        for i in idxs:
+            text, label = self.data[i]
+            text = text[:maxlen]
+            token_ids, segment_ids = tokenizer.encode(text)
+            batch_token_ids.append(token_ids)
+            batch_segment_ids.append(segment_ids)
+            batch_labels.append([label])
+            if len(batch_token_ids) == self.batch_size or i == idxs[-1]:
+                batch_token_ids = seq_padding(batch_token_ids)
+                batch_segment_ids = seq_padding(batch_segment_ids)
+                batch_labels = seq_padding(batch_labels)
+                yield [batch_token_ids, batch_segment_ids], batch_labels
+                batch_token_ids, batch_segment_ids, batch_labels = [], [], []
+    def forfit(self):
         while True:
-            idxs = list(range(len(self.data)))
-            np.random.shuffle(idxs)
-            X1, X2, Y = [], [], []
-            for i in idxs:
-                d = self.data[i]
-                text = d[0][:maxlen]
-                x1, x2 = tokenizer.encode(text)
-                y = d[1]
-                X1.append(x1)
-                X2.append(x2)
-                Y.append([y])
-                if len(X1) == self.batch_size or i == idxs[-1]:
-                    X1 = seq_padding(X1)
-                    X2 = seq_padding(X2)
-                    Y = seq_padding(Y)
-                    yield [X1, X2], Y
-                    [X1, X2, Y] = [], [], []
+            for d in self.__iter__():
+                yield d
 
 
-model = build_bert_model(
-    config_path,
-    checkpoint_path,
-    keep_words=keep_words, # 只保留keep_words中的字，精简原字表
-    albert=True
-)
-
-output = Lambda(lambda x: x[:, 0])(model.output)
-output = Dense(1, activation='sigmoid')(output)
-model = Model(model.input, output)
+model = build_bert_model(config_path, checkpoint_path, albert=True) # 加载预训练模型
+output = Lambda(lambda x: x[:, 0])(model.output) # 取出[CLS]对应的向量
+output = Dense(1, activation='sigmoid')(output) # 接一个二分类器
+model = Model(model.input, output) # 建立模型
 
 model.compile(
     loss='binary_crossentropy',
     # optimizer=Adam(1e-5),  # 用足够小的学习率
     optimizer=PiecewiseLinearLearningRate(Adam(1e-4), {1000: 1, 2000: 0.1}),
-    metrics=['accuracy']
+    metrics=['accuracy'],
 )
 model.summary()
 
 
-train_D = data_generator(train_data)
-valid_D = data_generator(valid_data)
+train_generator = data_generator(train_data)
+valid_generator = data_generator(valid_data)
+test_generator = data_generator(test_data)
 
-model.fit_generator(
-    train_D.__iter__(),
-    steps_per_epoch=len(train_D),
-    epochs=10,
-    validation_data=valid_D.__iter__(),
-    validation_steps=len(valid_D)
-)
+
+def evaluate(data):
+    total, right = 0., 0.
+    for x_true, y_true in data:
+        y_pred = model.predict(x_true) >= 0.5
+        y_true = y_true >= 0.5
+        total += len(y_true)
+        right += (y_true == y_pred).sum()
+    return right / total
+
+
+class Evaluator(Callback):
+    def __init__(self):
+        self.best_acc = 0.
+    def on_epoch_end(self, epoch, logs=None):
+        acc = evaluate(valid_generator)
+        if acc > self.best_acc:
+            self.best_acc = acc
+            model.save_weights('best_model.weights')
+        print(u'acc: %05f, best_acc: %05f\n' % (acc, self.best_acc))
+
+
+evaluator = Evaluator()
+model.fit_generator(train_generator.forfit(),
+                    steps_per_epoch=len(train_generator),
+                    epochs=10,
+                    callbacks=[evaluator])
+
+model.load_weights('best_model.weights')
+print(u'test acc: %05f\n' % (evaluate(test_generator)))
