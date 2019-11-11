@@ -26,6 +26,8 @@ class BertModel(object):
             dropout_rate,  # Dropout比例
             initializer_range=None,  # 权重初始化方差
             embedding_size=None,  # 是否指定embedding_size
+            with_pool=False,  # 是否包含Pool部分
+            with_nsp=False,  # 是否包含NSP部分
             with_mlm=False,  # 是否包含MLM部分
             keep_words=None,  # 要保留的词ID列表
             block_sharing=False,  # 是否共享同一个transformer block
@@ -49,6 +51,8 @@ class BertModel(object):
             self.embedding_size = embedding_size
         else:
             self.embedding_size = hidden_size
+        self.with_pool = with_pool
+        self.with_nsp = with_nsp
         self.with_mlm = with_mlm
         self.hidden_act = hidden_act
         self.keep_words = keep_words
@@ -85,7 +89,7 @@ class BertModel(object):
         if self.dropout_rate > 0:
             x = Dropout(rate=self.dropout_rate, name='Embedding-Dropout')(x)
         if self.embedding_size != self.hidden_size:
-            x = Dense(self.hidden_size,
+            x = Dense(units=self.hidden_size,
                       kernel_initializer=self.initializer,
                       name='Embedding-Mapping')(x)
 
@@ -105,8 +109,27 @@ class BertModel(object):
             if not self.block_sharing:
                 layers = None
 
+        outputs = [x]
+
+        if self.with_pool:
+            # Pooler部分（提取CLS向量）
+            x = outputs[0]
+            x = Lambda(lambda x: x[:, 0], name='Pooler')(x)
+            x = Dense(units=self.hidden_size,
+                      activation='tanh',
+                      kernel_initializer=self.initializer,
+                      name='Pooler-Dense')(x)
+            if self.with_nsp:
+                # NSP预测
+                x = Dense(units=2,
+                          activation='softmax',
+                          kernel_initializer=self.initializer,
+                          name='NSP-Proba')(x)
+            outputs.append(x)
+
         if self.with_mlm:
-            # Masked Language Model 部分
+            # Masked Language Model部分
+            x = outputs[0]
             x = Dense(self.embedding_size,
                       activation=self.hidden_act,
                       kernel_initializer=self.initializer,
@@ -114,11 +137,17 @@ class BertModel(object):
             x = LayerNormalization(name='MLM-Norm')(x)
             x = EmbeddingDense(embedding_name='Embedding-Token',
                                name='MLM-Proba')(x)
+            outputs.append(x)
 
-        if self.additional_outputs:
-            self.model = Model([x_in, s_in], [x] + self.additional_outputs)
+        outputs += self.additional_outputs
+        if len(outputs) == 1:
+            outputs = outputs[0]
+        elif len(outputs) == 2:
+            outputs = outputs[1]
         else:
-            self.model = Model([x_in, s_in], x)
+            outputs = outputs[1:]
+
+        self.model = Model([x_in, s_in], outputs)
 
     def transformer_block(self,
                           inputs,
@@ -277,6 +306,17 @@ class BertModel(object):
                     loader('bert/encoder/%s/output/LayerNorm/beta' % layer_name),
                 ])
 
+        if self.with_pool:
+            model.get_layer(name='Pooler-Dense').set_weights([
+                loader('bert/pooler/dense/kernel'),
+                loader('bert/pooler/dense/bias'),
+            ])
+            if self.with_nsp:
+                model.get_layer(name='NSP-Proba').set_weights([
+                    loader('cls/seq_relationship/output_weights').T,
+                    loader('cls/seq_relationship/output_bias'),
+                ])
+
         if self.with_mlm:
             model.get_layer(name='MLM-Dense').set_weights([
                 loader('cls/predictions/transform/dense/kernel'),
@@ -296,6 +336,8 @@ class Bert4Seq2seq(BertModel):
     """
     def __init__(self, *args, **kwargs):
         super(Bert4Seq2seq, self).__init__(*args, **kwargs)
+        self.with_pool = False
+        self.with_nsp = False
         self.with_mlm = True
         self.attention_mask = None
 
@@ -325,6 +367,8 @@ class Bert4LM(BertModel):
     """
     def __init__(self, *args, **kwargs):
         super(Bert4LM, self).__init__(*args, **kwargs)
+        self.with_pool = False
+        self.with_nsp = False
         self.with_mlm = True
         self.attention_mask = 'history_only'
 
@@ -334,6 +378,8 @@ class Bert4LM(BertModel):
 
 def build_bert_model(config_path,
                      checkpoint_path=None,
+                     with_pool=False,
+                     with_nsp=False,
                      with_mlm=False,
                      application='encoder',
                      keep_words=None,
@@ -347,7 +393,7 @@ def build_bert_model(config_path,
         'seq2seq': Bert4Seq2seq,
         'lm': Bert4LM,
     }
-    
+
     assert application in mapping, 'application must be one of %s' % list(mapping.keys())
     Bert = mapping[application]
 
@@ -361,6 +407,8 @@ def build_bert_model(config_path,
                 dropout_rate=config['hidden_dropout_prob'],
                 initializer_range=config.get('initializer_range'),
                 embedding_size=config.get('embedding_size'),
+                with_pool=with_pool,
+                with_nsp=with_nsp,
                 with_mlm=with_mlm,
                 keep_words=keep_words,
                 block_sharing=albert)
