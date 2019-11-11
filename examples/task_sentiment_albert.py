@@ -3,70 +3,61 @@
 
 import json
 import numpy as np
-import pandas as pd
 from random import choice
-import re, os
-import codecs
+import re, os, codecs
 from bert4keras.backend import set_gelu
 from bert4keras.utils import Tokenizer, load_vocab
 from bert4keras.bert import build_bert_model
 from bert4keras.train import PiecewiseLinearLearningRate
+from keras.layers import *
+from keras.models import Model
+import keras.backend as K
+from keras.optimizers import Adam
+
 set_gelu('tanh') # 切换gelu版本
 
 
 maxlen = 100
-config_path = '/root/kg/bert/albert_base_zh/bert_config.json'
-checkpoint_path = '/root/kg/bert/albert_base_zh/bert_model.ckpt'
-dict_path = '/root/kg/bert/albert_base_zh/vocab.txt'
+config_path = '/root/kg/bert/albert_small_zh_google/albert_config.json'
+checkpoint_path = '/root/kg/bert/albert_small_zh_google/albert_model.ckpt'
+dict_path = '/root/kg/bert/albert_small_zh_google/vocab.txt'
 
 
-neg = pd.read_excel('datasets/neg.xls', header=None)
-pos = pd.read_excel('datasets/pos.xls', header=None)
-data, tokens = [], {}
+def load_data(filename):
+    D = []
+    with codecs.open(filename, encoding='utf-8') as f:
+        for l in f:
+            text, label = l.strip().split('\t\t')
+            D.append((text, int(label)))
+    return D
+
+
+train_data = load_data('datasets/sentiment/sentiment.train.data')
+valid_data = load_data('datasets/sentiment/sentiment.valid.data')
+test_data = load_data('datasets/sentiment/sentiment.test.data')
+
 
 _token_dict = load_vocab(dict_path) # 读取词典
 _tokenizer = Tokenizer(_token_dict) # 建立临时分词器
+tokens = {}
 
-for d in neg[0]:
-    data.append((d, 0))
-    for t in _tokenizer.tokenize(d):
-        tokens[t] = tokens.get(t, 0) + 1
-
-for d in pos[0]:
-    data.append((d, 1))
-    for t in _tokenizer.tokenize(d):
-        tokens[t] = tokens.get(t, 0) + 1
+for text, label in train_data:
+    for token in _tokenizer.tokenize(text):
+        tokens[token] = tokens.get(token, 0) + 1
 
 tokens = {i: j for i, j in tokens.items() if j >= 4}
 token_dict, keep_words = {}, [] # keep_words是在bert中保留的字表
 
-for t in ['[PAD]', '[UNK]', '[CLS]', '[SEP]']:
-    token_dict[t] = len(token_dict)
-    keep_words.append(_token_dict[t])
+for token in ['[PAD]', '[UNK]', '[CLS]', '[SEP]']:
+    token_dict[token] = len(token_dict)
+    keep_words.append(_token_dict[token])
 
-for t in tokens:
-    if t in _token_dict and t not in token_dict:
-        token_dict[t] = len(token_dict)
-        keep_words.append(_token_dict[t])
+for token in tokens:
+    if token in _token_dict and token not in token_dict:
+        token_dict[token] = len(token_dict)
+        keep_words.append(_token_dict[token])
 
 tokenizer = Tokenizer(token_dict) # 建立分词器
-
-
-if not os.path.exists('./random_order.json'):
-    random_order = range(len(data))
-    np.random.shuffle(random_order)
-    json.dump(
-        random_order,
-        open('./random_order.json', 'w'),
-        indent=4
-    )
-else:
-    random_order = json.load(open('./random_order.json'))
-
-
-# 按照9:1的比例划分训练集和验证集
-train_data = [data[j] for i, j in enumerate(random_order) if i % 10 != 0]
-valid_data = [data[j] for i, j in enumerate(random_order) if i % 10 == 0]
 
 
 def seq_padding(X, padding=0):
@@ -105,12 +96,6 @@ class data_generator:
                     Y = seq_padding(Y)
                     yield [X1, X2], Y
                     [X1, X2, Y] = [], [], []
-
-
-from keras.layers import *
-from keras.models import Model
-import keras.backend as K
-from keras.optimizers import Adam
 
 
 model = build_bert_model(
