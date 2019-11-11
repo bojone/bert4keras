@@ -17,7 +17,7 @@ from keras.callbacks import Callback
 set_gelu('tanh') # 切换gelu版本
 
 
-maxlen = 100
+maxlen = 128
 config_path = '/root/kg/bert/albert_small_zh_google/albert_config.json'
 checkpoint_path = '/root/kg/bert/albert_small_zh_google/albert_model.ckpt'
 dict_path = '/root/kg/bert/albert_small_zh_google/vocab.txt'
@@ -62,8 +62,7 @@ class data_generator:
         batch_token_ids, batch_segment_ids, batch_labels = [], [], []
         for i in idxs:
             text, label = self.data[i]
-            text = text[:maxlen]
-            token_ids, segment_ids = tokenizer.encode(text)
+            token_ids, segment_ids = tokenizer.encode(text, max_length=maxlen)
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
             batch_labels.append([label])
