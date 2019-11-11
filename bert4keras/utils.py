@@ -90,8 +90,7 @@ class BasicTokenizer(object):
                                           add_cls=False,
                                           add_sep=False)
             if max_length is not None:
-                self.truncate_sequence(max_length - 3, first_tokens,
-                                       second_tokens)
+                self.truncate_sequence(max_length - 3, first_tokens, second_tokens)
 
         first_tokens = [self._token_cls] + first_tokens + [self._token_sep]
         first_token_ids = self.tokens_to_ids(first_tokens)
