@@ -48,7 +48,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 - <strong>2019.10.20</strong>: 应网友要求，现支持直接用`model.save`保存模型结构，用`load_model`加载整个模型（只需要在`load_model`之前执行`from bert4keras.layers import *`，不需要额外写`custom_objects`）。
 - <strong>2019.10.09</strong>: 已兼容tf.keras，同时在tf 1.13和tf 2.0下的tf.keras测试通过，通过设置环境变量`TF_KERAS=1`来切换tf.keras。
 - <strong>2019.10.09</strong>: 已兼容Keras 2.3.x，但只是临时方案，后续可能直接移除掉2.3之前版本的支持。
-- <strong>2019.10.02</strong>: 适配albert，能成功加载<a href="https://github.com/brightmart/albert_zh">albert_zh</a>的权重，只需要在`load_pretrained_model`函数里加上`albert=True`。
+- <strong>2019.10.02</strong>: 适配albert，能成功加载<a href="https://github.com/brightmart/albert_zh">albert_zh</a>的权重，只需要在`build_bert_model`函数里加上`albert=True`。
 
 ## 背景
 之前一直用CyberZHG大佬的<a href="https://github.com/CyberZHG/keras-bert">keras-bert</a>，如果纯粹只是为了在keras下对bert进行调用和fine tune来说，keras-bert已经足够能让人满意了。
