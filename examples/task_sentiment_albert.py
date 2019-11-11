@@ -27,7 +27,7 @@ def load_data(filename):
     D = []
     with codecs.open(filename, encoding='utf-8') as f:
         for l in f:
-            text, label = l.strip().split('\t\t')
+            text, label = l.strip().split('\t')
             D.append((text, int(label)))
     return D
 
