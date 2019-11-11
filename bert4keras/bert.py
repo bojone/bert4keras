@@ -120,7 +120,7 @@ class BertModel(object):
                       kernel_initializer=self.initializer,
                       name='Pooler-Dense')(x)
             if self.with_nsp:
-                # NSP预测
+                # Next Sentence Prediction部分
                 x = Dense(units=2,
                           activation='softmax',
                           kernel_initializer=self.initializer,
