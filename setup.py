@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='bert4keras',
-    version='0.2.5',
+    version='0.2.6',
     description='更清爽的bert4keras',
     license='MIT Licence',
     url='https://kexue.fm',
