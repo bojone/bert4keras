@@ -53,32 +53,62 @@ class BasicTokenizer(object):
         """
         return [self.token_to_id(token) for token in tokens]
 
+    def truncate_sequence(self,
+                          max_length,
+                          first_sequence,
+                          second_sequence=None):
+        """截断总长度
+        """
+        if second_sequence is None:
+            second_sequence = []
+
+        while True:
+            total_length = len(first_sequence) + len(second_sequence)
+            if total_length <= max_length:
+                break
+            elif len(first_sequence) > len(second_sequence):
+                first_sequence.pop()
+            else:
+                second_sequence.pop()
+
     def encode(self,
                first_text,
                second_text=None,
+               max_length=None,
                first_length=None,
                second_length=None):
         """输出文本对应token id和segment id
         如果传入first_length，则强行padding第一个句子到指定长度；
         同理，如果传入second_length，则强行padding第二个句子到指定长度。
         """
-        first_tokens = self.tokenize(first_text)
+        first_tokens = self.tokenize(first_text, add_cls=False, add_sep=False)
+        if second_text is None:
+            if max_length is not None:
+                first_tokens = first_tokens[:max_length - 2]
+        else:
+            second_tokens = self.tokenize(second_text,
+                                          add_cls=False,
+                                          add_sep=False)
+            if max_length is not None:
+                self.truncate_sequence(max_length - 3, first_tokens,
+                                       second_tokens)
+
+        first_tokens = [self._token_cls] + first_tokens + [self._token_sep]
         first_token_ids = self.tokens_to_ids(first_tokens)
         if first_length is not None:
             first_token_ids = first_token_ids[:first_length]
-            first_token_ids.extend(
-                [self._token_pad_id] * (first_length - len(first_token_ids))
-            )
+            first_token_ids.extend([self._token_pad_id] *
+                                   (first_length - len(first_token_ids)))
         first_segment_ids = [0] * len(first_token_ids)
 
         if second_text is not None:
-            second_tokens = self.tokenize(second_text, add_cls=False)
+            second_tokens = second_tokens + [self._token_sep]
             second_token_ids = self.tokens_to_ids(second_tokens)
             if second_length is not None:
                 second_token_ids = second_token_ids[:second_length]
                 second_token_ids.extend(
-                    [self._token_pad_id] * (second_length - len(second_token_ids))
-                )
+                    [self._token_pad_id] *
+                    (second_length - len(second_token_ids)))
             second_segment_ids = [1] * len(second_token_ids)
 
             first_token_ids.extend(second_token_ids)
