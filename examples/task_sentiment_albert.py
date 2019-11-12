@@ -32,10 +32,13 @@ def load_data(filename):
     return D
 
 
+# 加载数据集
 train_data = load_data('datasets/sentiment/sentiment.train.data')
 valid_data = load_data('datasets/sentiment/sentiment.valid.data')
 test_data = load_data('datasets/sentiment/sentiment.test.data')
-tokenizer = Tokenizer(dict_path) # 建立分词器
+
+# 建立分词器
+tokenizer = Tokenizer(dict_path)
 
 
 def seq_padding(X, padding=0):
@@ -78,13 +81,25 @@ class data_generator:
                 yield d
 
 
-model = build_bert_model(config_path, checkpoint_path, albert=True) # 加载预训练模型
-output = Lambda(lambda x: x[:, 0])(model.output) # 取出[CLS]对应的向量
-output = Dense(1, activation='sigmoid')(output) # 接一个二分类器
-model = Model(model.input, output) # 建立模型
+# 加载预训练模型
+bert = build_bert_model(
+    config_path=config_path,
+    checkpoint_path=checkpoint_path,
+    with_pool=True,
+    albert=True,
+    return_keras_model=False,
+)
+
+output = Dropout(rate=0.1)(bert.model.output)
+output = Dense(units=2,
+               activation='softmax',
+               kernel_initializer=bert.initializer)(output)
+
+model = Model(bert.model.input, output)
+model.summary()
 
 model.compile(
-    loss='binary_crossentropy',
+    loss='sparse_categorical_crossentropy',
     # optimizer=Adam(1e-5),  # 用足够小的学习率
     optimizer=PiecewiseLinearLearningRate(Adam(1e-4), {1000: 1, 2000: 0.1}),
     metrics=['accuracy'],
@@ -92,6 +107,7 @@ model.compile(
 model.summary()
 
 
+# 转换数据集
 train_generator = data_generator(train_data)
 valid_generator = data_generator(valid_data)
 test_generator = data_generator(test_data)
@@ -100,8 +116,8 @@ test_generator = data_generator(test_data)
 def evaluate(data):
     total, right = 0., 0.
     for x_true, y_true in data:
-        y_pred = model.predict(x_true) >= 0.5
-        y_true = y_true >= 0.5
+        y_pred = model.predict(x_true).argmax(axis=1)
+        y_true = y_true[:, 0]
         total += len(y_true)
         right += (y_true == y_pred).sum()
     return right / total
@@ -109,13 +125,15 @@ def evaluate(data):
 
 class Evaluator(Callback):
     def __init__(self):
-        self.best_acc = 0.
+        self.best_val_acc = 0.
     def on_epoch_end(self, epoch, logs=None):
-        acc = evaluate(valid_generator)
-        if acc > self.best_acc:
-            self.best_acc = acc
+        val_acc = evaluate(valid_generator)
+        if val_acc > self.best_val_acc:
+            self.best_val_acc = val_acc
             model.save_weights('best_model.weights')
-        print(u'acc: %05f, best_acc: %05f\n' % (acc, self.best_acc))
+        test_acc = evaluate(test_generator)
+        print(u'val_acc: %05f, best_val_acc: %05f, test_acc: %05f\n'
+              % (val_acc, self.best_val_acc, test_acc))
 
 
 evaluator = Evaluator()
@@ -125,4 +143,4 @@ model.fit_generator(train_generator.forfit(),
                     callbacks=[evaluator])
 
 model.load_weights('best_model.weights')
-print(u'test acc: %05f\n' % (evaluate(test_generator)))
+print(u'final test acc: %05f\n' % (evaluate(test_generator)))
