@@ -1,5 +1,6 @@
 #! -*- coding:utf-8 -*-
 # 句子对分类任务，LCQMC数据集
+# val_acc: 0.887071, test_acc: 0.870320
 
 import json
 import numpy as np
@@ -51,7 +52,7 @@ def seq_padding(X, padding=0):
 
 
 class data_generator:
-    def __init__(self, data, batch_size=32):
+    def __init__(self, data, batch_size=64):
         self.data = data
         self.batch_size = batch_size
         self.steps = len(self.data) // self.batch_size
@@ -99,8 +100,8 @@ model.summary()
 
 model.compile(
     loss='sparse_categorical_crossentropy',
-    # optimizer=Adam(1e-4),  # 用足够小的学习率
-    optimizer=PiecewiseLinearLearningRate(Adam(5e-5), {10000: 1, 30000: 0.1}),
+    optimizer=Adam(1e-5),  # 用足够小的学习率
+    # optimizer=PiecewiseLinearLearningRate(Adam(5e-5), {10000: 1, 30000: 0.1}),
     metrics=['accuracy'],
 )
 
