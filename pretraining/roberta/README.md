@@ -8,4 +8,4 @@ python data_utils.py # 生成tfrecord
 python pretraining.py # 启动预训练过程
 ```
 
-请阅读`data_utils.py`和`pretraining.py`修改相应的配置和参数，以适配自己的设备。
+请阅读`data_utils.py`和`pretraining.py`修改相应的配置和参数，以适配自己的语料和设备。
