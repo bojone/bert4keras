@@ -208,7 +208,6 @@ if __name__ == '__main__':
 
     dict_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/vocab.txt'
     tokenizer = Tokenizer(dict_path)
-    sequence_length = 256
 
     def some_texts():
         with open('../../baike.items') as f:
