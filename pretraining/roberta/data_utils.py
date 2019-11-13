@@ -1,6 +1,9 @@
 #! -*- coding: utf-8 -*-
 # 预训练语料构建
 
+import os
+os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
+
 import numpy as np
 import tensorflow as tf
 from bert4keras.utils import parallel_apply
