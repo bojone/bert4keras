@@ -205,7 +205,7 @@ if __name__ == '__main__':
     # 使用测试
 
     from bert4keras.utils import Tokenizer
-    import json
+    import json, re
     import jieba_fast as jieba
     from tqdm import tqdm
 
@@ -215,7 +215,8 @@ if __name__ == '__main__':
     def some_texts():
         with open('../../baike.items') as f:
             for l in f:
-                yield json.loads(l).split('\n')
+                l = json.loads(l)
+                yield re.findall(u'.*?[\n。]+', l)
 
     def word_segment(text):
         return jieba.lcut(text)
