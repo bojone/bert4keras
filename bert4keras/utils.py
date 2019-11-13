@@ -156,6 +156,7 @@ class Tokenizer(BasicTokenizer):
                 setattr(self, '_token_%s_id' % token, _token_id)
             except:
                 pass
+        self._vocab_size = len(token_dict)
 
     def token_to_id(self, token):
         """token转换为对应的id
