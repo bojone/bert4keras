@@ -83,7 +83,7 @@ def piecewise_linear(t, schedule):
     return x
 
 
-def is_str(s):
+def is_string(s):
     return isinstance(s, basestring)
 
 
