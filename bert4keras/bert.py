@@ -347,6 +347,7 @@ class Bert4Seq2seq(BertModel):
         if self.attention_mask is None:
 
             def seq2seq_attention_mask(s, repeats=1):
+                import tensorflow as tf
                 seq_len = K.shape(s)[1]
                 ones = K.ones((1, repeats, seq_len, seq_len))
                 a_mask = tf.linalg.band_part(ones, -1, 0)
