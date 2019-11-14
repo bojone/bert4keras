@@ -130,7 +130,7 @@ class BertModel(object):
         if self.with_mlm:
             # Masked Language Model部分
             x = outputs[0]
-            x = Dense(self.embedding_size,
+            x = Dense(units=self.embedding_size,
                       activation=self.hidden_act,
                       kernel_initializer=self.initializer,
                       name='MLM-Dense')(x)
