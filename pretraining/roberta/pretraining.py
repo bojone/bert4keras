@@ -22,8 +22,8 @@ saved_model_path = 'gs://xxxx/bert4keras/saved_model/bert_model.ckpt'
 # 其他配置
 sequence_length = 512
 batch_size = 512
-config_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt' # 如果从零训练，就设为None
+config_path = '/home/spaces_ac_cn/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_config.json'
+checkpoint_path = '/home/spaces_ac_cn/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt' # 如果从零训练，就设为None
 learning_rate = 5e-5
 weight_decay_rate = 0.01
 num_warmup_steps = 10000
