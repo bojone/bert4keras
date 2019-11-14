@@ -2,7 +2,8 @@
 # 自定义层
 
 import tensorflow as tf
-from bert4keras.backend import keras, K, get_all_attributes
+from bert4keras.backend import keras, K, is_string
+from bert4keras.backend import get_all_attributes
 
 
 # 等价于 from keras.layers import *
@@ -117,7 +118,7 @@ class MultiHeadAttention(Layer):
         a = K.batch_dot(qw, kw, [2, 2]) / self.key_size**0.5
         a = sequence_masking(a, v_mask, 1, -1, self.heads)
         if a_mask is not None:
-            if a_mask == 'history_only':
+            if is_string(a_mask) and a_mask == 'history_only':
                 ones = K.ones_like(a[:1])
                 a_mask = (ones - tf.linalg.band_part(ones, -1, 0)) * 1e12
                 a = a - a_mask
