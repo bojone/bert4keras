@@ -20,7 +20,7 @@ corpus_path = 'gs://xxxx/bert4keras/test.tfrecord'
 saved_model_path = 'gs://xxxx/bert4keras/saved_model/bert_model.ckpt'
 
 # 其他配置
-sequence_length = 256
+sequence_length = 512
 batch_size = 512
 config_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_config.json'
 checkpoint_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt' # 如果从零训练，就设为None
