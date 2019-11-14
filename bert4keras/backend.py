@@ -6,6 +6,7 @@ import os
 from distutils.util import strtobool
 import numpy as np
 import tensorflow as tf
+import six
 
 
 if strtobool(os.environ.get('TF_KERAS', '0')):
@@ -14,6 +15,10 @@ if strtobool(os.environ.get('TF_KERAS', '0')):
 else:
     import keras
     import keras.backend as K
+
+
+if not six.PY2:
+    basestring = str
 
 
 def get_all_attributes(something):
@@ -76,6 +81,10 @@ def piecewise_linear(t, schedule):
         x = K.switch(t >= t_begin, x, x_begin)
 
     return x
+
+
+def is_str(s):
+    return isinstance(s, basestring)
 
 
 custom_objects = {
