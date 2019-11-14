@@ -346,9 +346,9 @@ class Bert4Seq2seq(BertModel):
         """
         if self.attention_mask is None:
 
-            def seq2seq_attention_mask(s):
+            def seq2seq_attention_mask(s, repeats=1):
                 seq_len = K.shape(s)[1]
-                ones = K.ones((1, self.num_attention_heads, seq_len, seq_len))
+                ones = K.ones((1, repeats, seq_len, seq_len))
                 a_mask = tf.linalg.band_part(ones, -1, 0)
                 s_ex12 = K.expand_dims(K.expand_dims(s, 1), 2)
                 s_ex13 = K.expand_dims(K.expand_dims(s, 1), 3)
@@ -356,8 +356,10 @@ class Bert4Seq2seq(BertModel):
                 a_mask = K.reshape(a_mask, (-1, seq_len, seq_len))
                 return a_mask
 
-            self.attention_mask = Lambda(seq2seq_attention_mask,
-                                         name='Attention-Mask')(segment_ids)
+            self.attention_mask = Lambda(
+                seq2seq_attention_mask,
+                arguments={'repeats': self.num_attention_heads},
+                name='Attention-Mask')(segment_ids)
 
         return self.attention_mask
 
