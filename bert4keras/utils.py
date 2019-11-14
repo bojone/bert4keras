@@ -189,7 +189,7 @@ class Tokenizer(BasicTokenizer):
 
         text = re.sub(' +', ' ', text)
         text = re.sub('\' (re|m|s|t|ve|d|ll) ', '\'\\1 ', text)
-        punctuation = self._cjk_punctuation() + '+-={(<['
+        punctuation = self._cjk_punctuation() + '+-/={(<['
         punctuation_regex = '|'.join([re.escape(p) for p in punctuation])
         punctuation_regex = '(%s) ' % punctuation_regex
         text = re.sub(punctuation_regex, '\\1', text)
