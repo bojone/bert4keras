@@ -16,7 +16,7 @@ from tensorflow.python.framework import ops
 # 语料路径和模型保存路径
 # 如果是TPU训练，那么语料必须存放在Google Cloud Storage上面，
 # 路径必须以gs://开通；如果是GPU训练，改为普通路径即可。
-corpus_path = 'gs://xxxx/bert4keras/test.tfrecord'
+corpus_path = 'gs://xxxx/bert4keras/corpus.tfrecord'
 saved_model_path = 'gs://xxxx/bert4keras/saved_model/bert_model.ckpt'
 
 # 其他配置
