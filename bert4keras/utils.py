@@ -3,10 +3,8 @@
 
 import unicodedata
 import codecs
-import six, re
-
-if not six.PY2:
-    basestring = str
+import re
+from bert4keras.backend import is_string
 
 
 def load_vocab(dict_path):
@@ -144,7 +142,7 @@ class Tokenizer(BasicTokenizer):
         """初始化
         """
         super(Tokenizer, self).__init__()
-        if isinstance(token_dict, basestring):
+        if is_string(token_dict):
             token_dict = load_vocab(token_dict)
 
         self._token_dict = token_dict
