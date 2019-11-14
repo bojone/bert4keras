@@ -60,12 +60,15 @@ class data_generator:
             self.steps += 1
     def __len__(self):
         return self.steps
-    def __iter__(self):
+    def __iter__(self, random=False):
         idxs = list(range(len(self.data)))
-        np.random.shuffle(idxs)
+        if random:
+            np.random.shuffle(idxs)
         batch_token_ids, batch_segment_ids, batch_labels = [], [], []
         for i in idxs:
             text1, text2, label = self.data[i]
+            if random and np.random.random() < 0.5:
+                text1, text2 = text2, text1
             token_ids, segment_ids = tokenizer.encode(text1, text2, max_length=maxlen)
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
@@ -78,7 +81,7 @@ class data_generator:
                 batch_token_ids, batch_segment_ids, batch_labels = [], [], []
     def forfit(self):
         while True:
-            for d in self.__iter__():
+            for d in self.__iter__(True):
                 yield d
 
 
