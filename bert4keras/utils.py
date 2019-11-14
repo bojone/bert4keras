@@ -181,6 +181,8 @@ class Tokenizer(BasicTokenizer):
             elif len(token) == 1 and self._is_punctuation(token):
                 text += token
                 text += ' '
+            elif i > 0 and self._is_cjk_character(text[-1]):
+                text += token
             else:
                 text += ' '
                 text += token
