@@ -205,26 +205,30 @@ if __name__ == '__main__':
     # 使用测试
 
     from bert4keras.utils import Tokenizer
-    import json, re
+    import json, glob, re
     import jieba_fast as jieba
     from tqdm import tqdm
 
-    dict_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/vocab.txt'
+    dict_path = '/home/spaces_ac_cn/chinese_roberta_wwm_ext_L-12_H-768_A-12/vocab.txt'
     tokenizer = Tokenizer(dict_path)
 
     def some_texts():
-        with open('../../baike.items') as f:
-            for l in f:
-                l = json.loads(l)
-                yield re.findall(u'.*?[\n。]+', l)
+        for _ in range(2): # 数据重复两遍
+            filenames = glob.glob('/home/spaces_ac_cn/corpus/*/*/*')
+            np.random.shuffle(filenames)
+            for filename in filenames:
+                with open(filename) as f:
+                    for l in f:
+                        l = json.loads(l)['text'].strip()
+                        yield re.findall(u'.*?[\n。]+', l)
 
     def word_segment(text):
         return jieba.lcut(text)
 
-    TD = TrainingDataset(tokenizer, word_segment, sequence_length=256)
+    TD = TrainingDataset(tokenizer, word_segment, sequence_length=512)
     TD.process(
         corpus=tqdm(some_texts()),
-        record_name='../../test.tfrecord',
+        record_name='../corpus.tfrecord',
         workers=20,
         max_queue_size=20000,
     )
