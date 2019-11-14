@@ -67,8 +67,6 @@ class data_generator:
         batch_token_ids, batch_segment_ids, batch_labels = [], [], []
         for i in idxs:
             text1, text2, label = self.data[i]
-            if random and np.random.random() < 0.5:
-                text1, text2 = text2, text1
             token_ids, segment_ids = tokenizer.encode(text1, text2, max_length=maxlen)
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
