@@ -105,7 +105,6 @@ model.compile(
     optimizer=PiecewiseLinearLearningRate(Adam(1e-4), {1000: 1, 2000: 0.1}),
     metrics=['accuracy'],
 )
-model.summary()
 
 
 # 转换数据集
