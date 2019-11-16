@@ -84,6 +84,8 @@ def piecewise_linear(t, schedule):
 
 
 def is_string(s):
+    """判断是否是字符串
+    """
     return isinstance(s, basestring)
 
 
