@@ -6,7 +6,6 @@ import os
 from distutils.util import strtobool
 import numpy as np
 import tensorflow as tf
-import six
 
 
 if strtobool(os.environ.get('TF_KERAS', '0')):
@@ -15,19 +14,6 @@ if strtobool(os.environ.get('TF_KERAS', '0')):
 else:
     import keras
     import keras.backend as K
-
-
-if not six.PY2:
-    basestring = str
-
-
-def get_all_attributes(something):
-    """获取类下的所有属性和方法
-    """
-    return {
-        name: getattr(something, name)
-        for name in dir(something) if name[:2] != '__' and name[-2:] != '__'
-    }
 
 
 def gelu_erf(x):
@@ -81,12 +67,6 @@ def piecewise_linear(t, schedule):
         x = K.switch(t >= t_begin, x, x_begin)
 
     return x
-
-
-def is_string(s):
-    """判断是否是字符串
-    """
-    return isinstance(s, basestring)
 
 
 custom_objects = {
