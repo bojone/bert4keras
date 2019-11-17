@@ -2,8 +2,8 @@
 # 自定义层
 
 import tensorflow as tf
-from bert4keras.backend import keras, K, is_string
-from bert4keras.backend import get_all_attributes
+from bert4keras.backend import keras, K
+from python_snippets import get_all_attributes, is_string
 
 
 # 等价于 from keras.layers import *
