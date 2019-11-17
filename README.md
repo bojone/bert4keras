@@ -15,6 +15,7 @@
 ## 使用
 快速安装：
 ```shell
+pip install git+https://www.github.com/bojone/python-snippets.git
 pip install git+https://www.github.com/bojone/bert4keras.git
 ```
 
