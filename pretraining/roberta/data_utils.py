@@ -6,7 +6,7 @@ os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
 
 import numpy as np
 import tensorflow as tf
-from bert4keras.utils import parallel_apply
+from python_snippets import parallel_apply
 from bert4keras.backend import K
 
 
