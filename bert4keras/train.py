@@ -3,7 +3,7 @@
 
 import tensorflow as tf
 from bert4keras.backend import keras, K
-from bert4keras.backend import get_all_attributes
+from python_snippets import get_all_attributes
 from bert4keras.backend import piecewise_linear
 from tensorflow.python.ops import array_ops
 import re
