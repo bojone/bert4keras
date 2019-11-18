@@ -4,6 +4,7 @@
 import numpy as np
 from bert4keras.layers import *
 from functools import partial
+from collections import OrderedDict
 import json
 
 
@@ -226,109 +227,123 @@ class BertModel(object):
         为了简化写法，对变量名的匹配引入了一定的模糊匹配能力。
         """
         model = self.model
-        load_variable = lambda name: tf.train.load_variable(checkpoint_file, name)
-        variable_names = [n[0] for n in tf.train.list_variables(checkpoint_file)]
-        variable_names = [n for n in variable_names if 'adam' not in n]
+        mapping = OrderedDict()
+        variable_names = [
+            n[0] for n in tf.train.list_variables(checkpoint_file)
+            if 'adam' not in n[0]
+        ]
 
         def similarity(a, b, n=4):
             # 基于n-grams的jaccard相似度
-            a = set([a[i: i + n] for i in range(len(a) - n)])
-            b = set([b[i: i + n] for i in range(len(b) - n)])
+            a = set([a[i:i + n] for i in range(len(a) - n)])
+            b = set([b[i:i + n] for i in range(len(b) - n)])
             a_and_b = a & b
             if not a_and_b:
                 return 0.
             a_or_b = a | b
             return 1. * len(a_and_b) / len(a_or_b)
 
-        def loader(name):
+        def load_variable(name):
+            # 加载单个变量的函数
             sims = [similarity(name, n) for n in variable_names]
             found_name = variable_names.pop(np.argmax(sims))
             print('==> searching: %s, found name: %s' % (name, found_name))
-            return load_variable(found_name)
+            variable = tf.train.load_variable(checkpoint_file, found_name)
+            if name in [
+                'bert/embeddings/word_embeddings',
+                'cls/predictions/output_bias',
+            ]:
+                if self.keep_words is None:
+                    return variable
+                else:
+                    return variable[self.keep_words]
+            elif name == 'cls/predictions/output_bias':
+                return variable[keep_words]
+            elif name == 'cls/seq_relationship/output_weights':
+                return variable.T
+            else:
+                return variable
 
-        if self.keep_words is None:
-            keep_words = slice(0, None)
-        else:
-            keep_words = self.keep_words
+        def load_variables(names):
+            # 批量加载的函数
+            if not isinstance(names, list):
+                names = [names]
+            return [load_variable(name) for name in names]
 
-        model.get_layer(name='Embedding-Token').set_weights([
-            loader('bert/embeddings/word_embeddings')[keep_words],
-        ])
-        model.get_layer(name='Embedding-Position').set_weights([
-            loader('bert/embeddings/position_embeddings'),
-        ])
-        model.get_layer(name='Embedding-Segment').set_weights([
-            loader('bert/embeddings/token_type_embeddings'),
-        ])
-        model.get_layer(name='Embedding-Norm').set_weights([
-            loader('bert/embeddings/LayerNorm/gamma'),
-            loader('bert/embeddings/LayerNorm/beta'),
-        ])
+        mapping['Embedding-Token'] = ['bert/embeddings/word_embeddings']
+        mapping['Embedding-Position'] = ['bert/embeddings/position_embeddings']
+        mapping['Embedding-Segment'] = ['bert/embeddings/token_type_embeddings']
+        mapping['Embedding-Norm'] = [
+            'bert/embeddings/LayerNorm/gamma',
+            'bert/embeddings/LayerNorm/beta',
+        ]
+
         if self.embedding_size != self.hidden_size:
-            model.get_layer(name='Embedding-Mapping').set_weights([
-                loader('bert/encoder/embedding_hidden_mapping_in/kernel'),
-                loader('bert/encoder/embedding_hidden_mapping_in/bias'),
-            ])
+            mapping['Embedding-Mapping'] = [
+                'bert/encoder/embedding_hidden_mapping_in/kernel',
+                'bert/encoder/embedding_hidden_mapping_in/bias',
+            ]
 
         for i in range(self.num_hidden_layers):
             try:
-                model.get_layer(name='Encoder-%d-MultiHeadSelfAttention' % (i + 1))
+                model.get_layer('Encoder-%d-MultiHeadSelfAttention' % (i + 1))
             except ValueError:
                 continue
             if ('bert/encoder/layer_%d/attention/self/query/kernel' % i) in variable_names:
-                layer_name = 'layer_%d' % i
+                block_name = 'layer_%d' % i
             else:
-                layer_name = 'transformer/group_0/inner_group_0'
-            model.get_layer(name='Encoder-%d-MultiHeadSelfAttention' % (i + 1)).set_weights([
-                loader('bert/encoder/%s/attention/self/query/kernel' % layer_name),
-                loader('bert/encoder/%s/attention/self/query/bias' % layer_name),
-                loader('bert/encoder/%s/attention/self/key/kernel' % layer_name),
-                loader('bert/encoder/%s/attention/self/key/bias' % layer_name),
-                loader('bert/encoder/%s/attention/self/value/kernel' % layer_name),
-                loader('bert/encoder/%s/attention/self/value/bias' % layer_name),
-                loader('bert/encoder/%s/attention/output/dense/kernel' % layer_name),
-                loader('bert/encoder/%s/attention/output/dense/bias' % layer_name),
-            ])
-            model.get_layer(name='Encoder-%d-MultiHeadSelfAttention-Norm' % (i + 1)).set_weights([
-                loader('bert/encoder/%s/attention/output/LayerNorm/gamma' % layer_name),
-                loader('bert/encoder/%s/attention/output/LayerNorm/beta' % layer_name),
-            ])
-            model.get_layer(
-                name='Encoder-%d-FeedForward' % (i + 1)).set_weights([
-                    loader('bert/encoder/%s/intermediate/dense/kernel' % layer_name),
-                    loader('bert/encoder/%s/intermediate/dense/bias' % layer_name),
-                    loader('bert/encoder/%s/output/dense/kernel' % layer_name),
-                    loader('bert/encoder/%s/output/dense/bias' % layer_name),
-                ])
-            model.get_layer(
-                name='Encoder-%d-FeedForward-Norm' % (i + 1)).set_weights([
-                    loader('bert/encoder/%s/output/LayerNorm/gamma' % layer_name),
-                    loader('bert/encoder/%s/output/LayerNorm/beta' % layer_name),
-                ])
+                block_name = 'transformer/group_0/inner_group_0'
+
+            mapping['Encoder-%d-MultiHeadSelfAttention' % (i + 1)] = [
+                'bert/encoder/%s/attention/self/query/kernel' % block_name,
+                'bert/encoder/%s/attention/self/query/bias' % block_name,
+                'bert/encoder/%s/attention/self/key/kernel' % block_name,
+                'bert/encoder/%s/attention/self/key/bias' % block_name,
+                'bert/encoder/%s/attention/self/value/kernel' % block_name,
+                'bert/encoder/%s/attention/self/value/bias' % block_name,
+                'bert/encoder/%s/attention/output/dense/kernel' % block_name,
+                'bert/encoder/%s/attention/output/dense/bias' % block_name,
+            ]
+            mapping['Encoder-%d-MultiHeadSelfAttention-Norm' % (i + 1)] = [
+                'bert/encoder/%s/attention/output/LayerNorm/gamma' % block_name,
+                'bert/encoder/%s/attention/output/LayerNorm/beta' % block_name,
+            ]
+            mapping['Encoder-%d-FeedForward' % (i + 1)] = [
+                'bert/encoder/%s/intermediate/dense/kernel' % block_name,
+                'bert/encoder/%s/intermediate/dense/bias' % block_name,
+                'bert/encoder/%s/output/dense/kernel' % block_name,
+                'bert/encoder/%s/output/dense/bias' % block_name,
+            ]
+            mapping['Encoder-%d-FeedForward-Norm' % (i + 1)] = [
+                'bert/encoder/%s/output/LayerNorm/gamma' % block_name,
+                'bert/encoder/%s/output/LayerNorm/beta' % block_name,
+            ]
 
         if self.with_pool:
-            model.get_layer(name='Pooler-Dense').set_weights([
-                loader('bert/pooler/dense/kernel'),
-                loader('bert/pooler/dense/bias'),
-            ])
+            mapping['Pooler-Dense'] = [
+                'bert/pooler/dense/kernel',
+                'bert/pooler/dense/bias',
+            ]
             if self.with_nsp:
-                model.get_layer(name='NSP-Proba').set_weights([
-                    loader('cls/seq_relationship/output_weights').T,
-                    loader('cls/seq_relationship/output_bias'),
-                ])
+                mapping['NSP-Proba'] = [
+                    'cls/seq_relationship/output_weights',
+                    'cls/seq_relationship/output_bias',
+                ]
 
         if self.with_mlm:
-            model.get_layer(name='MLM-Dense').set_weights([
-                loader('cls/predictions/transform/dense/kernel'),
-                loader('cls/predictions/transform/dense/bias'),
-            ])
-            model.get_layer(name='MLM-Norm').set_weights([
-                loader('cls/predictions/transform/LayerNorm/gamma'),
-                loader('cls/predictions/transform/LayerNorm/beta'),
-            ])
-            model.get_layer(name='MLM-Proba').set_weights([
-                loader('cls/predictions/output_bias')[keep_words],
-            ])
+            mapping['MLM-Dense'] = [
+                'cls/predictions/transform/dense/kernel',
+                'cls/predictions/transform/dense/bias',
+            ]
+            mapping['MLM-Norm'] = [
+                'cls/predictions/transform/LayerNorm/gamma',
+                'cls/predictions/transform/LayerNorm/beta',
+            ]
+            mapping['MLM-Proba'] = ['cls/predictions/output_bias']
+
+        for layer_name, layer_variable_names in mapping.items():
+            weights = load_variables(layer_variable_names)
+            model.get_layer(layer_name).set_weights(weights)
 
 
 class Bert4Seq2seq(BertModel):
