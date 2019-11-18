@@ -100,7 +100,7 @@ model.summary()
 
 model.compile(
     loss='sparse_categorical_crossentropy',
-    optimizer=Adam(1e-5),  # 用足够小的学习率
+    optimizer=Adam(2e-5),  # 用足够小的学习率
     # optimizer=PiecewiseLinearLearningRate(Adam(5e-5), {10000: 1, 30000: 0.1}),
     metrics=['accuracy'],
 )
