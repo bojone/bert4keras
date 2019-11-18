@@ -4,7 +4,6 @@
 
 import json
 import numpy as np
-from random import choice
 import re, os, codecs
 from bert4keras.backend import set_gelu, K
 from bert4keras.utils import Tokenizer, load_vocab
