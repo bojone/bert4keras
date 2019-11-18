@@ -221,53 +221,10 @@ class BertModel(object):
         return keras.initializers.TruncatedNormal(
             stddev=self.initializer_range)
 
-    def load_weights_from_checkpoint(self, checkpoint_file):
-        """从预训练好的Bert的checkpoint中加载权重
-        为了简化写法，对变量名的匹配引入了一定的模糊匹配能力。
+    def variable_mapping(self, variable_names):
+        """构建Keras层与checkpoint的变量名之间的映射表
         """
-        model = self.model
         mapping = OrderedDict()
-        variable_names = [
-            n[0] for n in tf.train.list_variables(checkpoint_file)
-            if 'adam' not in n[0]
-        ]
-
-        def similarity(a, b, n=4):
-            # 基于n-grams的jaccard相似度
-            a = set([a[i:i + n] for i in range(len(a) - n)])
-            b = set([b[i:i + n] for i in range(len(b) - n)])
-            a_and_b = a & b
-            if not a_and_b:
-                return 0.
-            a_or_b = a | b
-            return 1. * len(a_and_b) / len(a_or_b)
-
-        def load_variable(name):
-            # 加载单个变量的函数
-            sims = [similarity(name, n) for n in variable_names]
-            found_name = variable_names.pop(np.argmax(sims))
-            print('==> searching: %s, found name: %s' % (name, found_name))
-            variable = tf.train.load_variable(checkpoint_file, found_name)
-            if name in [
-                'bert/embeddings/word_embeddings',
-                'cls/predictions/output_bias',
-            ]:
-                if self.keep_words is None:
-                    return variable
-                else:
-                    return variable[self.keep_words]
-            elif name == 'cls/predictions/output_bias':
-                return variable[keep_words]
-            elif name == 'cls/seq_relationship/output_weights':
-                return variable.T
-            else:
-                return variable
-
-        def load_variables(names):
-            # 批量加载的函数
-            if not isinstance(names, list):
-                names = [names]
-            return [load_variable(name) for name in names]
 
         mapping['Embedding-Token'] = ['bert/embeddings/word_embeddings']
         mapping['Embedding-Position'] = ['bert/embeddings/position_embeddings']
@@ -285,7 +242,7 @@ class BertModel(object):
 
         for i in range(self.num_hidden_layers):
             try:
-                model.get_layer('Encoder-%d-MultiHeadSelfAttention' % (i + 1))
+                self.model.get_layer('Encoder-%d-MultiHeadSelfAttention' % (i + 1))
             except ValueError:
                 continue
             if ('bert/encoder/layer_%d/attention/self/query/kernel' % i) in variable_names:
@@ -340,9 +297,87 @@ class BertModel(object):
             ]
             mapping['MLM-Proba'] = ['cls/predictions/output_bias']
 
+        return mapping
+
+    def load_weights_from_checkpoint(self, checkpoint_file):
+        """从预训练好的Bert的checkpoint中加载权重
+        为了简化写法，对变量名的匹配引入了一定的模糊匹配能力。
+        """
+        variable_names = [
+            n[0] for n in tf.train.list_variables(checkpoint_file)
+            if 'adam' not in n[0]
+        ]
+        mapping = self.variable_mapping(variable_names)
+
+        def similarity(a, b, n=4):
+            # 基于n-grams的jaccard相似度
+            a = set([a[i:i + n] for i in range(len(a) - n)])
+            b = set([b[i:i + n] for i in range(len(b) - n)])
+            a_and_b = a & b
+            if not a_and_b:
+                return 0.
+            a_or_b = a | b
+            return 1. * len(a_and_b) / len(a_or_b)
+
+        def load_variable(name):
+            # 加载单个变量的函数
+            sims = [similarity(name, n) for n in variable_names]
+            found_name = variable_names.pop(np.argmax(sims))
+            print('==> searching: %s, found name: %s' % (name, found_name))
+            variable = tf.train.load_variable(checkpoint_file, found_name)
+            if name in [
+                'bert/embeddings/word_embeddings',
+                'cls/predictions/output_bias',
+            ]:
+                if self.keep_words is None:
+                    return variable
+                else:
+                    return variable[self.keep_words]
+            elif name == 'cls/seq_relationship/output_weights':
+                return variable.T
+            else:
+                return variable
+
+        def load_variables(names):
+            # 批量加载的函数
+            if not isinstance(names, list):
+                names = [names]
+            return [load_variable(name) for name in names]
+
         for layer_name, layer_variable_names in mapping.items():
             weights = load_variables(layer_variable_names)
-            model.get_layer(layer_name).set_weights(weights)
+            self.model.get_layer(layer_name).set_weights(weights)
+
+    def save_weights_as_checkpoint(self, filename, reference):
+        """保存模型的权重，跟Bert的checkpoint格式一致
+        filename: 要保存的名字；
+        reference: 参照的已有的checkpoint。
+        """
+        variable_names = [
+            n[0] for n in tf.train.list_variables(reference)
+            if 'adam' not in n[0]
+        ]
+        mapping = self.variable_mapping(variable_names)
+        weights = {}
+
+        for layer_name, layer_variable_names in mapping.items():
+            layer_weights = self.model.get_layer(layer_name).get_weights()
+            for n, w in zip(layer_variable_names, layer_weights):
+                weights[n] = w
+
+        def create_variable(name, value):
+            if name == 'cls/seq_relationship/output_weights':
+                value = value.T
+            return tf.Variable(value, name=name)
+
+        with tf.Graph().as_default():
+            for n, w in weights.items():
+                create_variable(n, w)
+
+            sess = tf.Session()
+            sess.run(tf.global_variables_initializer())
+            saver = tf.train.Saver()
+            saver.save(sess, filename)
 
 
 class Bert4Seq2seq(BertModel):
