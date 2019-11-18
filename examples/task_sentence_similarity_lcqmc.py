@@ -4,7 +4,7 @@
 
 import json
 import numpy as np
-import re, os, codecs
+import codecs
 from bert4keras.backend import set_gelu, K
 from bert4keras.utils import Tokenizer, load_vocab
 from bert4keras.bert import build_bert_model
