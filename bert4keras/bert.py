@@ -3,7 +3,6 @@
 
 import numpy as np
 from bert4keras.layers import *
-from functools import partial
 from collections import OrderedDict
 import json
 
