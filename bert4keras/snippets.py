@@ -3,6 +3,7 @@
 
 import six
 import logging
+import numpy as np
 
 
 if not six.PY2:
