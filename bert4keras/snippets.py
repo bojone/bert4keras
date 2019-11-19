@@ -118,3 +118,16 @@ def get_all_attributes(something):
         name: getattr(something, name)
         for name in dir(something) if name[:2] != '__' and name[-2:] != '__'
     }
+
+
+def sequence_padding(inputs, length=None, padding=0):
+    """Numpy函数，将序列padding到同一长度
+    """
+    if length is None:
+        length = max([len(x) for x in inputs])
+
+    outputs = np.array([
+        np.concatenate([x, [padding] * (length - len(x))])
+        if len(x) < length else x[:length] for x in inputs
+    ])
+    return outputs
