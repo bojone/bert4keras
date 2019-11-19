@@ -395,7 +395,7 @@ class Bert4Seq2seq(BertModel):
         """
         if self.attention_mask is None:
 
-            def seq2seq_attention_mask(s, repeats=1):
+            def seq2seq_attention_mask(s):
                 import tensorflow as tf
                 ones = K.ones_like(s[:1])
                 ones = K.expand_dims(ones, 1)
@@ -407,7 +407,6 @@ class Bert4Seq2seq(BertModel):
 
             self.attention_mask = Lambda(
                 seq2seq_attention_mask,
-                arguments={'repeats': self.num_attention_heads},
                 name='Attention-Mask')(segment_ids)
 
         return self.attention_mask
