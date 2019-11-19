@@ -2,7 +2,7 @@
 # 测试代码可用性: MLM
 
 from bert4keras.bert import build_bert_model
-from bert4keras.utils import Tokenizer
+from bert4keras.tokenizer import Tokenizer
 import numpy as np
 
 
