@@ -397,8 +397,9 @@ class Bert4Seq2seq(BertModel):
 
             def seq2seq_attention_mask(s):
                 import tensorflow as tf
-                ones = K.ones_like(s[:1])
-                ones = K.expand_dims(ones, 1)
+                seq_len = K.shape(s)[1]
+                with K.name_scope('attention_mask'):
+                    ones = K.ones((1, 1, seq_len, seq_len))
                 a_mask = tf.linalg.band_part(ones, -1, 0)
                 s_ex12 = K.expand_dims(K.expand_dims(s, 1), 2)
                 s_ex13 = K.expand_dims(K.expand_dims(s, 1), 3)
