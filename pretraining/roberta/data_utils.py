@@ -6,7 +6,7 @@ os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
 
 import numpy as np
 import tensorflow as tf
-from python_snippets import parallel_apply
+from bert4keras.snippets import parallel_apply
 from bert4keras.backend import K
 
 
@@ -204,7 +204,7 @@ if __name__ == '__main__':
 
     # 使用测试
 
-    from bert4keras.utils import Tokenizer
+    from bert4keras.tokenizer import Tokenizer
     import json, glob, re
     import jieba_fast as jieba
     from tqdm import tqdm
