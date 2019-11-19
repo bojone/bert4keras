@@ -6,7 +6,9 @@ import glob
 import numpy as np
 from tqdm import tqdm
 import os, json, codecs, re
-import uniout
+import sys
+if sys.version_info[0] < 3:
+    import uniout
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.snippets import sequence_padding
