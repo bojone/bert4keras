@@ -9,7 +9,7 @@ from tqdm import tqdm
 import os, json, codecs
 import uniout
 from bert4keras.bert import build_bert_model
-from bert4keras.utils import Tokenizer, load_vocab
+from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.snippets import parallel_apply
 from keras.layers import *
 from keras.models import Model
