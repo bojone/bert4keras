@@ -66,7 +66,7 @@ class data_generator:
             if len(batch_token_ids) == self.batch_size or i == idxs[-1]:
                 batch_token_ids = sequence_padding(batch_token_ids)
                 batch_segment_ids = sequence_padding(batch_segment_ids)
-                batch_labels = seq_padding(batch_labels)
+                batch_labels = sequence_padding(batch_labels)
                 yield [batch_token_ids, batch_segment_ids], batch_labels
                 batch_token_ids, batch_segment_ids, batch_labels = [], [], []
     def forfit(self):
