@@ -9,6 +9,7 @@ import os, json, codecs, re
 import uniout
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
+from bert4keras.snippets import sequence_padding
 from keras.layers import *
 from keras.models import Model
 from keras import backend as K
@@ -102,13 +103,6 @@ pbar.close()
 np.random.shuffle(data)
 
 
-def padding(x):
-    """padding至batch内的最大长度
-    """
-    ml = max([len(i) for i in x])
-    return np.array([i + [0] * (ml - len(i)) for i in x])
-
-
 def data_generator():
     while True:
         X, S = [], []
@@ -117,8 +111,8 @@ def data_generator():
             X.append(x)
             S.append(s)
             if len(X) == batch_size:
-                X = padding(X)
-                S = padding(S)
+                X = sequence_padding(X)
+                S = sequence_padding(S)
                 yield [X, S], None
                 X, S = [], []
 
