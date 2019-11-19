@@ -16,6 +16,22 @@ def is_string(s):
     return isinstance(s, basestring)
 
 
+def strQ2B(ustring):
+    """全角符号转对应的半角符号
+    """
+    rstring = ''
+    for uchar in ustring:
+        inside_code=ord(uchar)
+        # 全角空格直接转换
+        if inside_code == 12288:
+            inside_code = 32
+        # 全角字符（除空格）根据关系转化
+        elif (inside_code >= 65281 and inside_code <= 65374):
+            inside_code -= 65248
+        rstring += unichr(inside_code)
+    return rstring
+
+
 class Progress:
     """显示进度，自己简单封装，比tqdm更可控一些
     iterable: 可迭代的对象；
