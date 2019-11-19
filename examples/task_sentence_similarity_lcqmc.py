@@ -9,6 +9,7 @@ from bert4keras.backend import set_gelu, K
 from bert4keras.tokenizer import Tokenizer
 from bert4keras.bert import build_bert_model
 from bert4keras.train import PiecewiseLinearLearningRate
+from bert4keras.snippets import sequence_padding
 from keras.layers import *
 from keras.models import Model
 from keras.optimizers import Adam
@@ -41,16 +42,9 @@ test_data = load_data('datasets/lcqmc/lcqmc.test.data')
 tokenizer = Tokenizer(dict_path)
 
 
-def seq_padding(X, padding=0):
-    L = [len(x) for x in X]
-    ML = max(L)
-    return np.array([
-        np.concatenate([x, [padding] * (ML - len(x))]) if len(x) < ML else x
-        for x in X
-    ])
-
-
 class data_generator:
+    """数据生成器
+    """
     def __init__(self, data, batch_size=64):
         self.data = data
         self.batch_size = batch_size
@@ -71,9 +65,9 @@ class data_generator:
             batch_segment_ids.append(segment_ids)
             batch_labels.append([label])
             if len(batch_token_ids) == self.batch_size or i == idxs[-1]:
-                batch_token_ids = seq_padding(batch_token_ids)
-                batch_segment_ids = seq_padding(batch_segment_ids)
-                batch_labels = seq_padding(batch_labels)
+                batch_token_ids = sequence_padding(batch_token_ids)
+                batch_segment_ids = sequence_padding(batch_segment_ids)
+                batch_labels = sequence_padding(batch_labels)
                 yield [batch_token_ids, batch_segment_ids], batch_labels
                 batch_token_ids, batch_segment_ids, batch_labels = [], [], []
     def forfit(self):
