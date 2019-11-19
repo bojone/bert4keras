@@ -12,7 +12,7 @@ initializers = keras.initializers
 activations = keras.activations
 
 
-def sequence_masking(x, mask, mode=0, axis=None, heads=1):
+def sequence_masking(x, mask, mode=0, axis=None):
     """为序列条件mask的函数
     mask: 形如(batch_size, seq_len)的0-1矩阵；
     mode: 如果是0，则直接乘以mask；
@@ -23,10 +23,6 @@ def sequence_masking(x, mask, mode=0, axis=None, heads=1):
     if mask is None or mode not in [0, 1]:
         return x
     else:
-        if heads is not 1:
-            mask = K.expand_dims(mask, 1)
-            mask = K.tile(mask, (1, heads, 1))
-            mask = K.reshape(mask, (-1, K.shape(mask)[2]))
         if axis is None:
             axis = 1
         if axis == -1:
@@ -106,29 +102,19 @@ class MultiHeadAttention(Layer):
         qw = K.reshape(qw, (-1, K.shape(q)[1], self.heads, self.key_size))
         kw = K.reshape(kw, (-1, K.shape(k)[1], self.heads, self.key_size))
         vw = K.reshape(vw, (-1, K.shape(v)[1], self.heads, self.head_size))
-        # 维度置换
-        qw = K.permute_dimensions(qw, (0, 2, 1, 3))
-        kw = K.permute_dimensions(kw, (0, 2, 1, 3))
-        vw = K.permute_dimensions(vw, (0, 2, 1, 3))
-        # 转为三阶张量
-        qw = K.reshape(qw, (-1, K.shape(q)[1], self.key_size))
-        kw = K.reshape(kw, (-1, K.shape(k)[1], self.key_size))
-        vw = K.reshape(vw, (-1, K.shape(v)[1], self.head_size))
         # Attention
-        a = K.batch_dot(qw, kw, [2, 2]) / self.key_size**0.5
-        a = sequence_masking(a, v_mask, 1, -1, self.heads)
+        a = tf.einsum('bjhd,bkhd->bhjk', qw, kw) / self.key_size**0.5
+        a = sequence_masking(a, v_mask, 1, -1)
         if a_mask is not None:
             if is_string(a_mask) and a_mask == 'history_only':
-                ones = K.ones_like(a[:1])
+                ones = K.ones_like(a[:1, :1])
                 a_mask = (ones - tf.linalg.band_part(ones, -1, 0)) * 1e12
                 a = a - a_mask
             else:
                 a = a - (1 - a_mask) * 1e12
         a = K.softmax(a)
         # 完成输出
-        o = K.batch_dot(a, vw, [2, 1])
-        o = K.reshape(o, (-1, self.heads, K.shape(q)[1], self.head_size))
-        o = K.permute_dimensions(o, (0, 2, 1, 3))
+        o = tf.einsum('bhjk,bkhd->bjhd', a, vw)
         o = K.reshape(o, (-1, K.shape(o)[1], self.out_dim))
         o = self.o_dense(o)
         o = sequence_masking(o, q_mask, 0)
