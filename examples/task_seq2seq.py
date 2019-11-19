@@ -10,7 +10,7 @@ import os, json, codecs
 import uniout
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
-from bert4keras.snippets import parallel_apply
+from bert4keras.snippets import parallel_apply, sequence_padding
 from keras.layers import *
 from keras.models import Model
 from keras import backend as K
@@ -50,11 +50,8 @@ _token_dict = load_vocab(dict_path) # 读取词典
 _tokenizer = Tokenizer(_token_dict) # 建立临时分词器
 
 if os.path.exists(seq2seq_config):
-
     tokens = json.load(open(seq2seq_config))
-
 else:
-
     def _batch_texts():
         texts = []
         for text in read_texts():
@@ -109,13 +106,6 @@ for t in tokens:
 tokenizer = Tokenizer(token_dict)  # 建立分词器
 
 
-def padding(x):
-    """padding至batch内的最大长度
-    """
-    ml = max([len(i) for i in x])
-    return np.array([i + [0] * (ml - len(i)) for i in x])
-
-
 def data_generator():
     while True:
         X, S = [], []
@@ -124,8 +114,8 @@ def data_generator():
             X.append(x)
             S.append(s)
             if len(X) == batch_size:
-                X = padding(X)
-                S = padding(S)
+                X = sequence_padding(X)
+                S = sequence_padding(S)
                 yield [X, S], None
                 X, S = [], []
 
