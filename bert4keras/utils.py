@@ -4,7 +4,7 @@
 import unicodedata
 import codecs
 import re
-from python_snippets import is_string
+from bert4keras.snippets import is_string
 
 
 def load_vocab(dict_path):
