@@ -5,7 +5,7 @@ import json
 import numpy as np
 import codecs
 from bert4keras.backend import set_gelu
-from bert4keras.utils import Tokenizer, load_vocab
+from bert4keras.tokenizer import Tokenizer
 from bert4keras.bert import build_bert_model
 from bert4keras.train import PiecewiseLinearLearningRate
 from keras.layers import *
