@@ -26,6 +26,7 @@ class BertModel(object):
             dropout_rate,  # Dropout比例
             initializer_range=None,  # 权重初始化方差
             embedding_size=None,  # 是否指定embedding_size
+            num_feed_forward_groups=1,  # Feed Forward部分是否使用分组Dense
             with_pool=False,  # 是否包含Pool部分
             with_nsp=False,  # 是否包含NSP部分
             with_mlm=False,  # 是否包含MLM部分
@@ -51,6 +52,7 @@ class BertModel(object):
             self.embedding_size = embedding_size
         else:
             self.embedding_size = hidden_size
+        self.num_feed_forward_groups = num_feed_forward_groups
         self.with_pool = with_pool
         self.with_nsp = with_nsp
         self.with_mlm = with_mlm
@@ -172,6 +174,7 @@ class BertModel(object):
                 Add(name='%s-Add' % attention_name),
                 LayerNormalization(name='%s-Norm' % attention_name),
                 FeedForward(units=self.intermediate_size,
+                            groups=self.num_feed_forward_groups,
                             activation=self.hidden_act,
                             kernel_initializer=self.initializer,
                             name=feed_forward_name),
@@ -459,6 +462,7 @@ def build_bert_model(config_path,
                 dropout_rate=config['hidden_dropout_prob'],
                 initializer_range=config.get('initializer_range'),
                 embedding_size=config.get('embedding_size'),
+                num_feed_forward_groups=config.get('num_feed_forward_groups'),
                 with_pool=with_pool,
                 with_nsp=with_nsp,
                 with_mlm=with_mlm,
