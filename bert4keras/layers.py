@@ -212,6 +212,60 @@ class PositionEmbedding(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
+class GroupDense(Layer):
+    """分组全连接
+    输入输出跟普通Dense一样，但参数更少，速度更快。
+    """
+    def __init__(self,
+                 units,
+                 groups=2,
+                 activation='linear',
+                 kernel_initializer='glorot_uniform',
+                 **kwargs):
+        super(GroupDense, self).__init__(**kwargs)
+        self.units = units
+        self.groups = groups
+        self.activation = activations.get(activation)
+        self.kernel_initializer = initializers.get(kernel_initializer)
+
+    def build(self, input_shape):
+        super(GroupDense, self).build(input_shape)
+        input_dim = input_shape[-1]
+        assert input_dim % self.groups == 0
+        assert self.units % self.groups == 0
+        self.kernel = self.add_weight(name='kernel',
+                                      shape=(input_dim // self.groups,
+                                             self.units // self.groups,
+                                             self.groups),
+                                      initializer=self.kernel_initializer)
+        self.bias = self.add_weight(name='bias',
+                                    shape=(self.units,),
+                                    initializer='zeros')
+
+    def call(self, inputs):
+        ndim, shape = K.ndim(inputs), K.shape(inputs)
+        shape = [shape[i] for i in range(ndim)]
+        inputs = K.reshape(inputs, shape[:-1] + [shape[-1] // self.groups, self.groups])
+        outputs = tf.einsum('...ig,ijg->...gj', inputs, self.kernel)
+        outputs = K.reshape(outputs, shape[:-1] + [self.units])
+        outputs = outputs + self.bias
+        outputs = self.activation(outputs)
+        return outputs
+
+    def compute_output_shape(self, input_shape):
+        return input_shape[:-1] + (self.units, )
+
+    def get_config(self):
+        config = {
+            'units': self.units,
+            'groups': self.groups,
+            'activation': activations.serialize(self.activation),
+            'kernel_initializer': initializers.serialize(self.kernel_initializer),
+        }
+        base_config = super(GroupDense, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+
 class FeedForward(Layer):
     """FeedForward层，其实就是两个Dense层的叠加
     """
@@ -309,8 +363,9 @@ custom_objects = {
     'MultiHeadAttention': MultiHeadAttention,
     'LayerNormalization': LayerNormalization,
     'PositionEmbedding': PositionEmbedding,
+    'GroupDense': GroupDense,
     'FeedForward': FeedForward,
-    'EmbeddingDense': EmbeddingDense
+    'EmbeddingDense': EmbeddingDense,
 }
 
 keras.utils.get_custom_objects().update(custom_objects)
