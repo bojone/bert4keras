@@ -136,6 +136,7 @@ class BertModel(object):
                       name='MLM-Dense')(x)
             x = LayerNormalization(name='MLM-Norm')(x)
             x = EmbeddingDense(embedding_name='Embedding-Token',
+                               activation=self.with_mlm,
                                name='MLM-Proba')(x)
             outputs.append(x)
 
