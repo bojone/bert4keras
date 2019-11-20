@@ -231,6 +231,8 @@ class GroupDense(Layer):
     def build(self, input_shape):
         super(GroupDense, self).build(input_shape)
         input_dim = input_shape[-1]
+        if not isinstance(input_dim, int):
+            input_dim = input_dim.value
         assert input_dim % self.groups == 0
         assert self.units % self.groups == 0
         self.kernel = self.add_weight(name='kernel',
@@ -282,11 +284,22 @@ class FeedForward(Layer):
     def build(self, input_shape):
         super(FeedForward, self).build(input_shape)
         output_dim = input_shape[-1]
-        self.dense_1 = Dense(units=self.units,
-                             activation=self.activation,
-                             kernel_initializer=self.kernel_initializer)
-        self.dense_2 = Dense(units=output_dim,
-                             kernel_initializer=self.kernel_initializer)
+        if not isinstance(output_dim, int):
+            output_dim = output_dim.value
+        if self.groups is None or self.groups == 1:
+            self.dense_1 = Dense(units=self.units,
+                                 activation=self.activation,
+                                 kernel_initializer=self.kernel_initializer)
+            self.dense_2 = Dense(units=output_dim,
+                                 kernel_initializer=self.kernel_initializer)
+        else:
+            self.dense_1 = GroupDense(units=self.units,
+                                      groups=self.groups,
+                                      activation=self.activation,
+                                      kernel_initializer=self.kernel_initializer)
+            self.dense_2 = GroupDense(units=output_dim,
+                                      groups=self.groups,
+                                      kernel_initializer=self.kernel_initializer)
 
     def call(self, inputs):
         x = self.dense_1(inputs)
@@ -310,6 +323,8 @@ class EmbeddingDense(Layer):
     def __init__(self, embedding_name, activation='softmax', **kwargs):
         super(EmbeddingDense, self).__init__(**kwargs)
         self.embedding_name = embedding_name
+        if activation is True:
+            activation = 'softmax'
         self.activation = activations.get(activation)
 
     def call(self, inputs):
