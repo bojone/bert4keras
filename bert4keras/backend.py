@@ -73,6 +73,8 @@ custom_objects = {
     'gelu_erf': gelu_erf,
     'gelu_tanh': gelu_tanh,
     'gelu': gelu_erf,
+    'swish': tf.nn.swish,
+    'leaky_relu': tf.nn.leaky_relu,
 }
 
 keras.utils.get_custom_objects().update(custom_objects)
