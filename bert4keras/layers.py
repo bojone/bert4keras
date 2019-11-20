@@ -239,7 +239,7 @@ class GroupDense(Layer):
                                              self.groups),
                                       initializer=self.kernel_initializer)
         self.bias = self.add_weight(name='bias',
-                                    shape=(self.units,),
+                                    shape=(self.units, ),
                                     initializer='zeros')
 
     def call(self, inputs):
