@@ -146,6 +146,7 @@ else:
 
 with strategy.scope():
     train_model = build_train_bert_model()
+    train_model.summary()
 
 # 模型回调
 checkpoint = ModelCheckpoint(
