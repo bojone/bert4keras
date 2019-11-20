@@ -273,11 +273,13 @@ class FeedForward(Layer):
     """
     def __init__(self,
                  units,
+                 groups=1,
                  activation='relu',
                  kernel_initializer='glorot_uniform',
                  **kwargs):
         super(FeedForward, self).__init__(**kwargs)
         self.units = units
+        self.groups = groups
         self.activation = activations.get(activation)
         self.kernel_initializer = initializers.get(kernel_initializer)
 
