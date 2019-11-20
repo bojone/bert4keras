@@ -40,7 +40,6 @@ Input = keras.layers.Input
 Lambda = keras.layers.Lambda
 Adam = keras.optimizers.Adam
 Model = keras.models.Model
-sparse_categorical_accuracy = keras.metrics.sparse_categorical_accuracy
 ModelCheckpoint = keras.callbacks.ModelCheckpoint
 CSVLogger = keras.callbacks.CSVLogger
 
@@ -75,7 +74,7 @@ def build_train_bert_model():
     tensorflow算子，尤其不支持动态（变长）算子，因此编写相应运算
     时要格外留意。
     """
-    bert = build_bert_model(config_path, with_mlm=True, return_keras_model=False)
+    bert = build_bert_model(config_path, with_mlm='linear', return_keras_model=False)
     bert_model = bert.model
     proba = bert_model.output
 
@@ -88,7 +87,7 @@ def build_train_bert_model():
         """
         y_true, y_pred, is_masked = inputs
         is_masked = K.cast(is_masked, K.floatx())
-        loss = K.sparse_categorical_crossentropy(y_true, y_pred)
+        loss = K.sparse_categorical_crossentropy(y_true, y_pred, from_logits=True)
         loss = K.sum(loss * is_masked) / (K.sum(is_masked) + K.epsilon())
         return loss
 
@@ -98,7 +97,7 @@ def build_train_bert_model():
         y_true, y_pred, is_masked = inputs
         is_masked = K.cast(is_masked, K.floatx())
         y_true = K.cast(y_true, K.floatx())
-        acc = sparse_categorical_accuracy(y_true, y_pred)
+        acc = keras.metrics.sparse_categorical_accuracy(y_true, y_pred)
         acc = K.sum(acc * is_masked) / (K.sum(is_masked) + K.epsilon())
         return acc
 
