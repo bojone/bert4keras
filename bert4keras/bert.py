@@ -303,7 +303,7 @@ class BertModel(object):
 
         return mapping
 
-    def load_weights_from_checkpoint(self, checkpoint_file):
+    def load_weights_from_checkpoint(self, checkpoint_file, mapping=None):
         """从预训练好的Bert的checkpoint中加载权重
         为了简化写法，对变量名的匹配引入了一定的模糊匹配能力。
         """
@@ -311,7 +311,8 @@ class BertModel(object):
             n[0] for n in tf.train.list_variables(checkpoint_file)
             if 'adam' not in n[0]
         ]
-        mapping = self.variable_mapping(variable_names)
+        if mapping is None:
+            mapping = self.variable_mapping(variable_names)
 
         def similarity(a, b, n=4):
             # 基于n-grams的jaccard相似度
@@ -352,7 +353,7 @@ class BertModel(object):
             weights = load_variables(layer_variable_names)
             self.model.get_layer(layer_name).set_weights(weights)
 
-    def save_weights_as_checkpoint(self, filename, reference):
+    def save_weights_as_checkpoint(self, filename, reference, mapping=None):
         """保存模型的权重，跟Bert的checkpoint格式一致
         filename: 要保存的名字；
         reference: 参照的已有的checkpoint。
@@ -361,9 +362,10 @@ class BertModel(object):
             n[0] for n in tf.train.list_variables(reference)
             if 'adam' not in n[0]
         ]
-        mapping = self.variable_mapping(variable_names)
-        weights = {}
+        if mapping is None:
+            mapping = self.variable_mapping(variable_names)
 
+        weights = {}
         for layer_name, layer_variable_names in mapping.items():
             layer_weights = self.model.get_layer(layer_name).get_weights()
             for n, w in zip(layer_variable_names, layer_weights):
