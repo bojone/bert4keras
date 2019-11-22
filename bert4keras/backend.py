@@ -8,7 +8,13 @@ import numpy as np
 import tensorflow as tf
 
 
-if strtobool(os.environ.get('TF_KERAS', '0')):
+def is_tf_keras():
+    """判断是tf.keras还是纯keras
+    """
+    return strtobool(os.environ.get('TF_KERAS', '0'))
+
+
+if is_tf_keras():
     import tensorflow.keras as keras
     import tensorflow.keras.backend as K
 else:
