@@ -209,6 +209,7 @@ if __name__ == '__main__':
     import jieba_fast as jieba
     from tqdm import tqdm
 
+    jieba.initialize()
     dict_path = '/home/spaces_ac_cn/chinese_roberta_wwm_ext_L-12_H-768_A-12/vocab.txt'
     tokenizer = Tokenizer(dict_path)
 
