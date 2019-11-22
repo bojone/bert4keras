@@ -133,7 +133,7 @@ def get_all_attributes(something):
     """
     return {
         name: getattr(something, name)
-        for name in dir(something) if name[:2] != '__' and name[-2:] != '__'
+        for name in dir(something) if name[0] != '_'
     }
 
 
