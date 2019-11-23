@@ -317,6 +317,7 @@ def extend_with_gradient_accumulation_v2(base_optimizer, name=None):
             op = super(new_optimizer, self)._resource_apply_op(ag, var)
             K.update = old_update
 
+            # 累积梯度
             with tf.control_dependencies([op]):
                 ag_t = K.switch(cond, K.zeros_like(ag), ag)
                 with tf.control_dependencies([K.update(ag, ag_t)]):
