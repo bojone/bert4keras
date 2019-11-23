@@ -295,31 +295,17 @@ def extend_with_gradient_accumulation_v2(base_optimizer, name=None):
         def __init__(self, grad_accum_steps, *args, **kwargs):
             super(new_optimizer, self).__init__(*args, **kwargs)
             self.grad_accum_steps = grad_accum_steps
-            self._first_get_gradients = True
 
-        def get_gradients(self, loss, params):
-            if self._first_get_gradients:
-                self._first_get_gradients = False
-                for p in params:
-                    self.add_slot(p, 'ag')
-                return super(new_optimizer, self).get_gradients(loss, params)
-            else:
-                return [
-                    self.get_slot(p, 'ag') / self.grad_accum_steps
-                    for p in params
-                ]
+        def _create_slots(self, var_list):
+            super(new_optimizer, self)._create_slots(var_list)
+            for var in var_list:
+                self.add_slot(var, 'ag')
 
-        def get_updates(self, loss, params):
-            self.instant_grads = dict(
-                zip(params, self.get_gradients(loss, params)))
-            return super(new_optimizer, self).get_updates(loss, params)
-
-        def _resource_apply_op(self, grad, var):
-            """梯度累积的情况下，梯度不能再用稀疏形式存储，
-            所以indices参数已经不再需要。
-            """
+        def _resource_apply_op(self, grad, var, indices=None):
             # 更新判据
             cond = K.equal(self.iterations % self.grad_accum_steps, 0)
+            # 获取梯度
+            ag = self.get_slot(var, 'ag')
 
             old_update = K.update
 
@@ -328,18 +314,16 @@ def extend_with_gradient_accumulation_v2(base_optimizer, name=None):
                 return old_update(x, new_x)
 
             K.update = new_update
-            op = super(new_optimizer, self)._resource_apply_op(grad, var)
+            op = super(new_optimizer, self)._resource_apply_op(ag, var)
             K.update = old_update
 
-            # 获取梯度
-            g_t = self.instant_grads[var]
-            ag_t = self.get_slot(var, 'ag')
-            if isinstance(g_t, tf.IndexedSlices):
-                g_t = g_t + K.zeros_like(ag_t)
-
-            # 累积梯度
             with tf.control_dependencies([op]):
-                ag_t = K.update(ag_t, K.switch(cond, g_t, ag_t + g_t))
+                ag_t = K.switch(cond, K.zeros_like(ag), ag)
+                with tf.control_dependencies([K.update(ag, ag_t)]):
+                    if indices is None:
+                        ag_t = K.update(ag, ag + grad)
+                    else:
+                        ag_t = self._resource_scatter_add(ag, indices, grad)
 
             return ag_t
 
