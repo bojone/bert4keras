@@ -11,8 +11,9 @@ from bert4keras.bert import build_bert_model
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, get_all_attributes
 
-set_gelu('tanh') # 切换gelu版本
 locals().update(get_all_attributes(keras.layers))  # from keras.layers import *
+set_gelu('tanh') # 切换gelu版本
+
 
 maxlen = 128
 config_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/bert_config.json'
