@@ -5,7 +5,6 @@ import six
 import logging
 import numpy as np
 
-
 if not six.PY2:
     basestring = str
 
@@ -21,7 +20,7 @@ def strQ2B(ustring):
     """
     rstring = ''
     for uchar in ustring:
-        inside_code=ord(uchar)
+        inside_code = ord(uchar)
         # 全角空格直接转换
         if inside_code == 12288:
             inside_code = 32
