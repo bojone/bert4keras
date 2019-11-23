@@ -6,14 +6,12 @@ import glob
 import numpy as np
 from tqdm import tqdm
 import os, json, codecs, re
+from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
-from bert4keras.snippets import sequence_padding
-from keras.layers import *
-from keras.models import Model
-from keras import backend as K
-from keras.callbacks import Callback
-from keras.optimizers import Adam
+from bert4keras.snippets import sequence_padding, get_all_attributes
+
+locals().update(get_all_attributes(keras.layers))  # from keras.layers import *
 
 
 lm_config = 'lm_config.json'
@@ -24,14 +22,14 @@ steps_per_epoch = 1000
 epochs = 10000
 
 # bert配置
-config_path = '../../bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '../../bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt'
-dict_path = '../../bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/vocab.txt'
+config_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_config.json'
+checkpoint_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt'
+dict_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/vocab.txt'
 
 
 novels = []
 
-for txt in glob.glob('../金庸/*/*.txt'):
+for txt in glob.glob('/root/金庸/*/*.txt'):
     txt = open(txt).read()
     txt = txt.decode('gbk', 'ignore')
     txt = txt.replace('\r', '').replace('\n', '')
@@ -46,8 +44,8 @@ for txt in glob.glob('../金庸/*/*.txt'):
     novels.append(sents)
 
 
-_token_dict = load_vocab(dict_path) # 读取词典
-_tokenizer = Tokenizer(_token_dict) # 建立临时分词器
+_token_dict = load_vocab(dict_path)  # 读取词典
+_tokenizer = Tokenizer(_token_dict)  # 建立临时分词器
 
 if os.path.exists(lm_config):
     tokens = json.load(open(lm_config))
@@ -127,13 +125,13 @@ model.summary()
 
 # 交叉熵作为loss，并mask掉输入部分的预测
 y_in = model.input[0][:, 1:]  # 目标tokens
-y_mask = model.get_layer('Sequence-Mask').output[:, 1:] # 目标mask
+y_mask = model.get_layer('Sequence-Mask').output[:, 1:]  # 目标mask
 y = model.output[:, :-1]  # 预测tokens，预测与目标错开一位
 cross_entropy = K.sparse_categorical_crossentropy(y_in, y)
 cross_entropy = K.sum(cross_entropy * y_mask) / K.sum(y_mask)
 
 model.add_loss(cross_entropy)
-model.compile(optimizer=Adam(1e-5))
+model.compile(optimizer=keras.optimizers.Adam(1e-5))
 
 
 def random_generate(s, n=1, topk=5):
@@ -141,7 +139,7 @@ def random_generate(s, n=1, topk=5):
     每次从最高概率的topk个token中随机采样一个
     """
     token_ids, segment_ids = tokenizer.encode(s)
-    token_ids, segment_ids = token_ids[: -1], segment_ids[: -1]
+    token_ids, segment_ids = token_ids[:-1], segment_ids[:-1]
     target_ids = [[] for _ in range(n)]
     R = []
     for i in range(maxlen):
@@ -174,7 +172,7 @@ def just_show():
         print(u'结果: %s\n' % ('\n'.join(t)))
 
 
-class Evaluate(Callback):
+class Evaluate(keras.callbacks.Callback):
     def __init__(self):
         self.lowest = 1e10
 
@@ -199,7 +197,6 @@ if __name__ == '__main__':
 else:
 
     model.load_weights('./best_model.weights')
-    
 """
 效果：
 
