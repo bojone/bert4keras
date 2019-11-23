@@ -7,15 +7,13 @@ import glob
 import numpy as np
 from tqdm import tqdm
 import os, json, codecs
+from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.snippets import parallel_apply, sequence_padding
-from keras.layers import *
-from keras.models import Model
-from keras import backend as K
-from keras.callbacks import Callback
-from keras.optimizers import Adam
+from bert4keras.snippets import get_all_attributes
 
+locals().update(get_all_attributes(keras.layers))  # from keras.layers import *
 
 seq2seq_config = 'seq2seq_config.json'
 min_count = 40
@@ -45,12 +43,15 @@ def read_texts():
                 yield content[:max_input_len], title
 
 
-_token_dict = load_vocab(dict_path) # 读取词典
-_tokenizer = Tokenizer(_token_dict) # 建立临时分词器
+_token_dict = load_vocab(dict_path)  # 读取词典
+_tokenizer = Tokenizer(_token_dict)  # 建立临时分词器
 
 if os.path.exists(seq2seq_config):
+
     tokens = json.load(open(seq2seq_config))
+
 else:
+
     def _batch_texts():
         texts = []
         for text in read_texts():
@@ -136,7 +137,7 @@ cross_entropy = K.sparse_categorical_crossentropy(y_in, y)
 cross_entropy = K.sum(cross_entropy * y_mask) / K.sum(y_mask)
 
 model.add_loss(cross_entropy)
-model.compile(optimizer=Adam(1e-5))
+model.compile(optimizer=keras.optimizers.Adam(1e-5))
 
 
 def gen_sent(s, topk=2):
@@ -180,7 +181,7 @@ def just_show():
     print()
 
 
-class Evaluate(Callback):
+class Evaluate(keras.callbacks.Callback):
     def __init__(self):
         self.lowest = 1e10
 
