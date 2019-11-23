@@ -10,6 +10,7 @@ import os, json, codecs
 from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
+from bert4keras.optimizers import Adam
 from bert4keras.snippets import parallel_apply, sequence_padding
 from bert4keras.snippets import get_all_attributes
 
@@ -139,7 +140,7 @@ cross_entropy = K.sparse_categorical_crossentropy(y_in, y)
 cross_entropy = K.sum(cross_entropy * y_mask) / K.sum(y_mask)
 
 model.add_loss(cross_entropy)
-model.compile(optimizer=keras.optimizers.Adam(1e-5))
+model.compile(optimizer=Adam(1e-5))
 
 
 def gen_sent(s, topk=2):
