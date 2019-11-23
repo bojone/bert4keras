@@ -4,18 +4,14 @@
 import json
 import numpy as np
 import codecs
-from bert4keras.backend import set_gelu
+from bert4keras.backend import keras, set_gelu
 from bert4keras.tokenizer import Tokenizer
 from bert4keras.bert import build_bert_model
-from bert4keras.optimizers import extend_with_piecewise_linear_lr
-from bert4keras.snippets import sequence_padding
-from keras.layers import *
-from keras.models import Model
-from keras.optimizers import Adam
-from keras.callbacks import Callback
+from bert4keras.optimizers import Adam, extend_with_piecewise_linear_lr
+from bert4keras.snippets import sequence_padding, get_all_attributes
 
-set_gelu('tanh') # 切换gelu版本
-
+set_gelu('tanh')  # 切换gelu版本
+locals().update(get_all_attributes(keras.layers))  # from keras.layers import *
 
 maxlen = 128
 config_path = '/root/kg/bert/albert_small_zh_google/albert_config.json'
@@ -50,8 +46,10 @@ class data_generator:
         self.steps = len(self.data) // self.batch_size
         if len(self.data) % self.batch_size != 0:
             self.steps += 1
+
     def __len__(self):
         return self.steps
+
     def __iter__(self, random=False):
         idxs = list(range(len(self.data)))
         if random:
@@ -69,6 +67,7 @@ class data_generator:
                 batch_labels = sequence_padding(batch_labels)
                 yield [batch_token_ids, batch_segment_ids], batch_labels
                 batch_token_ids, batch_segment_ids, batch_labels = [], [], []
+
     def forfit(self):
         while True:
             for d in self.__iter__(True):
@@ -89,7 +88,7 @@ output = Dense(units=2,
                activation='softmax',
                kernel_initializer=bert.initializer)(output)
 
-model = Model(bert.model.input, output)
+model = keras.models.Model(bert.model.input, output)
 model.summary()
 AdamLR = extend_with_piecewise_linear_lr(Adam)
 
@@ -100,7 +99,6 @@ model.compile(
                      lr_schedule={1000: 1, 2000: 0.1}),
     metrics=['accuracy'],
 )
-
 
 # 转换数据集
 train_generator = data_generator(train_data)
@@ -118,17 +116,18 @@ def evaluate(data):
     return right / total
 
 
-class Evaluator(Callback):
+class Evaluator(keras.callbacks.Callback):
     def __init__(self):
         self.best_val_acc = 0.
+
     def on_epoch_end(self, epoch, logs=None):
         val_acc = evaluate(valid_generator)
         if val_acc > self.best_val_acc:
             self.best_val_acc = val_acc
             model.save_weights('best_model.weights')
         test_acc = evaluate(test_generator)
-        print(u'val_acc: %05f, best_val_acc: %05f, test_acc: %05f\n'
-              % (val_acc, self.best_val_acc, test_acc))
+        print(u'val_acc: %05f, best_val_acc: %05f, test_acc: %05f\n' %
+              (val_acc, self.best_val_acc, test_acc))
 
 
 evaluator = Evaluator()
