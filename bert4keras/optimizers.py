@@ -3,7 +3,7 @@
 
 import tensorflow as tf
 from bert4keras.backend import keras, K, is_tf_keras
-from bert4keras.snippets import is_string
+from bert4keras.snippets import is_string, string_matching
 from bert4keras.backend import piecewise_linear
 import re
 
@@ -96,11 +96,11 @@ def extend_with_weight_decay(base_optimizer, name=None):
                 self.exclude_from_weight_decay = exclude_from_weight_decay
 
         def get_updates(self, loss, params):
-            self.param_names = [p.name for p in params]
+            param_names = [p.name for p in params]
             old_update = K.update
 
             def new_update(x, new_x):
-                if x.name in self.param_names and self._do_weight_decay(x):
+                if x.name in param_names and self._do_weight_decay(x):
                     new_x = new_x - self.learning_rate * self.weight_decay_rate * x
                 return old_update(x, new_x)
 
@@ -111,10 +111,7 @@ def extend_with_weight_decay(base_optimizer, name=None):
             return updates
 
         def _do_weight_decay(self, w):
-            for n in self.exclude_from_weight_decay:
-                if re.search(n, w.name):
-                    return False
-            return True
+            return (not string_matching(w.name, self.exclude_from_weight_decay))
 
         def get_config(self):
             config = {
@@ -148,11 +145,11 @@ def extend_with_layer_adaptation(base_optimizer, name=None):
                 self.exclude_from_layer_adaptation = exclude_from_layer_adaptation
 
         def get_updates(self, loss, params):
-            self.param_names = [p.name for p in params]
+            param_names = [p.name for p in params]
             old_update = K.update
 
             def new_update(x, new_x):
-                if x.name in self.param_names and self._do_layer_adaptation(x):
+                if x.name in param_names and self._do_layer_adaptation(x):
                     dx = new_x - x
                     x_norm = tf.norm(x)
                     g_norm = tf.norm(dx / self.learning_rate)
@@ -170,10 +167,7 @@ def extend_with_layer_adaptation(base_optimizer, name=None):
             return updates
 
         def _do_layer_adaptation(self, w):
-            for n in self.exclude_from_layer_adaptation:
-                if re.search(n, w.name):
-                    return False
-            return True
+            return (not string_matching(w.name, self.exclude_from_layer_adaptation))
 
         def get_config(self):
             config = {
@@ -206,11 +200,11 @@ def extend_with_piecewise_linear_lr(base_optimizer, name=None):
                                                   self.lr_schedule)
 
         def get_updates(self, loss, params):
-            self.param_names = [p.name for p in params]
+            param_names = [p.name for p in params]
             old_update = K.update
 
             def new_update(x, new_x):
-                if x.name in self.param_names:
+                if x.name in param_names:
                     new_x = x + (new_x - x) * self.lr_multiplier
                 return old_update(x, new_x)
 
