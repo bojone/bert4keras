@@ -5,18 +5,14 @@
 import json
 import numpy as np
 import codecs
-from bert4keras.backend import set_gelu, K
+from bert4keras.backend import keras, set_gelu, K
 from bert4keras.tokenizer import Tokenizer
 from bert4keras.bert import build_bert_model
-from bert4keras.train import PiecewiseLinearLearningRate
-from bert4keras.snippets import sequence_padding
-from keras.layers import *
-from keras.models import Model
-from keras.optimizers import Adam
-from keras.callbacks import Callback
+from bert4keras.optimizers import Adam
+from bert4keras.snippets import sequence_padding, get_all_attributes
 
 set_gelu('tanh') # 切换gelu版本
-
+locals().update(get_all_attributes(keras.layers))  # from keras.layers import *
 
 maxlen = 128
 config_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/bert_config.json'
@@ -89,7 +85,7 @@ output = Dense(units=2,
                activation='softmax',
                kernel_initializer=bert.initializer)(output)
 
-model = Model(bert.model.input, output)
+model = keras.models.Model(bert.model.input, output)
 model.summary()
 
 model.compile(
@@ -116,7 +112,7 @@ def evaluate(data):
     return right / total
 
 
-class Evaluator(Callback):
+class Evaluator(keras.callbacks.Callback):
     def __init__(self):
         self.best_val_acc = 0.
     def on_epoch_end(self, epoch, logs=None):
