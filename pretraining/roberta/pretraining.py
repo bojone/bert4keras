@@ -40,7 +40,6 @@ grad_accum_steps = 1 # 大于1即表明使用梯度累积
 # 准备变量
 Input = keras.layers.Input
 Lambda = keras.layers.Lambda
-Adam = keras.optimizers.Adam
 Model = keras.models.Model
 ModelCheckpoint = keras.callbacks.ModelCheckpoint
 CSVLogger = keras.callbacks.CSVLogger
