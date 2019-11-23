@@ -12,7 +12,7 @@ from bert4keras.optimizers import Adam
 from bert4keras.optimizers import extend_with_weight_decay
 from bert4keras.optimizers import extend_with_layer_adaptation
 from bert4keras.optimizers import extend_with_piecewise_linear_lr
-
+from bert4keras.optimizers import extend_with_gradient_accumulation
 
 # 语料路径和模型保存路径
 # 如果是TPU训练，那么语料必须存放在Google Cloud Storage上面，
@@ -35,6 +35,7 @@ exclude_from_weight_decay = ['Norm', 'bias']
 tpu_address = 'grpc://xxx.xxx.xxx.xxx:8470' # 如果用多GPU跑，直接设为None
 which_optimizer = 'adam'  # adam 或 lamb，均自带weight decay
 lr_schedule = {num_warmup_steps: 1., num_train_steps: 0.}
+grad_accum_steps = 1 # 大于1即表明使用梯度累积
 
 # 准备变量
 Input = keras.layers.Input
@@ -96,10 +97,16 @@ def build_train_bert_model():
     if which_optimizer == 'lamb':
         OPT = extend_with_layer_adaptation(OPT)
     OPT = extend_with_piecewise_linear_lr(OPT)
-    optimizer = OPT(learning_rate=learning_rate,
-                    lr_schedule=lr_schedule,
-                    weight_decay_rate=weight_decay_rate,
-                    exclude_from_weight_decay=exclude_from_weight_decay)
+    opt_params = {
+        'learning_rate': learning_rate,
+        'lr_schedule': lr_schedule,
+        'weight_decay_rate': weight_decay_rate,
+        'exclude_from_weight_decay': exclude_from_weight_decay,
+    }
+    if grad_accum_steps > 1:
+        OPT = extend_with_gradient_accumulation(OPT)
+        opt_params['grad_accum_steps'] = grad_accum_steps
+    optimizer = OPT(**opt_params)
 
     # 模型定型
     train_model.compile(
