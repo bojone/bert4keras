@@ -32,6 +32,15 @@ def strQ2B(ustring):
     return rstring
 
 
+def simple_string_matching(s, keywords):
+    """判断s是否至少包含keywords中的至少一个字符串
+    """
+    for k in keywords:
+        if re.seatch(k, s):
+            return True
+    return False
+
+
 class Progress:
     """显示进度，自己简单封装，比tqdm更可控一些
     iterable: 可迭代的对象；
