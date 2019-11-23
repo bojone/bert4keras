@@ -37,7 +37,7 @@ def string_matching(s, keywords):
     """判断s是否至少包含keywords中的至少一个字符串
     """
     for k in keywords:
-        if re.seatch(k, s):
+        if re.search(k, s):
             return True
     return False
 
