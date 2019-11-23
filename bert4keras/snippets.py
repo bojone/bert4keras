@@ -4,6 +4,8 @@
 import six
 import logging
 import numpy as np
+import re
+
 
 if not six.PY2:
     basestring = str
