@@ -15,6 +15,7 @@ from bert4keras.snippets import get_all_attributes
 
 locals().update(get_all_attributes(keras.layers))  # from keras.layers import *
 
+
 seq2seq_config = 'seq2seq_config.json'
 min_count = 40
 max_input_len = 256
@@ -91,6 +92,7 @@ else:
               codecs.open(seq2seq_config, 'w', encoding='utf-8'),
               indent=4,
               ensure_ascii=False)
+
 
 token_dict, keep_words = {}, []  # keep_words是在bert中保留的字表
 
