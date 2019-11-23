@@ -44,14 +44,8 @@ class BertModel(object):
         self.attention_head_size = hidden_size // num_attention_heads
         self.intermediate_size = intermediate_size
         self.dropout_rate = dropout_rate
-        if initializer_range:
-            self.initializer_range = initializer_range
-        else:
-            self.initializer_range = 0.02
-        if embedding_size:
-            self.embedding_size = embedding_size
-        else:
-            self.embedding_size = hidden_size
+        self.initializer_range = initializer_range or 0.02
+        self.embedding_size = embedding_size or hidden_size
         self.num_feed_forward_groups = num_feed_forward_groups
         self.with_pool = with_pool
         self.with_nsp = with_nsp
