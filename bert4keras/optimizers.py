@@ -238,9 +238,9 @@ def extend_with_gradient_accumulation(base_optimizer, name=None):
     class new_optimizer(base_optimizer):
         """带有梯度累积的优化器
         """
-        def __init__(self, steps_per_update, *args, **kwargs):
+        def __init__(self, grad_accum_steps, *args, **kwargs):
             super(new_optimizer, self).__init__(*args, **kwargs)
-            self.steps_per_update = steps_per_update
+            self.grad_accum_steps = grad_accum_steps
             self._first_get_gradients = True
 
         def get_gradients(self, loss, params):
@@ -248,11 +248,11 @@ def extend_with_gradient_accumulation(base_optimizer, name=None):
                 self._first_get_gradients = False
                 return super(new_optimizer, self).get_gradients(loss, params)
             else:
-                return [ag / self.steps_per_update for ag in self.accum_grads]
+                return [ag / self.grad_accum_steps for ag in self.accum_grads]
 
         def get_updates(self, loss, params):
             # 更新判据
-            cond = K.equal(self.iterations % self.steps_per_update, 0)
+            cond = K.equal(self.iterations % self.grad_accum_steps, 0)
             # 获取梯度
             grads = self.get_gradients(loss, params)
             self.accum_grads = [
@@ -281,7 +281,7 @@ def extend_with_gradient_accumulation(base_optimizer, name=None):
             return self.updates
 
         def get_config(self):
-            config = {'steps_per_update': self.steps_per_update}
+            config = {'grad_accum_steps': self.grad_accum_steps}
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
@@ -298,9 +298,9 @@ def extend_with_gradient_accumulation_v2(base_optimizer, name=None):
     class new_optimizer(base_optimizer):
         """带有梯度累积的优化器
         """
-        def __init__(self, steps_per_update, *args, **kwargs):
+        def __init__(self, grad_accum_steps, *args, **kwargs):
             super(new_optimizer, self).__init__(*args, **kwargs)
-            self.steps_per_update = steps_per_update
+            self.grad_accum_steps = grad_accum_steps
             self._first_get_gradients = True
 
         def get_gradients(self, loss, params):
@@ -311,7 +311,7 @@ def extend_with_gradient_accumulation_v2(base_optimizer, name=None):
                 return super(new_optimizer, self).get_gradients(loss, params)
             else:
                 return [
-                    self.get_slot(p, 'ag') / self.steps_per_update
+                    self.get_slot(p, 'ag') / self.grad_accum_steps
                     for p in params
                 ]
 
@@ -325,7 +325,7 @@ def extend_with_gradient_accumulation_v2(base_optimizer, name=None):
             所以indices参数已经不再需要。
             """
             # 更新判据
-            cond = K.equal(self.iterations % self.steps_per_update, 0)
+            cond = K.equal(self.iterations % self.grad_accum_steps, 0)
 
             old_update = K.update
 
@@ -350,7 +350,7 @@ def extend_with_gradient_accumulation_v2(base_optimizer, name=None):
             return ag_t
 
         def get_config(self):
-            config = {'steps_per_update': self.steps_per_update}
+            config = {'grad_accum_steps': self.grad_accum_steps}
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
@@ -476,5 +476,4 @@ if is_tf_keras():
     extend_with_gradient_accumulation = extend_with_gradient_accumulation_v2
     extend_with_lookahead = extend_with_lookahead_v2
 else:
-    del Adam
     Adam = keras.optimizers.Adam
