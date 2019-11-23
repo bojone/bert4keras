@@ -7,7 +7,7 @@ import codecs
 from bert4keras.backend import set_gelu
 from bert4keras.tokenizer import Tokenizer
 from bert4keras.bert import build_bert_model
-from bert4keras.train import PiecewiseLinearLearningRate
+from bert4keras.optimizers import extend_with_piecewise_linear_lr
 from bert4keras.snippets import sequence_padding
 from keras.layers import *
 from keras.models import Model
@@ -91,11 +91,13 @@ output = Dense(units=2,
 
 model = Model(bert.model.input, output)
 model.summary()
+AdamLR = extend_with_piecewise_linear_lr(Adam)
 
 model.compile(
     loss='sparse_categorical_crossentropy',
     # optimizer=Adam(1e-5),  # 用足够小的学习率
-    optimizer=PiecewiseLinearLearningRate(Adam(1e-4), {1000: 1, 2000: 0.1}),
+    optimizer=AdamLR(learning_rate=1e-4,
+                     lr_schedule={1000: 1, 2000: 0.1}),
     metrics=['accuracy'],
 )
 
