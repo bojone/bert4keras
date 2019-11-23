@@ -8,10 +8,10 @@ import tensorflow as tf
 from data_utils import TrainingDataset
 from bert4keras.bert import build_bert_model
 from bert4keras.backend import keras, K
-from bert4keras.train import Adam
-from bert4keras.train import extend_with_piecewise_linear_lr
-from bert4keras.train import extend_with_layer_adaptation,
-from bert4keras.train import extend_with_weight_decay
+from bert4keras.optimizers import Adam
+from bert4keras.optimizers import extend_with_weight_decay
+from bert4keras.optimizers import extend_with_layer_adaptation
+from bert4keras.optimizers import extend_with_piecewise_linear_lr
 
 
 # 语料路径和模型保存路径
@@ -97,7 +97,7 @@ def build_train_bert_model():
         OPT = extend_with_layer_adaptation(OPT)
     OPT = extend_with_piecewise_linear_lr(OPT)
     optimizer = OPT(learning_rate=learning_rate,
-                    lr_schedule=lr_schedule
+                    lr_schedule=lr_schedule,
                     weight_decay_rate=weight_decay_rate,
                     exclude_from_weight_decay=exclude_from_weight_decay)
 
