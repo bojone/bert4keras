@@ -477,3 +477,4 @@ if is_tf_keras():
     extend_with_lookahead = extend_with_lookahead_v2
 else:
     del Adam
+    Adam = keras.optimizers.Adam
