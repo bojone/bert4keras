@@ -8,9 +8,10 @@ import tensorflow as tf
 from data_utils import TrainingDataset
 from bert4keras.bert import build_bert_model
 from bert4keras.backend import keras, K
-from bert4keras.backend import piecewise_linear
-from bert4keras.train import LAMB, add_weight_decay_into
-from tensorflow.python.framework import ops
+from bert4keras.train import Adam
+from bert4keras.train import extend_with_piecewise_linear_lr
+from bert4keras.train import extend_with_layer_adaptation,
+from bert4keras.train import extend_with_weight_decay
 
 
 # 语料路径和模型保存路径
@@ -33,7 +34,7 @@ epochs = num_train_steps // steps_per_epoch
 exclude_from_weight_decay = ['Norm', 'bias']
 tpu_address = 'grpc://xxx.xxx.xxx.xxx:8470' # 如果用多GPU跑，直接设为None
 which_optimizer = 'adam'  # adam 或 lamb，均自带weight decay
-lr_schedule = {num_warmup_steps: learning_rate, num_train_steps: 0.}
+lr_schedule = {num_warmup_steps: 1., num_train_steps: 0.}
 
 # 准备变量
 Input = keras.layers.Input
@@ -49,22 +50,6 @@ dataset = TrainingDataset.load_tfrecord(
     sequence_length=sequence_length,
     batch_size=batch_size,
 )
-
-
-class PiecewiseLinear(keras.optimizers.schedules.LearningRateSchedule):
-    """为tf.keras的OptimizerV2所写的分段线性学习率
-    """
-    def __init__(self, schedule, name=None):
-        super(PiecewiseLinear, self).__init__()
-        self.schedule = {int(i): j for i, j in schedule.items()}
-        self.name = name
-
-    def __call__(self, step):
-        with ops.name_scope_v2(self.name or "PiecewiseLinear") as name:
-            return piecewise_linear(step, self.schedule)
-
-    def get_config(self):
-        return {'schedule': self.schedule, 'name': self.name}
 
 
 def build_train_bert_model():
@@ -107,16 +92,14 @@ def build_train_bert_model():
     train_model = Model(bert_model.inputs + [token_ids, is_masked], [loss, acc])
 
     # 优化器
-    if which_optimizer == 'adam':
-        optimizer = Adam(learning_rate=PiecewiseLinear(lr_schedule))
-        learning_rate = optimizer._decayed_lr(tf.float32)
-        # 添加权重衰减
-        add_weight_decay_into(bert_model, weight_decay_rate * learning_rate,
-                              exclude_from_weight_decay)
-    else:
-        optimizer = LAMB(learning_rate=PiecewiseLinear(lr_schedule),
-                         weight_decay_rate=weight_decay_rate,
-                         exclude_from_weight_decay=exclude_from_weight_decay)
+    OPT = extend_with_weight_decay(Adam)
+    if which_optimizer == 'lamb':
+        OPT = extend_with_layer_adaptation(OPT)
+    OPT = extend_with_piecewise_linear_lr(OPT)
+    optimizer = OPT(learning_rate=learning_rate,
+                    lr_schedule=lr_schedule
+                    weight_decay_rate=weight_decay_rate,
+                    exclude_from_weight_decay=exclude_from_weight_decay)
 
     # 模型定型
     train_model.compile(
