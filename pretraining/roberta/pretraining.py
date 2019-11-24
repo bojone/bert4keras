@@ -101,6 +101,7 @@ def build_train_bert_model():
         'lr_schedule': lr_schedule,
         'weight_decay_rate': weight_decay_rate,
         'exclude_from_weight_decay': exclude_from_weight_decay,
+        'bias_correction': False,
     }
     if grad_accum_steps > 1:
         OPT = extend_with_gradient_accumulation(OPT)
