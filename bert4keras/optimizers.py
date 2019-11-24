@@ -90,17 +90,13 @@ def extend_with_weight_decay(base_optimizer, name=None):
                      **kwargs):
             super(new_optimizer, self).__init__(*args, **kwargs)
             self.weight_decay_rate = weight_decay_rate
-            if exclude_from_weight_decay is None:
-                self.exclude_from_weight_decay = []
-            else:
-                self.exclude_from_weight_decay = exclude_from_weight_decay
+            self.exclude_from_weight_decay = exclude_from_weight_decay or []
 
         def get_updates(self, loss, params):
-            param_names = [p.name for p in params]
             old_update = K.update
 
             def new_update(x, new_x):
-                if x.name in param_names and self._do_weight_decay(x):
+                if x in params and self._do_weight_decay(x):
                     new_x = new_x - self.learning_rate * self.weight_decay_rate * x
                 return old_update(x, new_x)
 
@@ -111,7 +107,57 @@ def extend_with_weight_decay(base_optimizer, name=None):
             return updates
 
         def _do_weight_decay(self, w):
-            return (not string_matching(w.name, self.exclude_from_weight_decay))
+            return (not string_matching(w.name,
+                                        self.exclude_from_weight_decay))
+
+        def get_config(self):
+            config = {
+                'weight_decay_rate': self.weight_decay_rate,
+                'exclude_from_weight_decay': self.exclude_from_weight_decay
+            }
+            base_config = super(new_optimizer, self).get_config()
+            return dict(list(base_config.items()) + list(config.items()))
+
+    if is_string(name):
+        new_optimizer.__name__ = name
+        keras.utils.get_custom_objects()[name] = new_optimizer
+
+    return new_optimizer
+
+
+def extend_with_weight_decay_v2(base_optimizer, name=None):
+    """返回新的优化器类，加入权重衰减
+    """
+    class new_optimizer(base_optimizer):
+        """带有权重衰减的优化器
+        """
+        def __init__(self,
+                     weight_decay_rate,
+                     exclude_from_weight_decay=None,
+                     *args,
+                     **kwargs):
+            super(new_optimizer, self).__init__(*args, **kwargs)
+            self.weight_decay_rate = weight_decay_rate
+            self.exclude_from_weight_decay = exclude_from_weight_decay or []
+
+        def _resource_apply_op(self, grad, var, indices=None):
+            old_update = K.update
+
+            def new_update(x, new_x):
+                if x is var and self._do_weight_decay(x):
+                    new_x = new_x - self.learning_rate * self.weight_decay_rate * x
+                return old_update(x, new_x)
+
+            K.update = new_update
+            op = super(new_optimizer,
+                       self)._resource_apply_op(grad, var, indices)
+            K.update = old_update
+
+            return op
+
+        def _do_weight_decay(self, w):
+            return (not string_matching(w.name,
+                                        self.exclude_from_weight_decay))
 
         def get_config(self):
             config = {
@@ -139,17 +185,13 @@ def extend_with_layer_adaptation(base_optimizer, name=None):
         def __init__(self, exclude_from_layer_adaptation=None, *args,
                      **kwargs):
             super(new_optimizer, self).__init__(*args, **kwargs)
-            if exclude_from_layer_adaptation is None:
-                self.exclude_from_layer_adaptation = []
-            else:
-                self.exclude_from_layer_adaptation = exclude_from_layer_adaptation
+            self.exclude_from_layer_adaptation = exclude_from_layer_adaptation or []
 
         def get_updates(self, loss, params):
-            param_names = [p.name for p in params]
             old_update = K.update
 
             def new_update(x, new_x):
-                if x.name in param_names and self._do_layer_adaptation(x):
+                if x in params and self._do_layer_adaptation(x):
                     dx = new_x - x
                     x_norm = tf.norm(x)
                     g_norm = tf.norm(dx / self.learning_rate)
@@ -167,7 +209,62 @@ def extend_with_layer_adaptation(base_optimizer, name=None):
             return updates
 
         def _do_layer_adaptation(self, w):
-            return (not string_matching(w.name, self.exclude_from_layer_adaptation))
+            return (not string_matching(w.name,
+                                        self.exclude_from_layer_adaptation))
+
+        def get_config(self):
+            config = {
+                'exclude_from_layer_adaptation':
+                self.exclude_from_layer_adaptation
+            }
+            base_config = super(new_optimizer, self).get_config()
+            return dict(list(base_config.items()) + list(config.items()))
+
+    if is_string(name):
+        new_optimizer.__name__ = name
+        keras.utils.get_custom_objects()[name] = new_optimizer
+
+    return new_optimizer
+
+
+def extend_with_layer_adaptation_v2(base_optimizer, name=None):
+    """返回新的优化器类，加入层自适应学习率
+    """
+    class new_optimizer(base_optimizer):
+        """带有层自适应学习率的优化器
+        用每一层参数的模长来校正当前参数的学习率
+        https://arxiv.org/abs/1904.00962
+        """
+        def __init__(self, exclude_from_layer_adaptation=None, *args,
+                     **kwargs):
+            super(new_optimizer, self).__init__(*args, **kwargs)
+            self.exclude_from_layer_adaptation = exclude_from_layer_adaptation or []
+
+        def _resource_apply_op(self, grad, var, indices=None):
+            old_update = K.update
+
+            def new_update(x, new_x):
+                if x is var and self._do_layer_adaptation(x):
+                    dx = new_x - x
+                    x_norm = tf.norm(x)
+                    g_norm = tf.norm(dx / self.learning_rate)
+                    ratio = K.switch(
+                        x_norm > 0.,
+                        K.switch(g_norm > K.epsilon(), x_norm / g_norm, 1.),
+                        1.)
+                    new_x = x + dx * ratio
+                return old_update(x, new_x)
+
+            K.update = new_update
+            op = super(new_optimizer,
+                       self)._resource_apply_op(grad, var, indices)
+            K.update = old_update
+
+            return op
+
+        def _do_layer_adaptation(self, w):
+            return (not string_matching(w.name,
+                                        self.exclude_from_layer_adaptation))
 
         def get_config(self):
             config = {
@@ -200,11 +297,10 @@ def extend_with_piecewise_linear_lr(base_optimizer, name=None):
                                                   self.lr_schedule)
 
         def get_updates(self, loss, params):
-            param_names = [p.name for p in params]
             old_update = K.update
 
             def new_update(x, new_x):
-                if x.name in param_names:
+                if x in params:
                     new_x = x + (new_x - x) * self.lr_multiplier
                 return old_update(x, new_x)
 
@@ -213,6 +309,48 @@ def extend_with_piecewise_linear_lr(base_optimizer, name=None):
             K.update = old_update
 
             return updates
+
+        def get_config(self):
+            config = {'lr_schedule': self.lr_schedule}
+            base_config = super(new_optimizer, self).get_config()
+            return dict(list(base_config.items()) + list(config.items()))
+
+    if is_string(name):
+        new_optimizer.__name__ = name
+        keras.utils.get_custom_objects()[name] = new_optimizer
+
+    return new_optimizer
+
+
+def extend_with_piecewise_linear_lr_v2(base_optimizer, name=None):
+    """返回新的优化器类，加入分段线性学习率
+    """
+    class new_optimizer(base_optimizer):
+        """带有分段线性学习率的优化器
+        其中schedule是形如{1000: 1, 2000: 0.1}的字典，
+        表示0～1000步内学习率线性地从零增加到100%，然后
+        1000～2000步内线性地降到10%，2000步以后保持10%
+        """
+        def __init__(self, lr_schedule, *args, **kwargs):
+            super(new_optimizer, self).__init__(*args, **kwargs)
+            self.lr_schedule = {int(i): j for i, j in lr_schedule.items()}
+            self.lr_multiplier = piecewise_linear(self.iterations,
+                                                  self.lr_schedule)
+
+        def _resource_apply_op(self, grad, var, indices=None):
+            old_update = K.update
+
+            def new_update(x, new_x):
+                if x is var:
+                    new_x = x + (new_x - x) * self.lr_multiplier
+                return old_update(x, new_x)
+
+            K.update = new_update
+            op = super(new_optimizer,
+                       self)._resource_apply_op(grad, var, indices)
+            K.update = old_update
+
+            return op
 
         def get_config(self):
             config = {'lr_schedule': self.lr_schedule}
@@ -421,7 +559,8 @@ def extend_with_lookahead_v2(base_optimizer, name=None):
                 self.add_slot(var, 'slow_var')
 
         def _resource_apply_op(self, grad, var, indices=None):
-            op = super(new_optimizer, self)._resource_apply_op(grad, var, indices)
+            op = super(new_optimizer,
+                       self)._resource_apply_op(grad, var, indices)
 
             k, alpha = self.steps_per_slow_update, self.slow_step_size
             cond = K.equal(self.iterations % k, 0)
@@ -451,8 +590,122 @@ def extend_with_lookahead_v2(base_optimizer, name=None):
     return new_optimizer
 
 
+def extend_with_lazy_optimization(base_optimizer, name=None):
+    """返回新的优化器类，加入懒惰更新
+    """
+    class new_optimizer(base_optimizer):
+        """带有懒惰更新的优化器
+        使得部分权重（尤其是embedding）只有在梯度不等于0时
+        才发生更新。
+        """
+        def __init__(self, include_in_lazy_optimization=None, *args, **kwargs):
+            super(new_optimizer, self).__init__(*args, **kwargs)
+            self.include_in_lazy_optimization = include_in_lazy_optimization or []
+            self._first_get_gradients = True
+
+        def get_gradients(self, loss, params):
+            if self._first_get_gradients:
+                self._first_get_gradients = False
+                return super(new_optimizer, self).get_gradients(loss, params)
+            else:
+                return [self.grads[p] for p in params]
+
+        def get_updates(self, loss, params):
+            self.grads = dict(zip(params, self.get_gradients(loss, params)))
+
+            old_update = K.update
+
+            def new_update(x, new_x):
+                if x in params and self._do_lazy_optimization(x):
+                    g = self.grads[x]
+                    r = K.any(K.not_equal(g, 0.), axis=-1, keepdims=True)
+                    new_x = x + (new_x - x) * K.cast(r, K.floatx())
+                return old_update(x, new_x)
+
+            K.update = new_update
+            updates = super(new_optimizer, self).get_updates(loss, params)
+            K.update = old_update
+
+            return updates
+
+        def _do_lazy_optimization(self, w):
+            return string_matching(w.name, self.include_in_lazy_optimization)
+
+        def get_config(self):
+            config = {
+                'include_in_lazy_optimization':
+                self.include_in_lazy_optimization
+            }
+            base_config = super(new_optimizer, self).get_config()
+            return dict(list(base_config.items()) + list(config.items()))
+
+    if is_string(name):
+        new_optimizer.__name__ = name
+        keras.utils.get_custom_objects()[name] = new_optimizer
+
+    return new_optimizer
+
+
+def extend_with_lazy_optimization_v2(base_optimizer, name=None):
+    """返回新的优化器类，加入懒惰更新
+    """
+    class new_optimizer(base_optimizer):
+        """带有懒惰更新的优化器
+        使得部分权重（尤其是embedding）只有在梯度不等于0时
+        才发生更新。
+        """
+        def __init__(self, include_in_lazy_optimization=None, *args, **kwargs):
+            super(new_optimizer, self).__init__(*args, **kwargs)
+            self.include_in_lazy_optimization = include_in_lazy_optimization or []
+            self._first_get_gradients = True
+
+        def _resource_apply_op(self, grad, var, indices=None):
+            old_update = K.update
+
+            def new_update(x, new_x):
+                if x is var and self._do_lazy_optimization(x):
+                    if indices is None:
+                        r = K.any(K.not_equal(grad, 0.),
+                                  axis=-1,
+                                  keepdims=True)
+                        new_x = x + (new_x - x) * K.cast(r, K.floatx())
+                        return old_update(x, new_x)
+                    else:
+                        return self._resource_scatter_add(
+                            x, indices, K.gather(new_x - x, indices))
+                return old_update(x, new_x)
+
+            K.update = new_update
+            op = super(new_optimizer,
+                       self)._resource_apply_op(grad, var, indices)
+            K.update = old_update
+
+            return op
+
+        def _do_lazy_optimization(self, w):
+            return string_matching(w.name, self.include_in_lazy_optimization)
+
+        def get_config(self):
+            config = {
+                'include_in_lazy_optimization':
+                self.include_in_lazy_optimization
+            }
+            base_config = super(new_optimizer, self).get_config()
+            return dict(list(base_config.items()) + list(config.items()))
+
+    if is_string(name):
+        new_optimizer.__name__ = name
+        keras.utils.get_custom_objects()[name] = new_optimizer
+
+    return new_optimizer
+
+
 if is_tf_keras():
+    extend_with_weight_decay = extend_with_weight_decay_v2
+    extend_with_layer_adaptation = extend_with_layer_adaptation_v2
+    extend_with_piecewise_linear_lr = extend_with_piecewise_linear_lr_v2
     extend_with_gradient_accumulation = extend_with_gradient_accumulation_v2
     extend_with_lookahead = extend_with_lookahead_v2
+    extend_with_lazy_optimization = extend_with_lazy_optimization_v2
 else:
     Adam = keras.optimizers.Adam
