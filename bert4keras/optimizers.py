@@ -17,6 +17,7 @@ class Adam(keras.optimizers.Optimizer):
                  beta_1=0.9,
                  beta_2=0.999,
                  epsilon=1e-6,
+                 bias_correction=True,
                  name='Adam',
                  **kwargs):
         super(Adam, self).__init__(name, **kwargs)
@@ -24,6 +25,7 @@ class Adam(keras.optimizers.Optimizer):
         self._set_hyper('beta_1', beta_1)
         self._set_hyper('beta_2', beta_2)
         self.epsilon = epsilon or K.epislon()
+        self.bias_correction = bias_correction
 
     def _create_slots(self, var_list):
         for var in var_list:
@@ -57,6 +59,9 @@ class Adam(keras.optimizers.Optimizer):
 
         # 返回算子
         with tf.control_dependencies([m_t, v_t]):
+            if self.bias_correction:
+                m_t = m_t / (1. - beta_1_t_power)
+                v_t = v_t / (1. - beta_2_t_power)
             var_t = var - lr_t * m_t / (K.sqrt(v_t) + self.epsilon)
             return K.update(var, var_t)
 
