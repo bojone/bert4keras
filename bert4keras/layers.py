@@ -23,8 +23,7 @@ def sequence_masking(x, mask, mode=0, axis=None):
     if mask is None or mode not in [0, 1]:
         return x
     else:
-        if axis is None:
-            axis = 1
+        axis = axis or 1
         if axis == -1:
             axis = K.ndim(x) - 1
         assert axis > 0, 'axis muse be greater than 0'
