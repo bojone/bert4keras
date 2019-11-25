@@ -158,3 +158,13 @@ def sequence_padding(inputs, length=None, padding=0):
         if len(x) < length else x[:length] for x in inputs
     ])
     return outputs
+
+
+def is_one_of(x, ys):
+    """判断x是否在ys之中
+    等价于x in ys，但有些情况下x in ys会报错
+    """
+    for y in ys:
+        if x is y:
+            return True
+    return False
