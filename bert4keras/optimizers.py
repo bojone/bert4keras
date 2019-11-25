@@ -4,6 +4,7 @@
 import tensorflow as tf
 from bert4keras.backend import keras, K, is_tf_keras
 from bert4keras.snippets import is_string, string_matching
+from bert4keras.snippets import is_one_of
 from bert4keras.backend import piecewise_linear
 import re
 
@@ -97,11 +98,12 @@ def extend_with_weight_decay(base_optimizer, name=None):
             self.weight_decay_rate = weight_decay_rate
             self.exclude_from_weight_decay = exclude_from_weight_decay or []
 
+        @K.symbolic
         def get_updates(self, loss, params):
             old_update = K.update
 
             def new_update(x, new_x):
-                if x in params and self._do_weight_decay(x):
+                if is_one_of(x, params) and self._do_weight_decay(x):
                     new_x = new_x - self.learning_rate * self.weight_decay_rate * x
                 return old_update(x, new_x)
 
@@ -193,11 +195,12 @@ def extend_with_layer_adaptation(base_optimizer, name=None):
             super(new_optimizer, self).__init__(*args, **kwargs)
             self.exclude_from_layer_adaptation = exclude_from_layer_adaptation or []
 
+        @K.symbolic
         def get_updates(self, loss, params):
             old_update = K.update
 
             def new_update(x, new_x):
-                if x in params and self._do_layer_adaptation(x):
+                if is_one_of(x, params) and self._do_layer_adaptation(x):
                     dx = new_x - x
                     lr_t = K.clip(self.learning_rate, K.epsilon(), 1e10)
                     x_norm = tf.norm(x)
@@ -302,15 +305,16 @@ def extend_with_piecewise_linear_lr(base_optimizer, name=None):
         def __init__(self, lr_schedule, *args, **kwargs):
             super(new_optimizer, self).__init__(*args, **kwargs)
             self.lr_schedule = {int(i): j for i, j in lr_schedule.items()}
-            self.lr_multiplier = piecewise_linear(self.iterations,
-                                                  self.lr_schedule)
 
+        @K.symbolic
         def get_updates(self, loss, params):
+            lr_multiplier = piecewise_linear(self.iterations, self.lr_schedule)
+
             old_update = K.update
 
             def new_update(x, new_x):
-                if x in params:
-                    new_x = x + (new_x - x) * self.lr_multiplier
+                if is_one_of(x, params):
+                    new_x = x + (new_x - x) * lr_multiplier
                 return old_update(x, new_x)
 
             K.update = new_update
@@ -343,12 +347,11 @@ def extend_with_piecewise_linear_lr_v2(base_optimizer, name=None):
         def __init__(self, lr_schedule, *args, **kwargs):
             super(new_optimizer, self).__init__(*args, **kwargs)
             self.lr_schedule = {int(i): j for i, j in lr_schedule.items()}
-            self.lr_multiplier = piecewise_linear(self.iterations,
-                                                  self.lr_schedule)
 
         def _decayed_lr(self, var_dtype):
+            lr_multiplier = piecewise_linear(self.iterations, self.lr_schedule)
             lr_t = super(new_optimizer, self)._decayed_lr(var_dtype)
-            return lr_t * K.cast(self.lr_multiplier, var_dtype)
+            return lr_t * K.cast(lr_multiplier, var_dtype)
 
         def get_config(self):
             config = {'lr_schedule': self.lr_schedule}
@@ -380,6 +383,7 @@ def extend_with_gradient_accumulation(base_optimizer, name=None):
             else:
                 return [ag / self.grad_accum_steps for ag in self.accum_grads]
 
+        @K.symbolic
         def get_updates(self, loss, params):
             # 更新判据
             cond = K.equal(self.iterations % self.grad_accum_steps, 0)
@@ -494,6 +498,7 @@ def extend_with_lookahead(base_optimizer, name=None):
             self.steps_per_slow_update = steps_per_slow_update
             self.slow_step_size = slow_step_size
 
+        @K.symbolic
         def get_updates(self, loss, params):
             updates = super(new_optimizer, self).get_updates(loss, params)
 
@@ -608,13 +613,14 @@ def extend_with_lazy_optimization(base_optimizer, name=None):
             else:
                 return [self.grads[p] for p in params]
 
+        @K.symbolic
         def get_updates(self, loss, params):
             self.grads = dict(zip(params, self.get_gradients(loss, params)))
 
             old_update = K.update
 
             def new_update(x, new_x):
-                if x in params and self._do_lazy_optimization(x):
+                if is_one_of(x, params) and self._do_lazy_optimization(x):
                     g = self.grads[x]
                     r = K.any(K.not_equal(g, 0.), axis=-1, keepdims=True)
                     new_x = x + (new_x - x) * K.cast(r, K.floatx())
@@ -655,7 +661,6 @@ def extend_with_lazy_optimization_v2(base_optimizer, name=None):
         def __init__(self, include_in_lazy_optimization=None, *args, **kwargs):
             super(new_optimizer, self).__init__(*args, **kwargs)
             self.include_in_lazy_optimization = include_in_lazy_optimization or []
-            self._first_get_gradients = True
 
         def _resource_apply_op(self, grad, var, indices=None):
             old_update = K.update
