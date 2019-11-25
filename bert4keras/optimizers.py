@@ -150,7 +150,8 @@ def extend_with_weight_decay_v2(base_optimizer, name=None):
 
             def new_update(x, new_x):
                 if x is var and self._do_weight_decay(x):
-                    new_x = new_x - self.learning_rate * self.weight_decay_rate * x
+                    lr_t = self._decayed_lr(x.dtype.base_dtype)
+                    new_x = new_x - lr_t * self.weight_decay_rate * x
                 return old_update(x, new_x)
 
             K.update = new_update
@@ -252,7 +253,7 @@ def extend_with_layer_adaptation_v2(base_optimizer, name=None):
                 if x is var and self._do_layer_adaptation(x):
                     dx = new_x - x
                     x_norm = tf.norm(x)
-                    g_norm = tf.norm(dx / self.learning_rate)
+                    g_norm = tf.norm(dx / self._decayed_lr(x.dtype.base_dtype))
                     ratio = K.switch(
                         x_norm > 0.,
                         K.switch(g_norm > K.epsilon(), x_norm / g_norm, 1.),
@@ -342,20 +343,9 @@ def extend_with_piecewise_linear_lr_v2(base_optimizer, name=None):
             self.lr_multiplier = piecewise_linear(self.iterations,
                                                   self.lr_schedule)
 
-        def _resource_apply_op(self, grad, var, indices=None):
-            old_update = K.update
-
-            def new_update(x, new_x):
-                if x is var:
-                    new_x = x + (new_x - x) * self.lr_multiplier
-                return old_update(x, new_x)
-
-            K.update = new_update
-            op = super(new_optimizer,
-                       self)._resource_apply_op(grad, var, indices)
-            K.update = old_update
-
-            return op
+        def _decayed_lr(self, var_dtype):
+            lr_t = super(new_optimizer, self)._decayed_lr(var_dtype)
+            return lr_t * K.cast(self.lr_multiplier, var_dtype)
 
         def get_config(self):
             config = {'lr_schedule': self.lr_schedule}
