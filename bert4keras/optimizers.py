@@ -199,8 +199,9 @@ def extend_with_layer_adaptation(base_optimizer, name=None):
             def new_update(x, new_x):
                 if x in params and self._do_layer_adaptation(x):
                     dx = new_x - x
+                    lr_t = K.clip(self.learning_rate, K.epsilon(), 1e10)
                     x_norm = tf.norm(x)
-                    g_norm = tf.norm(dx / self.learning_rate)
+                    g_norm = tf.norm(dx / lr_t)
                     ratio = K.switch(
                         x_norm > 0.,
                         K.switch(g_norm > K.epsilon(), x_norm / g_norm, 1.),
@@ -252,8 +253,10 @@ def extend_with_layer_adaptation_v2(base_optimizer, name=None):
             def new_update(x, new_x):
                 if x is var and self._do_layer_adaptation(x):
                     dx = new_x - x
+                    lr_t = K.clip(self._decayed_lr(x.dtype.base_dtype),
+                                  K.epsilon(), 1e10)
                     x_norm = tf.norm(x)
-                    g_norm = tf.norm(dx / self._decayed_lr(x.dtype.base_dtype))
+                    g_norm = tf.norm(dx / lr_t)
                     ratio = K.switch(
                         x_norm > 0.,
                         K.switch(g_norm > K.epsilon(), x_norm / g_norm, 1.),
