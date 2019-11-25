@@ -454,7 +454,8 @@ def extend_with_gradient_accumulation_v2(base_optimizer, name=None):
                 return old_update(x, new_x)
 
             K.update = new_update
-            op = super(new_optimizer, self)._resource_apply_op(ag, var)
+            ag_t = ag / self.grad_accum_steps
+            op = super(new_optimizer, self)._resource_apply_op(ag_t, var)
             K.update = old_update
 
             # 累积梯度
