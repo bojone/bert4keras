@@ -387,8 +387,6 @@ class Bert4Seq2seq(BertModel):
     """
     def __init__(self, *args, **kwargs):
         super(Bert4Seq2seq, self).__init__(*args, **kwargs)
-        self.with_pool = False
-        self.with_nsp = False
         self.with_mlm = True
         self.attention_mask = None
 
@@ -420,8 +418,6 @@ class Bert4LM(BertModel):
     """
     def __init__(self, *args, **kwargs):
         super(Bert4LM, self).__init__(*args, **kwargs)
-        self.with_pool = False
-        self.with_nsp = False
         self.with_mlm = True
         self.attention_mask = 'history_only'
 
