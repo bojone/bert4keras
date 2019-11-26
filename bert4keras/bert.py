@@ -111,8 +111,9 @@ class BertModel(object):
             # Pooler部分（提取CLS向量）
             x = outputs[0]
             x = Lambda(lambda x: x[:, 0], name='Pooler')(x)
+            pool_activation = 'tanh' if self.with_pool is True else self.with_pool
             x = Dense(units=self.hidden_size,
-                      activation='tanh',
+                      activation=pool_activation,
                       kernel_initializer=self.initializer,
                       name='Pooler-Dense')(x)
             if self.with_nsp:
@@ -131,8 +132,9 @@ class BertModel(object):
                       kernel_initializer=self.initializer,
                       name='MLM-Dense')(x)
             x = LayerNormalization(name='MLM-Norm')(x)
+            mlm_activation = 'softmax' if self.with_mlm is True else self.with_mlm
             x = EmbeddingDense(embedding_name='Embedding-Token',
-                               activation=self.with_mlm,
+                               activation=mlm_activation,
                                name='MLM-Proba')(x)
             outputs.append(x)
 
