@@ -58,7 +58,7 @@ else:
         texts = []
         for text in read_texts():
             texts.extend(text)
-            if len(texts) == 1000:
+            if len(texts) >= 1000:
                 yield texts
                 texts = []
         if texts:
