@@ -325,8 +325,6 @@ class EmbeddingDense(Layer):
     def __init__(self, embedding_name, activation='softmax', **kwargs):
         super(EmbeddingDense, self).__init__(**kwargs)
         self.embedding_name = embedding_name
-        if isinstance(activation, bool):
-            activation = 'softmax'
         self.activation = activations.get(activation)
 
     def call(self, inputs):
