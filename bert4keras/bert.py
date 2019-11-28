@@ -387,7 +387,7 @@ class Bert4Seq2seq(BertModel):
     """
     def __init__(self, *args, **kwargs):
         super(Bert4Seq2seq, self).__init__(*args, **kwargs)
-        self.with_mlm = with_mlm or True
+        self.with_mlm = kwargs.get('with_mlm') or True
         self.attention_mask = None
 
     def compute_attention_mask(self, layer_id, segment_ids):
@@ -418,7 +418,7 @@ class Bert4LM(BertModel):
     """
     def __init__(self, *args, **kwargs):
         super(Bert4LM, self).__init__(*args, **kwargs)
-        self.with_mlm = with_mlm or True
+        self.with_mlm = kwargs.get('with_mlm') or True
         self.attention_mask = 'history_only'
 
     def compute_attention_mask(self, layer_id, segment_ids):
