@@ -80,17 +80,15 @@ class BasicTokenizer(object):
         同理，如果传入second_length，则强行padding第二个句子到指定长度。
         """
         first_tokens = self.tokenize(first_text, add_cls=False, add_sep=False)
-        delta_1 = int(add_cls) + int(add_sep)
-        delta_2 = int(add_cls) + int(add_sep) * 2
         if second_text is None:
             if max_length is not None:
-                first_tokens = first_tokens[:max_length - delta_1]
+                first_tokens = first_tokens[:max_length - 2]
         else:
             second_tokens = self.tokenize(second_text,
                                           add_cls=False,
                                           add_sep=False)
             if max_length is not None:
-                self.truncate_sequence(max_length - delta_2, first_tokens, second_tokens)
+                self.truncate_sequence(max_length - 3, first_tokens, second_tokens)
 
         first_tokens = [self._token_cls] + first_tokens + [self._token_sep]
         first_token_ids = self.tokens_to_ids(first_tokens)
