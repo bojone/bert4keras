@@ -88,14 +88,15 @@ class TrainingDataset:
         results = []
         token_ids, mask_ids = [self.token_cls_id], [0]
 
-        for text in texts:
+        for i, text in enumerate(texts):
             # 处理单个句子
             _token_ids, _mask_ids = self.sentence_process(text)
             _token_ids = _token_ids[:self.sequence_length - 2]
             _mask_ids = _mask_ids[:self.sequence_length - 2]
 
-            # 如果长度即将溢出
-            if len(mask_ids) + len(_mask_ids) > self.sequence_length - 1:
+            # 如果到尾了，或者长度即将溢出
+            if i + 1 == len(texts) or \
+                len(mask_ids) + len(_mask_ids) > self.sequence_length - 1:
                 # 插入终止符
                 token_ids.append(self.token_sep_id)
                 mask_ids.append(0)
@@ -210,27 +211,34 @@ if __name__ == '__main__':
     from tqdm import tqdm
 
     jieba.initialize()
-    dict_path = '/home/spaces_ac_cn/chinese_roberta_wwm_ext_L-12_H-768_A-12/vocab.txt'
+    dict_path = '/home/spaces_ac_cn/chinese_L-12_H-768_A-12/vocab.txt'
     tokenizer = Tokenizer(dict_path)
 
     def some_texts():
         filenames = glob.glob('/home/spaces_ac_cn/corpus/*/*/*')
         np.random.shuffle(filenames)
+        count, texts = 0, []
         for filename in filenames:
             with open(filename) as f:
                 for l in f:
                     l = json.loads(l)['text'].strip()
-                    yield re.findall(u'.*?[\n。]+', l)
+                    texts.extend(re.findall(u'.*?[\n。]+', l))
+                    count += 1
+                    if count == 10: # 10篇文章合在一起再处理
+                        yield texts
+                        count = 0
+        if texts:
+            yield texts
 
     def word_segment(text):
         return jieba.lcut(text)
 
     TD = TrainingDataset(tokenizer, word_segment, sequence_length=512)
 
-    for i in range(10):
+    for i in range(10): # 数据重复10遍
         TD.process(
             corpus=tqdm(some_texts()),
             record_name='../courpus_tfrecord/corpus.%s.tfrecord' % i,
             workers=40,
-            max_queue_size=40000,
+            max_queue_size=4000,
         )
