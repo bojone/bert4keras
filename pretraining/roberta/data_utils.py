@@ -214,22 +214,23 @@ if __name__ == '__main__':
     tokenizer = Tokenizer(dict_path)
 
     def some_texts():
-        for _ in range(2): # 数据重复两遍
-            filenames = glob.glob('/home/spaces_ac_cn/corpus/*/*/*')
-            np.random.shuffle(filenames)
-            for filename in filenames:
-                with open(filename) as f:
-                    for l in f:
-                        l = json.loads(l)['text'].strip()
-                        yield re.findall(u'.*?[\n。]+', l)
+        filenames = glob.glob('/home/spaces_ac_cn/corpus/*/*/*')
+        np.random.shuffle(filenames)
+        for filename in filenames:
+            with open(filename) as f:
+                for l in f:
+                    l = json.loads(l)['text'].strip()
+                    yield re.findall(u'.*?[\n。]+', l)
 
     def word_segment(text):
         return jieba.lcut(text)
 
     TD = TrainingDataset(tokenizer, word_segment, sequence_length=512)
-    TD.process(
-        corpus=tqdm(some_texts()),
-        record_name='../corpus.tfrecord',
-        workers=20,
-        max_queue_size=20000,
-    )
+
+    for i in range(10):
+        TD.process(
+            corpus=tqdm(some_texts()),
+            record_name='../courpus_tfrecord/corpus.%s.tfrecord' % i,
+            workers=40,
+            max_queue_size=40000,
+        )
