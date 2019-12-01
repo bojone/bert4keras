@@ -226,7 +226,7 @@ if __name__ == '__main__':
                     count += 1
                     if count == 10: # 10篇文章合在一起再处理
                         yield texts
-                        count = 0
+                        count, texts = 0, []
         if texts:
             yield texts
 
