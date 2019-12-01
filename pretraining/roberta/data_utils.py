@@ -88,15 +88,14 @@ class TrainingDataset:
         results = []
         token_ids, mask_ids = [self.token_cls_id], [0]
 
-        for i, text in enumerate(texts):
+        for text in texts:
             # 处理单个句子
             _token_ids, _mask_ids = self.sentence_process(text)
             _token_ids = _token_ids[:self.sequence_length - 2]
             _mask_ids = _mask_ids[:self.sequence_length - 2]
 
-            # 如果到尾了，或者长度即将溢出
-            if i + 1 == len(texts) or \
-                len(mask_ids) + len(_mask_ids) > self.sequence_length - 1:
+            # 如果长度即将溢出
+            if len(mask_ids) + len(_mask_ids) > self.sequence_length - 1:
                 # 插入终止符
                 token_ids.append(self.token_sep_id)
                 mask_ids.append(0)
@@ -109,6 +108,15 @@ class TrainingDataset:
 
             token_ids.extend(_token_ids)
             mask_ids.extend(_mask_ids)
+
+        # 插入终止符
+        token_ids.append(self.token_sep_id)
+        mask_ids.append(0)
+        # padding到指定长度
+        token_ids = self.padding(token_ids)
+        mask_ids = self.padding(mask_ids, 0)
+        # 存储结果
+        results.append((token_ids, mask_ids))
 
         return results
 
