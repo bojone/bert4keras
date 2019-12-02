@@ -22,20 +22,23 @@ saved_model_path = 'gs://xxxx/bert4keras/saved_model/bert_model.ckpt'
 
 # 其他配置
 sequence_length = 512
-batch_size = 512
-config_path = '/home/spaces_ac_cn/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '/home/spaces_ac_cn/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt' # 如果从零训练，就设为None
-learning_rate = 5e-5
+batch_size = 256
+config_path = '/home/spaces_ac_cn/chinese_L-12_H-768_A-12/bert_config.json'
+checkpoint_path = '/home/spaces_ac_cn/chinese_L-12_H-768_A-12/bert_model.ckpt' # 如果从零训练，就设为None
+learning_rate = 0.00176
 weight_decay_rate = 0.01
-num_warmup_steps = 10000
-num_train_steps = 1000000
+num_warmup_steps = 3125
+num_train_steps = 125000
 steps_per_epoch = 2000
-epochs = num_train_steps // steps_per_epoch
+grad_accum_steps = 16 # 大于1即表明使用梯度累积
+epochs = num_train_steps * grad_accum_steps // steps_per_epoch
 exclude_from_weight_decay = ['Norm', 'bias']
 tpu_address = 'grpc://xxx.xxx.xxx.xxx:8470' # 如果用多GPU跑，直接设为None
-which_optimizer = 'adam'  # adam 或 lamb，均自带weight decay
-lr_schedule = {num_warmup_steps: 1., num_train_steps: 0.}
-grad_accum_steps = 1 # 大于1即表明使用梯度累积
+which_optimizer = 'lamb'  # adam 或 lamb，均自带weight decay
+lr_schedule = {
+    num_warmup_steps * grad_accum_steps: 1.,
+    num_train_steps * grad_accum_steps: 0.,
+}
 
 # 准备变量
 Input = keras.layers.Input
