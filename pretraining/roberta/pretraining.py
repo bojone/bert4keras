@@ -107,7 +107,7 @@ def build_train_bert_model():
     }
     if grad_accum_steps > 1:
         optimizer = extend_with_gradient_accumulation(optimizer)
-        opt_params['grad_accum_steps'] = grad_accum_steps
+        optimizer_params['grad_accum_steps'] = grad_accum_steps
     optimizer = optimizer(**optimizer_params)
 
     # 模型定型
