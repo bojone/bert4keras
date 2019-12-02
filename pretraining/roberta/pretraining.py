@@ -18,7 +18,8 @@ from bert4keras.optimizers import extend_with_gradient_accumulation
 # 如果是TPU训练，那么语料必须存放在Google Cloud Storage上面，
 # 路径必须以gs://开通；如果是GPU训练，改为普通路径即可。
 corpus_path = 'gs://xxxx/bert4keras/corpus.tfrecord'
-saved_model_path = 'gs://xxxx/bert4keras/saved_model/bert_model.ckpt'
+best_model_saved_path = 'gs://xxxx/bert4keras/saved_model/best/bert_model.ckpt'
+latest_model_saved_path = 'gs://xxxx/bert4keras/saved_model/latest/bert_model.ckpt'
 
 # 其他配置
 sequence_length = 512
@@ -44,8 +45,6 @@ lr_schedule = {
 Input = keras.layers.Input
 Lambda = keras.layers.Lambda
 Model = keras.models.Model
-ModelCheckpoint = keras.callbacks.ModelCheckpoint
-CSVLogger = keras.callbacks.CSVLogger
 
 # 读取数据集，构建数据张量
 dataset = TrainingDataset.load_tfrecord(
@@ -95,11 +94,11 @@ def build_train_bert_model():
     train_model = Model(bert_model.inputs + [token_ids, is_masked], [loss, acc])
 
     # 优化器
-    OPT = extend_with_weight_decay(Adam)
+    optimizer = extend_with_weight_decay(Adam)
     if which_optimizer == 'lamb':
-        OPT = extend_with_layer_adaptation(OPT)
-    OPT = extend_with_piecewise_linear_lr(OPT)
-    opt_params = {
+        optimizer = extend_with_layer_adaptation(optimizer)
+    optimizer = extend_with_piecewise_linear_lr(optimizer)
+    optimizer_params = {
         'learning_rate': learning_rate,
         'lr_schedule': lr_schedule,
         'weight_decay_rate': weight_decay_rate,
@@ -107,9 +106,9 @@ def build_train_bert_model():
         'bias_correction': False,
     }
     if grad_accum_steps > 1:
-        OPT = extend_with_gradient_accumulation(OPT)
+        optimizer = extend_with_gradient_accumulation(optimizer)
         opt_params['grad_accum_steps'] = grad_accum_steps
-    optimizer = OPT(**opt_params)
+    optimizer = optimizer(**optimizer_params)
 
     # 模型定型
     train_model.compile(
@@ -142,13 +141,20 @@ with strategy.scope():
     train_model.summary()
 
 # 模型回调
+class ModelCheckpoint(keras.callbacks.ModelCheckpoint):
+    """除了保存最优模型外，每个epoch自动保存最新模型
+    """
+    def on_epoch_end(self, epoch, logs=None):
+        super(ModelCheckpoint, self).on_epoch_end(epoch, logs)
+        self.model.save_weights(latest_model_saved_path, overwrite=True)
+
 checkpoint = ModelCheckpoint(
-    filepath=saved_model_path,
+    filepath=best_model_saved_path,
     monitor='mlm_loss_loss',
     save_weights_only=True,
     save_best_only=True,
 )
-csv_logger = CSVLogger('training.log') # 记录训练日志
+csv_logger = keras.callbacks.CSVLogger('training.log') # 记录训练日志
 
 # 模型训练
 train_model.fit(
