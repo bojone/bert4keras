@@ -23,7 +23,7 @@ latest_model_saved_path = 'gs://xxxx/bert4keras/saved_model/latest/bert_model.ck
 
 # 其他配置
 sequence_length = 512
-batch_size = 256
+batch_size = 4096
 config_path = '/home/spaces_ac_cn/chinese_L-12_H-768_A-12/bert_config.json'
 checkpoint_path = '/home/spaces_ac_cn/chinese_L-12_H-768_A-12/bert_model.ckpt' # 如果从零训练，就设为None
 learning_rate = 0.00176
@@ -50,7 +50,7 @@ Model = keras.models.Model
 dataset = TrainingDataset.load_tfrecord(
     record_names=corpus_path,
     sequence_length=sequence_length,
-    batch_size=batch_size,
+    batch_size=batch_size // grad_accum_steps,
 )
 
 
@@ -140,7 +140,7 @@ with strategy.scope():
     train_model = build_train_bert_model()
     train_model.summary()
 
-# 模型回调
+
 class ModelCheckpoint(keras.callbacks.ModelCheckpoint):
     """除了保存最优模型外，每个epoch自动保存最新模型
     """
@@ -148,13 +148,16 @@ class ModelCheckpoint(keras.callbacks.ModelCheckpoint):
         super(ModelCheckpoint, self).on_epoch_end(epoch, logs)
         self.model.save_weights(latest_model_saved_path, overwrite=True)
 
+
+# 保存模型
 checkpoint = ModelCheckpoint(
     filepath=best_model_saved_path,
     monitor='mlm_loss_loss',
     save_weights_only=True,
     save_best_only=True,
 )
-csv_logger = keras.callbacks.CSVLogger('training.log') # 记录训练日志
+# 记录日志
+csv_logger = keras.callbacks.CSVLogger('training.log')
 
 # 模型训练
 train_model.fit(
