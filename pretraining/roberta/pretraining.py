@@ -17,9 +17,12 @@ from bert4keras.optimizers import extend_with_gradient_accumulation
 # 语料路径和模型保存路径
 # 如果是TPU训练，那么语料必须存放在Google Cloud Storage上面，
 # 路径必须以gs://开通；如果是GPU训练，改为普通路径即可。
-corpus_path = 'gs://xxxx/bert4keras/corpus.tfrecord'
 best_model_saved_path = 'gs://xxxx/bert4keras/saved_model/best/bert_model.ckpt'
 latest_model_saved_path = 'gs://xxxx/bert4keras/saved_model/latest/bert_model.ckpt'
+corpus_paths = [
+    'gs://xxxx/bert4keras/corpus/corpus.%s.tfrecord' % i
+    for i in range(10)
+]
 
 # 其他配置
 sequence_length = 512
@@ -48,7 +51,7 @@ Model = keras.models.Model
 
 # 读取数据集，构建数据张量
 dataset = TrainingDataset.load_tfrecord(
-    record_names=corpus_path,
+    record_names=corpus_paths,
     sequence_length=sequence_length,
     batch_size=batch_size // grad_accum_steps,
 )
