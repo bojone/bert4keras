@@ -196,6 +196,7 @@ class Tokenizer(BasicTokenizer):
         punctuation_regex = '|'.join([re.escape(p) for p in punctuation])
         punctuation_regex = '(%s) ' % punctuation_regex
         text = re.sub(punctuation_regex, '\\1', text)
+        text = re.sub('(\d\.) (\d)', '\\1\\2', text)
 
         return text.strip()
 
