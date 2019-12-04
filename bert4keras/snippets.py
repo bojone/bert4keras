@@ -7,7 +7,9 @@ import numpy as np
 import re
 
 
-if not six.PY2:
+is_py2 = six.PY2
+
+if not is_py2:
     basestring = str
 
 
