@@ -28,17 +28,17 @@ corpus_paths = [
 sequence_length = 512
 batch_size = 4096
 config_path = '/home/spaces_ac_cn/chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '/home/spaces_ac_cn/chinese_L-12_H-768_A-12/bert_model.ckpt' # 如果从零训练，就设为None
+checkpoint_path = '/home/spaces_ac_cn/chinese_L-12_H-768_A-12/bert_model.ckpt'  # 如果从零训练，就设为None
 learning_rate = 0.00176
 weight_decay_rate = 0.01
 num_warmup_steps = 3125
 num_train_steps = 125000
 steps_per_epoch = 2000
-grad_accum_steps = 16 # 大于1即表明使用梯度累积
-loss_weight_of_identity = 0.1 # 除去mask后剩下部分(恒等映射)的loss权重
+grad_accum_steps = 16  # 大于1即表明使用梯度累积
+loss_weight_of_identity = 0.1  # 除去mask后剩下部分(恒等映射)的loss权重
 epochs = num_train_steps * grad_accum_steps // steps_per_epoch
 exclude_from_weight_decay = ['Norm', 'bias']
-tpu_address = 'grpc://xxx.xxx.xxx.xxx:8470' # 如果用多GPU跑，直接设为None
+tpu_address = 'grpc://xxx.xxx.xxx.xxx:8470'  # 如果用多GPU跑，直接设为None
 which_optimizer = 'lamb'  # adam 或 lamb，均自带weight decay
 lr_schedule = {
     num_warmup_steps * grad_accum_steps: 1.,
@@ -77,7 +77,6 @@ def build_train_bert_model():
         """计算loss的函数，需要封装为一个层
         """
         y_true, y_pred, is_masked, seq_mask = inputs
-        is_masked = K.cast(is_masked, K.floatx())
         loss = K.sparse_categorical_crossentropy(y_true, y_pred, from_logits=True)
         mask1 = is_masked * seq_mask
         loss1 = K.sum(loss * mask1) / (K.sum(mask1) + K.epsilon())
