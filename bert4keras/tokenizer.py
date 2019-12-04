@@ -22,7 +22,7 @@ def load_vocab(dict_path):
 class BasicTokenizer(object):
     """分词器基类
     """
-    def __init__(self, case_sensitive=True):
+    def __init__(self, do_lower_case=False):
         """初始化
         """
         self._token_pad = '[PAD]'
@@ -30,12 +30,12 @@ class BasicTokenizer(object):
         self._token_sep = '[SEP]'
         self._token_unk = '[UNK]'
         self._token_mask = '[MASK]'
-        self._case_sensitive = case_sensitive
+        self._do_lower_case = do_lower_case
 
     def tokenize(self, text, add_cls=True, add_sep=True):
         """分词函数
         """
-        if not self._case_sensitive:
+        if self._do_lower_case:
             if is_py2:
                 text = unicode(text)
             text = unicodedata.normalize('NFD', text)
@@ -144,10 +144,10 @@ class Tokenizer(BasicTokenizer):
     """Bert原生分词器
     纯Python实现，代码修改自keras_bert的tokenizer实现
     """
-    def __init__(self, token_dict, case_sensitive=True):
+    def __init__(self, token_dict, do_lower_case=False):
         """初始化
         """
-        super(Tokenizer, self).__init__(case_sensitive)
+        super(Tokenizer, self).__init__(do_lower_case)
         if is_string(token_dict):
             token_dict = load_vocab(token_dict)
 
@@ -299,8 +299,8 @@ class Tokenizer(BasicTokenizer):
 class SpTokenizer(BasicTokenizer):
     """基于SentencePiece模型的封装，使用上跟Tokenizer基本一致。
     """
-    def __init__(self, sp_model_path, case_sensitive=True):
-        super(SpTokenizer, self).__init__(case_sensitive)
+    def __init__(self, sp_model_path, do_lower_case=False):
+        super(SpTokenizer, self).__init__(do_lower_case)
         import sentencepiece as spm
         self.sp_model = spm.SentencePieceProcessor()
         self.sp_model.Load(sp_model_path)
