@@ -22,7 +22,7 @@ def load_vocab(dict_path):
 class BasicTokenizer(object):
     """分词器基类
     """
-    def __init__(self):
+    def __init__(self, case_sensitive=True):
         """初始化
         """
         self._token_pad = '[PAD]'
@@ -30,10 +30,17 @@ class BasicTokenizer(object):
         self._token_sep = '[SEP]'
         self._token_unk = '[UNK]'
         self._token_mask = '[MASK]'
+        self._case_sensitive = case_sensitive
 
     def tokenize(self, text, add_cls=True, add_sep=True):
         """分词函数
         """
+        if not self._case_sensitive:
+            text = unicodedata.normalize('NFD', text)
+            text = ''.join(
+                [ch for ch in text if unicodedata.category(ch) != 'Mn'])
+            text = text.lower()
+
         tokens = self._tokenize(text)
         if add_cls:
             tokens.insert(0, self._token_cls)
@@ -138,13 +145,12 @@ class Tokenizer(BasicTokenizer):
     def __init__(self, token_dict, case_sensitive=True):
         """初始化
         """
-        super(Tokenizer, self).__init__()
+        super(Tokenizer, self).__init__(case_sensitive)
         if is_string(token_dict):
             token_dict = load_vocab(token_dict)
 
         self._token_dict = token_dict
         self._token_dict_inv = {v: k for k, v in token_dict.items()}
-        self._case_sensitive = case_sensitive
         for token in ['pad', 'cls', 'sep', 'unk', 'mask']:
             try:
                 _token_id = token_dict[getattr(self, '_token_%s' % token)]
@@ -196,12 +202,6 @@ class Tokenizer(BasicTokenizer):
     def _tokenize(self, text):
         """基本分词函数
         """
-        if not self._case_sensitive:
-            text = unicodedata.normalize('NFD', text)
-            text = ''.join(
-                [ch for ch in text if unicodedata.category(ch) != 'Mn'])
-            text = text.lower()
-
         spaced = ''
         for ch in text:
             if self._is_punctuation(ch) or self._is_cjk_character(ch):
@@ -296,8 +296,8 @@ class Tokenizer(BasicTokenizer):
 class SpTokenizer(BasicTokenizer):
     """基于SentencePiece模型的封装，使用上跟Tokenizer基本一致。
     """
-    def __init__(self, sp_model_path):
-        super(SpTokenizer, self).__init__()
+    def __init__(self, sp_model_path, case_sensitive=True):
+        super(SpTokenizer, self).__init__(case_sensitive)
         import sentencepiece as spm
         self.sp_model = spm.SentencePieceProcessor()
         self.sp_model.Load(sp_model_path)
