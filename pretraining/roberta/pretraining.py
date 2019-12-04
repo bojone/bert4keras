@@ -35,6 +35,7 @@ num_warmup_steps = 3125
 num_train_steps = 125000
 steps_per_epoch = 2000
 grad_accum_steps = 16 # 大于1即表明使用梯度累积
+loss_weight_of_identity = 0.1 # 除去mask后剩下部分(恒等映射)的loss权重
 epochs = num_train_steps * grad_accum_steps // steps_per_epoch
 exclude_from_weight_decay = ['Norm', 'bias']
 tpu_address = 'grpc://xxx.xxx.xxx.xxx:8470' # 如果用多GPU跑，直接设为None
@@ -70,22 +71,24 @@ def build_train_bert_model():
 
     # 辅助输入
     token_ids = Input(shape=(None, ), dtype='int64', name='token_ids') # 目标id
-    is_masked = Input(shape=(None, ), dtype='bool', name='is_masked') # mask标记
+    is_masked = Input(shape=(None, ), dtype=K.floatx(), name='is_masked') # mask标记
 
     def mlm_loss(inputs):
         """计算loss的函数，需要封装为一个层
         """
-        y_true, y_pred, is_masked = inputs
+        y_true, y_pred, is_masked, seq_mask = inputs
         is_masked = K.cast(is_masked, K.floatx())
         loss = K.sparse_categorical_crossentropy(y_true, y_pred, from_logits=True)
-        loss = K.sum(loss * is_masked) / (K.sum(is_masked) + K.epsilon())
-        return loss
+        mask1 = is_masked * seq_mask
+        loss1 = K.sum(loss * mask1) / (K.sum(mask1) + K.epsilon())
+        mask2 = (1. - is_masked) * seq_mask
+        loss2 = K.sum(loss * mask2) / (K.sum(mask2) + K.epsilon())
+        return loss1 + loss_weight_of_identity * loss2
 
     def mlm_acc(inputs):
         """计算准确率的函数，需要封装为一个层
         """
         y_true, y_pred, is_masked = inputs
-        is_masked = K.cast(is_masked, K.floatx())
         y_true = K.cast(y_true, K.floatx())
         acc = keras.metrics.sparse_categorical_accuracy(y_true, y_pred)
         acc = K.sum(acc * is_masked) / (K.sum(is_masked) + K.epsilon())
