@@ -46,7 +46,7 @@ for txt in glob.glob('/root/金庸/*/*.txt'):
 
 
 _token_dict = load_vocab(dict_path)  # 读取词典
-_tokenizer = Tokenizer(_token_dict, case_sensitive=False)  # 建立临时分词器
+_tokenizer = Tokenizer(_token_dict, do_lower_case=True)  # 建立临时分词器
 
 if os.path.exists(lm_config):
     tokens = json.load(open(lm_config))
