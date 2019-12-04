@@ -4,7 +4,7 @@
 import unicodedata
 import codecs
 import re
-from bert4keras.snippets import is_string
+from bert4keras.snippets import is_string, is_py2
 
 
 def load_vocab(dict_path):
@@ -36,6 +36,8 @@ class BasicTokenizer(object):
         """分词函数
         """
         if not self._case_sensitive:
+            if is_py2:
+                text = unicode(text)
             text = unicodedata.normalize('NFD', text)
             text = ''.join(
                 [ch for ch in text if unicodedata.category(ch) != 'Mn'])
