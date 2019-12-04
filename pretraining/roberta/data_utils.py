@@ -193,7 +193,7 @@ class TrainingDataset:
                 'Input-Token': masked_token_ids,
                 'Input-Segment': segment_ids,
                 'token_ids': token_ids,
-                'is_masked': is_masked,
+                'is_masked': K.cast(is_masked, K.floatx()),
             }
             y = {
                 'mlm_loss': K.zeros([1]),
