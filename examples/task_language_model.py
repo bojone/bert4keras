@@ -75,7 +75,7 @@ for t in tokens:
         token_dict[t] = len(token_dict)
         keep_words.append(_token_dict[t])
 
-tokenizer = Tokenizer(token_dict, case_sensitive=False)  # 建立分词器
+tokenizer = Tokenizer(token_dict, do_lower_case=True)  # 建立分词器
 
 
 data = []
