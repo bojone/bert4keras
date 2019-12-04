@@ -35,7 +35,7 @@ valid_data = load_data('datasets/sentiment/sentiment.valid.data')
 test_data = load_data('datasets/sentiment/sentiment.test.data')
 
 # 建立分词器
-tokenizer = Tokenizer(dict_path)
+tokenizer = Tokenizer(dict_path, case_sensitive=False)
 
 
 class data_generator:
