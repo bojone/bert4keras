@@ -93,7 +93,8 @@ def build_train_bert_model():
         acc = K.sum(acc * is_masked) / (K.sum(is_masked) + K.epsilon())
         return acc
 
-    loss = Lambda(mlm_loss, name='mlm_loss')([token_ids, proba, is_masked])
+    seq_mask = bert.model.get_layer('Sequence-Mask').output
+    loss = Lambda(mlm_loss, name='mlm_loss')([token_ids, proba, is_masked, seq_mask])
     acc = Lambda(mlm_acc, name='mlm_acc')([token_ids, proba, is_masked])
 
     train_model = Model(bert_model.inputs + [token_ids, is_masked], [loss, acc])
