@@ -220,7 +220,7 @@ if __name__ == '__main__':
 
     jieba.initialize()
     dict_path = '/home/spaces_ac_cn/chinese_L-12_H-768_A-12/vocab.txt'
-    tokenizer = Tokenizer(dict_path)
+    tokenizer = Tokenizer(dict_path, case_sensitive=False)
 
     def some_texts():
         filenames = glob.glob('/home/spaces_ac_cn/corpus/*/*/*')
