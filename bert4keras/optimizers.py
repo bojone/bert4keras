@@ -704,7 +704,7 @@ def extend_with_lazy_optimization_v2(base_optimizer, name=None):
     return new_optimizer
 
 
-if is_tf_keras():
+if is_tf_keras:
     extend_with_weight_decay = extend_with_weight_decay_v2
     extend_with_layer_adaptation = extend_with_layer_adaptation_v2
     extend_with_piecewise_linear_lr = extend_with_piecewise_linear_lr_v2
