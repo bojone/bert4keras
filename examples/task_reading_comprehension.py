@@ -87,18 +87,14 @@ class data_generator:
         for i in idxs:
             D = self.data[i]
             question = D['question']
-            answer = [p['answer'] for p in D['passages'] if p['answer']]
-            if answer:
-                answer = answer[0]
-            else:
-                answer = ''
+            answers = [p['answer'] for p in D['passages'] if p['answer']]
             passage = np.random.choice(D['passages'])['passage']
-            if all([a in passage[:max_p_len - 2] for a in answer.split(' ')]):
-                answer = answer.replace(' ', ',')
-            else:
-                answer = ''
+            final_answer = ''
+            for answer in answers:
+                if all([a in passage[:max_p_len - 2] for a in answer.split(' ')]):
+                    final_answer = answer.replace(' ', ',')
             qa_token_ids, qa_segment_ids = tokenizer.encode(
-                question, answer, max_length=max_qa_len + 1)
+                question, final_answer, max_length=max_qa_len + 1)
             p_token_ids, p_segment_ids = tokenizer.encode(passage,
                                                           max_length=max_p_len)
             token_ids = p_token_ids + qa_token_ids[1:]
