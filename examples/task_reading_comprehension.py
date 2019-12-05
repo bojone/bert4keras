@@ -93,6 +93,7 @@ class data_generator:
             for answer in answers:
                 if all([a in passage[:max_p_len - 2] for a in answer.split(' ')]):
                     final_answer = answer.replace(' ', ',')
+                    break
             qa_token_ids, qa_segment_ids = tokenizer.encode(
                 question, final_answer, max_length=max_qa_len + 1)
             p_token_ids, p_segment_ids = tokenizer.encode(passage,
