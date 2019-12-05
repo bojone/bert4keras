@@ -137,7 +137,8 @@ model.compile(optimizer=Adam(1e-5))
 
 
 def get_ngram_set(x, n):
-    """生成ngram合集，格式是{k[:-1]: set([k[-1]])}
+    """生成ngram合集，返回结果格式是:
+    {(n-1)-gram: set([n-gram的第n个字集合])}
     """
     result = {}
     for i in range(len(x) - n + 1):
@@ -153,6 +154,7 @@ def gen_answer(question, passages, topk=2, mode='extractive'):
     每次只保留topk个最优候选结果；如果topk=1，那么就是贪心搜索。
     passages为多篇章组成的list，从多篇文章中自动决策出最优的答案，
     如果没答案，则返回空字符串。
+    mode是extractive时，按照抽取式执行，即答案必须是原篇章的一个片段。
     """
     token_ids, segment_ids = [], []
     for passage in passages:
@@ -189,17 +191,18 @@ def gen_answer(question, passages, topk=2, mode='extractive'):
                 token_ids = [token_ids[j] for j in _available_idxs]
                 segment_ids = [segment_ids[j] for j in _available_idxs]
         if mode == 'extractive':
+            # 如果是抽取式，那么答案必须是篇章的一个片段
+            # 那么将非篇章片段的概率值全部置0
             _zeros = np.zeros_like(_probas)
             _ngrams = {}
             for p_token_ids in token_ids:
                 for k, v in get_ngram_set(p_token_ids, i + 1).items():
                     _ngrams[k] = _ngrams.get(k, set()) | v
             for j, t in enumerate(target_ids):
-                _candidates = _ngrams.get(tuple(t), set())
-                _candidates.add(token_dict[','])
-                _candidates.add(token_dict['[SEP]'])
-                _candidates = [k - 3 for k in _candidates]
-                _zeros[:, j, _candidates] = _probas[:, j, _candidates]
+                _available_idxs = _ngrams.get(tuple(t), set())
+                _available_idxs.add(token_dict['[SEP]'])
+                _available_idxs = [k - 3 for k in _available_idxs]
+                _zeros[:, j, _available_idxs] = _probas[:, j, _available_idxs]
             _probas = _zeros
         _probas = (_probas**2).sum(0) / (_probas.sum(0) + 1)  # 某种平均投票方式
         _log_probas = np.log(_probas + 1e-6)  # 取对数，方便计算
