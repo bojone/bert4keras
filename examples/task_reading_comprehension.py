@@ -11,7 +11,7 @@ from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding
-import codecs
+import codecs, re
 from tqdm import tqdm
 
 
@@ -89,6 +89,7 @@ class data_generator:
             question = D['question']
             answers = [p['answer'] for p in D['passages'] if p['answer']]
             passage = np.random.choice(D['passages'])['passage']
+            passage = re.sub(u' |、|；|，', ',', passage)
             final_answer = ''
             for answer in answers:
                 if all([a in passage[:max_p_len - 2] for a in answer.split(' ')]):
@@ -155,6 +156,7 @@ def gen_answer(question, passages, topk=2, mode='extractive'):
     """
     token_ids, segment_ids = [], []
     for passage in passages:
+        passage = re.sub(u' |、|；|，', ',', passage)
         p_token_ids = tokenizer.encode(passage, max_length=max_p_len)[0]
         q_token_ids = tokenizer.encode(question, max_length=max_q_len + 1)[0]
         token_ids.append(p_token_ids + q_token_ids[1:])
