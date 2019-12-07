@@ -63,7 +63,7 @@ class BertModel(object):
         x, s = x_in, s_in
 
         # 自行构建Mask
-        sequence_mask = Lambda(lambda x: K.cast(K.greater(x, 0), 'float32'),
+        sequence_mask = Lambda(lambda x: K.cast(K.greater(x, 0), K.floatx()),
                                name='Sequence-Mask')(x)
 
         # Embedding部分
