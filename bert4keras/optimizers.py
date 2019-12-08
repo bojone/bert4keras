@@ -412,7 +412,7 @@ def extend_with_gradient_accumulation(base_optimizer, name=None):
                     for g, ag in zip(grads, self.accum_grads)
                 ]
 
-            return self.updates
+            return accum_updates
 
         def get_config(self):
             config = {'grad_accum_steps': self.grad_accum_steps}
