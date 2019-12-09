@@ -10,7 +10,7 @@ from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
-from bert4keras.snippets import sequence_padding
+from bert4keras.snippets import sequence_padding, DataGenerator
 import codecs, re
 from tqdm import tqdm
 
@@ -64,19 +64,9 @@ for t, _ in sorted(_token_dict.items(), key=lambda s: s[1]):
 tokenizer = Tokenizer(token_dict, do_lower_case=True)  # 建立分词器
 
 
-class data_generator:
+class data_generator(DataGenerator):
     """数据生成器
     """
-    def __init__(self, data, batch_size=32):
-        self.data = data
-        self.batch_size = batch_size
-        self.steps = len(self.data) // self.batch_size
-        if len(self.data) % self.batch_size != 0:
-            self.steps += 1
-
-    def __len__(self):
-        return self.steps
-
     def __iter__(self, random=False):
         """单条样本格式：[CLS]篇章[SEP]问题[SEP]答案[SEP]
         """
@@ -108,11 +98,6 @@ class data_generator:
                 batch_segment_ids = sequence_padding(batch_segment_ids)
                 yield [batch_token_ids, batch_segment_ids], None
                 batch_token_ids, batch_segment_ids = [], []
-
-    def forfit(self):
-        while True:
-            for d in self.__iter__(True):
-                yield d
 
 
 model = build_bert_model(
