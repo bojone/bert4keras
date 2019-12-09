@@ -152,12 +152,20 @@ class LayerNormalization(Layer):
                                     name='beta')
 
     def call(self, inputs):
+        """如果输入是一个list，那么默认它是带有beta、gamma的调节项
+        （可用来实现Conditional Layer Normalization）
+        """
+        if isinstance(inputs, list):
+            inputs, beta, gamma = inputs
+            beta, gamma = self.beta + beta, self.gamma + gamma
+        else:
+            beta, gamma = self.beta, self.gamma
+
         mean = K.mean(inputs, axis=-1, keepdims=True)
         variance = K.mean(K.square(inputs - mean), axis=-1, keepdims=True)
         std = K.sqrt(variance + self.epsilon)
         outputs = (inputs - mean) / std
-        outputs *= self.gamma
-        outputs += self.beta
+        outputs = outputs * gamma + beta
         return outputs
 
 
