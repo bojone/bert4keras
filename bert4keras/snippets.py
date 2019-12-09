@@ -170,3 +170,25 @@ def is_one_of(x, ys):
         if x is y:
             return True
     return False
+
+
+class DataGenerator(object):
+    """数据生成器模版
+    """
+    def __init__(self, data, batch_size=32):
+        self.data = data
+        self.batch_size = batch_size
+        self.steps = len(self.data) // self.batch_size
+        if len(self.data) % self.batch_size != 0:
+            self.steps += 1
+
+    def __len__(self):
+        return self.steps
+
+    def __iter__(self, random=False):
+        raise NotImplementedError
+
+    def forfit(self):
+        while True:
+            for d in self.__iter__(True):
+                yield d
