@@ -16,6 +16,7 @@ set_gelu('tanh')  # 切换gelu版本
 
 
 maxlen = 128
+batch_size = 32
 config_path = '/root/kg/bert/albert_small_zh_google/albert_config.json'
 checkpoint_path = '/root/kg/bert/albert_small_zh_google/albert_model.ckpt'
 dict_path = '/root/kg/bert/albert_small_zh_google/vocab.txt'
@@ -88,9 +89,9 @@ model.compile(
 )
 
 # 转换数据集
-train_generator = data_generator(train_data, batch_size=32)
-valid_generator = data_generator(valid_data, batch_size=32)
-test_generator = data_generator(test_data, batch_size=32)
+train_generator = data_generator(train_data, batch_size)
+valid_generator = data_generator(valid_data, batch_size)
+test_generator = data_generator(test_data, batch_size)
 
 
 def evaluate(data):
