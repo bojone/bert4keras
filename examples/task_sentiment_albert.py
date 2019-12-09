@@ -9,6 +9,7 @@ from bert4keras.tokenizer import Tokenizer
 from bert4keras.bert import build_bert_model
 from bert4keras.optimizers import Adam, extend_with_piecewise_linear_lr
 from bert4keras.snippets import sequence_padding, get_all_attributes
+from bert4keras.snippets import DataGenerator
 
 locals().update(get_all_attributes(keras.layers))  # from keras.layers import *
 set_gelu('tanh')  # 切换gelu版本
@@ -38,19 +39,9 @@ test_data = load_data('datasets/sentiment/sentiment.test.data')
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
 
-class data_generator:
+class data_generator(DataGenerator):
     """数据生成器
     """
-    def __init__(self, data, batch_size=32):
-        self.data = data
-        self.batch_size = batch_size
-        self.steps = len(self.data) // self.batch_size
-        if len(self.data) % self.batch_size != 0:
-            self.steps += 1
-
-    def __len__(self):
-        return self.steps
-
     def __iter__(self, random=False):
         idxs = list(range(len(self.data)))
         if random:
@@ -68,11 +59,6 @@ class data_generator:
                 batch_labels = sequence_padding(batch_labels)
                 yield [batch_token_ids, batch_segment_ids], batch_labels
                 batch_token_ids, batch_segment_ids, batch_labels = [], [], []
-
-    def forfit(self):
-        while True:
-            for d in self.__iter__(True):
-                yield d
 
 
 # 加载预训练模型
@@ -102,9 +88,9 @@ model.compile(
 )
 
 # 转换数据集
-train_generator = data_generator(train_data)
-valid_generator = data_generator(valid_data)
-test_generator = data_generator(test_data)
+train_generator = data_generator(train_data, batch_size=32)
+valid_generator = data_generator(valid_data, batch_size=32)
+test_generator = data_generator(test_data, batch_size=32)
 
 
 def evaluate(data):
