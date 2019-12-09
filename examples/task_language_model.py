@@ -10,7 +10,7 @@ from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
-from bert4keras.snippets import sequence_padding
+from bert4keras.snippets import sequence_padding, DataGenerator
 
 
 lm_config = 'lm_config.json'
@@ -99,18 +99,26 @@ pbar.close()
 np.random.shuffle(data)
 
 
-def data_generator():
-    while True:
-        X, S = [], []
-        for d in data:
-            x, s = tokenizer.encode(d)
-            X.append(x)
-            S.append(s)
-            if len(X) == batch_size:
-                X = sequence_padding(X)
-                S = sequence_padding(S)
-                yield [X, S], None
-                X, S = [], []
+class data_generator(DataGenerator):
+    """数据生成器
+    """
+    def __iter__(self, random=False):
+        idxs = list(range(len(self.data)))
+        if random:
+            np.random.shuffle(idxs)
+        batch_token_ids, batch_segment_ids, batch_labels = [], [], []
+        for i in idxs:
+            text = self.data[i]
+            token_ids, segment_ids = tokenizer.encode(text)
+            batch_token_ids.append(token_ids)
+            batch_segment_ids.append(segment_ids)
+            batch_labels.append([label])
+            if len(batch_token_ids) == self.batch_size or i == idxs[-1]:
+                batch_token_ids = sequence_padding(batch_token_ids)
+                batch_segment_ids = sequence_padding(batch_segment_ids)
+                batch_labels = sequence_padding(batch_labels)
+                yield [batch_token_ids, batch_segment_ids], batch_labels
+                batch_token_ids, batch_segment_ids, batch_labels = [], [], []
 
 
 model = build_bert_model(
@@ -187,8 +195,9 @@ class Evaluate(keras.callbacks.Callback):
 if __name__ == '__main__':
 
     evaluator = Evaluate()
+    train_data_generator = data_generator(data, batch_size)
 
-    model.fit_generator(data_generator(),
+    model.fit_generator(train_data_generator.forfit(),
                         steps_per_epoch=steps_per_epoch,
                         epochs=epochs,
                         callbacks=[evaluator])
@@ -196,6 +205,7 @@ if __name__ == '__main__':
 else:
 
     model.load_weights('./best_model.weights')
+
 """
 效果：
 
