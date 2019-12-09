@@ -240,10 +240,10 @@ class Evaluate(keras.callbacks.Callback):
 if __name__ == '__main__':
 
     evaluator = Evaluate()
-    train_D = data_generator(train_data, batch_size)
+    train_data_generator = data_generator(train_data, batch_size)
 
-    model.fit_generator(train_D.forfit(),
-                        steps_per_epoch=len(train_D),
+    model.fit_generator(train_data_generator.forfit(),
+                        steps_per_epoch=len(train_data_generator),
                         epochs=epochs,
                         callbacks=[evaluator])
 
