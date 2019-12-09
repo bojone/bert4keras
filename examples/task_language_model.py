@@ -106,19 +106,17 @@ class data_generator(DataGenerator):
         idxs = list(range(len(self.data)))
         if random:
             np.random.shuffle(idxs)
-        batch_token_ids, batch_segment_ids, batch_labels = [], [], []
+        batch_token_ids, batch_segment_ids = [], []
         for i in idxs:
             text = self.data[i]
             token_ids, segment_ids = tokenizer.encode(text)
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
-            batch_labels.append([label])
             if len(batch_token_ids) == self.batch_size or i == idxs[-1]:
                 batch_token_ids = sequence_padding(batch_token_ids)
                 batch_segment_ids = sequence_padding(batch_segment_ids)
-                batch_labels = sequence_padding(batch_labels)
-                yield [batch_token_ids, batch_segment_ids], batch_labels
-                batch_token_ids, batch_segment_ids, batch_labels = [], [], []
+                yield [batch_token_ids, batch_segment_ids], None
+                batch_token_ids, batch_segment_ids = [], []
 
 
 model = build_bert_model(
