@@ -186,7 +186,7 @@ class BertModel(object):
         if attention_mask is None:
             x = layers[0]([x, x, x, sequence_mask], v_mask=True)
         elif attention_mask is 'history_only':
-            x = layers[0]([x, x, x, sequence_mask], v_mask=True)
+            x = layers[0]([x, x, x, sequence_mask], v_mask=True, a_mask=True)
         else:
             x = layers[0]([x, x, x, sequence_mask, attention_mask],
                           v_mask=True,
