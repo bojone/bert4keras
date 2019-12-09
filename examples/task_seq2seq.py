@@ -12,12 +12,12 @@ from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import parallel_apply, sequence_padding
+from bert4keras.snippets import DataGenerator
 
 
 seq2seq_config = 'seq2seq_config.json'
-min_count = 40
-max_input_len = 256
-max_output_len = 32
+min_count = 128
+maxlen = 256
 batch_size = 16
 steps_per_epoch = 1000
 epochs = 10000
@@ -27,19 +27,8 @@ config_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/bert_config.json'
 checkpoint_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/bert_model.ckpt'
 dict_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/vocab.txt'
 
-
-def read_texts():
-    txts = glob.glob('../../thuctc/THUCNews/*/*.txt')
-    np.random.shuffle(txts)
-    for txt in txts:
-        d = open(txt).read()
-        d = d.decode('utf-8').replace(u'\u3000', ' ')
-        d = d.split('\n')
-        if len(d) > 1:
-            title = d[0].strip()
-            content = '\n'.join(d[1:]).strip()
-            if len(title) <= max_output_len:
-                yield content[:max_input_len], title
+# 训练样本。THUCNews数据集，每个样本保存为一个txt。
+txts = glob.glob('/root/thuctc/THUCNews/*/*.txt')
 
 
 _token_dict = load_vocab(dict_path)  # 读取词典
@@ -53,9 +42,10 @@ else:
 
     def _batch_texts():
         texts = []
-        for text in read_texts():
-            texts.extend(text)
-            if len(texts) >= 1000:
+        for txt in txts:
+            text = codecs.open(txt, encoding='utf-8').read()
+            texts.append(text)
+            if len(texts) == 100:
                 yield texts
                 texts = []
         if texts:
@@ -79,7 +69,7 @@ else:
         func=_tokenize_and_count,
         iterable=tqdm(_batch_texts(), desc=u'构建词汇表中'),
         workers=10,
-        max_queue_size=500,
+        max_queue_size=100,
         callback=_total_count,
     )
 
@@ -90,7 +80,6 @@ else:
               codecs.open(seq2seq_config, 'w', encoding='utf-8'),
               indent=4,
               ensure_ascii=False)
-
 
 token_dict, keep_words = {}, []  # keep_words是在bert中保留的字表
 
@@ -106,18 +95,31 @@ for t in tokens:
 tokenizer = Tokenizer(token_dict, do_lower_case=True)  # 建立分词器
 
 
-def data_generator():
-    while True:
-        X, S = [], []
-        for a, b in read_texts():
-            x, s = tokenizer.encode(a, b)
-            X.append(x)
-            S.append(s)
-            if len(X) == batch_size:
-                X = sequence_padding(X)
-                S = sequence_padding(S)
-                yield [X, S], None
-                X, S = [], []
+class data_generator(DataGenerator):
+    """数据生成器
+    """
+    def __iter__(self, random=False):
+        idxs = list(range(len(self.data)))
+        if random:
+            np.random.shuffle(idxs)
+        batch_token_ids, batch_segment_ids = [], []
+        for i in idxs:
+            txt = self.data[i]
+            text = codecs.open(txt, encoding='utf-8').read()
+            text = text.split('\n')
+            if len(text) > 1:
+                title = text[0]
+                content = '\n'.join(text[1:])
+                token_ids, segment_ids = tokenizer.encode(content,
+                                                          title,
+                                                          max_length=maxlen)
+                batch_token_ids.append(token_ids)
+                batch_segment_ids.append(segment_ids)
+            if len(batch_token_ids) == self.batch_size or i == idxs[-1]:
+                batch_token_ids = sequence_padding(batch_token_ids)
+                batch_segment_ids = sequence_padding(batch_segment_ids)
+                yield [batch_token_ids, batch_segment_ids], None
+                batch_token_ids, batch_segment_ids = [], []
 
 
 model = build_bert_model(
@@ -140,14 +142,15 @@ model.add_loss(cross_entropy)
 model.compile(optimizer=Adam(1e-5))
 
 
-def gen_sent(s, topk=2):
+def gen_sent(s, topk=2, title_maxlen=32):
     """beam search解码
     每次只保留topk个最优候选结果；如果topk=1，那么就是贪心搜索
     """
-    token_ids, segment_ids = tokenizer.encode(s[:max_input_len])
+    content_maxlen = maxlen - title_maxlen
+    token_ids, segment_ids = tokenizer.encode(s, max_length=content_maxlen)
     target_ids = [[] for _ in range(topk)]  # 候选答案id
     target_scores = [0] * topk  # 候选答案分数
-    for i in range(max_output_len):  # 强制要求输出不超过max_output_len字
+    for i in range(title_maxlen):  # 强制要求输出不超过title_maxlen字
         _target_ids = [token_ids + t for t in target_ids]
         _segment_ids = [segment_ids + [1] * len(t) for t in target_ids]
         _probas = model.predict([_target_ids, _segment_ids
@@ -169,13 +172,13 @@ def gen_sent(s, topk=2):
         best_one = np.argmax(target_scores)
         if target_ids[best_one][-1] == 3:
             return tokenizer.decode(target_ids[best_one])
-    # 如果max_output_len字都找不到结束符，直接返回
+    # 如果title_maxlen字都找不到结束符，直接返回
     return tokenizer.decode(target_ids[np.argmax(target_scores)])
 
 
 def just_show():
-    s1 = u'夏天来临，皮肤在强烈紫外线的照射下，晒伤不可避免，因此，晒后及时修复显得尤为重要，否则可能会造成长期伤害。专家表示，选择晒后护肤品要慎重，芦荟凝胶是最安全，有效的一种选择，晒伤严重者，还请及时 就医 。'
-    s2 = u'8月28日，网络爆料称，华住集团旗下连锁酒店用户数据疑似发生泄露。从卖家发布的内容看，数据包含华住旗下汉庭、禧玥、桔子、宜必思等10余个品牌酒店的住客信息。泄露的信息包括华住官网注册资料、酒店入住登记的身份信息及酒店开房记录，住客姓名、手机号、邮箱、身份证号、登录账号密码等。卖家对这个约5亿条数据打包出售。第三方安全平台威胁猎人对信息出售者提供的三万条数据进行验证，认为数据真实性非常高。当天下午，华 住集 团发声明称，已在内部迅速开展核查，并第一时间报警。当晚，上海警方消息称，接到华住集团报案，警方已经介入调查。'
+    s1 = u'夏天来临，皮肤在强烈紫外线的照射下，晒伤不可避免，因此，晒后及时修复显得尤为重要，否则可能会造成长期伤害。专家表示，选择晒后护肤品要慎重，芦荟凝胶是最安全，有效的一种选择，晒伤严重者，还请及 时 就医 。'
+    s2 = u'8月28日，网络爆料称，华住集团旗下连锁酒店用户数据疑似发生泄露。从卖家发布的内容看，数据包含华住旗下汉庭、禧玥、桔子、宜必思等10余个品牌酒店的住客信息。泄露的信息包括华住官网注册资料、酒店入住登记的身份信息及酒店开房记录，住客姓名、手机号、邮箱、身份证号、登录账号密码等。卖家对这个约5亿条数据打包出售。第三方安全平台威胁猎人对信息出售者提供的三万条数据进行验证，认为数据真实性非常高。当天下午 ，华 住集 团发声明称，已在内部迅速开展核查，并第一时间报警。当晚，上海警方消息称，接到华住集团报案，警方已经介入调查。'
     for s in [s1, s2]:
         print(u'生成标题:', gen_sent(s))
     print()
@@ -197,8 +200,9 @@ class Evaluate(keras.callbacks.Callback):
 if __name__ == '__main__':
 
     evaluator = Evaluate()
+    train_data_generator = data_generator(txts, batch_size)
 
-    model.fit_generator(data_generator(),
+    model.fit_generator(train_data_generator.forfit(),
                         steps_per_epoch=steps_per_epoch,
                         epochs=epochs,
                         callbacks=[evaluator])
