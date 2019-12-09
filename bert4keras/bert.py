@@ -100,8 +100,7 @@ class BertModel(object):
                 attention_mask=self.compute_attention_mask(i, s_in),
                 attention_name=attention_name,
                 feed_forward_name=feed_forward_name,
-                input_layers=layers)
-            x = self.post_processing(i, x)
+                layers=layers)
             if not self.block_sharing:
                 layers = None
 
@@ -154,33 +153,30 @@ class BertModel(object):
                           attention_mask=None,
                           attention_name='attention',
                           feed_forward_name='feed-forward',
-                          input_layers=None):
+                          layers=None):
         """构建单个Transformer Block
-        如果没传入input_layers则新建层；如果传入则重用旧层。
+        如果没传入layers则新建层；如果传入则重用旧层。
         """
         x = inputs
-        if input_layers is None:
-            layers = [
-                MultiHeadAttention(heads=self.num_attention_heads,
-                                   head_size=self.attention_head_size,
-                                   kernel_initializer=self.initializer,
-                                   name=attention_name),
-                Dropout(rate=self.dropout_rate,
-                        name='%s-Dropout' % attention_name),
-                Add(name='%s-Add' % attention_name),
-                LayerNormalization(name='%s-Norm' % attention_name),
-                FeedForward(units=self.intermediate_size,
-                            groups=self.num_feed_forward_groups,
-                            activation=self.hidden_act,
-                            kernel_initializer=self.initializer,
-                            name=feed_forward_name),
-                Dropout(rate=self.dropout_rate,
-                        name='%s-Dropout' % feed_forward_name),
-                Add(name='%s-Add' % feed_forward_name),
-                LayerNormalization(name='%s-Norm' % feed_forward_name),
-            ]
-        else:
-            layers = input_layers
+        layers = layers or [
+            MultiHeadAttention(heads=self.num_attention_heads,
+                               head_size=self.attention_head_size,
+                               kernel_initializer=self.initializer,
+                               name=attention_name),
+            Dropout(rate=self.dropout_rate,
+                    name='%s-Dropout' % attention_name),
+            Add(name='%s-Add' % attention_name),
+            LayerNormalization(name='%s-Norm' % attention_name),
+            FeedForward(units=self.intermediate_size,
+                        groups=self.num_feed_forward_groups,
+                        activation=self.hidden_act,
+                        kernel_initializer=self.initializer,
+                        name=feed_forward_name),
+            Dropout(rate=self.dropout_rate,
+                    name='%s-Dropout' % feed_forward_name),
+            Add(name='%s-Add' % feed_forward_name),
+            LayerNormalization(name='%s-Norm' % feed_forward_name),
+        ]
         # Self Attention
         xi = x
         if attention_mask is None:
@@ -208,11 +204,6 @@ class BertModel(object):
         """定义每一层的Attention Mask，来实现不同的功能
         """
         return None
-
-    def post_processing(self, layer_id, inputs):
-        """自定义每一个block的后处理操作
-        """
-        return inputs
 
     @property
     def initializer(self):
