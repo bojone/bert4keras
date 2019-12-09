@@ -12,9 +12,6 @@ from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import parallel_apply, sequence_padding
-from bert4keras.snippets import get_all_attributes
-
-locals().update(get_all_attributes(keras.layers))  # from keras.layers import *
 
 
 seq2seq_config = 'seq2seq_config.json'
