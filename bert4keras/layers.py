@@ -157,6 +157,9 @@ class LayerNormalization(Layer):
         """
         if isinstance(inputs, list):
             inputs, beta, gamma = inputs
+            for _ in range(K.ndim(inputs) - K.ndim(beta)):
+                beta = K.expand_dims(beta, 1)
+                gamma = K.expand_dims(gamma, 1)
             beta, gamma = self.beta + beta, self.gamma + gamma
         else:
             beta, gamma = self.beta, self.gamma
