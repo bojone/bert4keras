@@ -1,7 +1,8 @@
 #! -*- coding: utf-8 -*-
 # 用seq2seq的方式阅读理解任务
 # 数据集和评测同 https://github.com/bojone/dgcnn_for_reading_comprehension
-# 8个epoch后在valid上能达到约0.75的分数
+# 8个epoch后在valid上能达到约0.77的分数
+# (Accuracy=0.7259005836184343	F1=0.813860036706151	Final=0.7698803101622926)
 
 import json, os
 import numpy as np
