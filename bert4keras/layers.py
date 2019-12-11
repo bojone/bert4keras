@@ -135,7 +135,7 @@ class MultiHeadAttention(Layer):
 
 
 class LayerNormalization(Layer):
-    """实现基本的Layer Norm，只保留核心运算部分
+    """Layer Norm
     """
     def __init__(self, **kwargs):
         super(LayerNormalization, self).__init__(**kwargs)
@@ -152,18 +152,7 @@ class LayerNormalization(Layer):
                                     name='beta')
 
     def call(self, inputs):
-        """如果输入是一个list，那么默认它是带有beta、gamma的调节项
-        （可用来实现Conditional Layer Normalization）
-        """
-        if isinstance(inputs, list):
-            inputs, beta, gamma = inputs
-            for _ in range(K.ndim(inputs) - K.ndim(beta)):
-                beta = K.expand_dims(beta, 1)
-                gamma = K.expand_dims(gamma, 1)
-            beta, gamma = self.beta + beta, self.gamma + gamma
-        else:
-            beta, gamma = self.beta, self.gamma
-
+        beta, gamma = self.beta, self.gamma
         mean = K.mean(inputs, axis=-1, keepdims=True)
         variance = K.mean(K.square(inputs - mean), axis=-1, keepdims=True)
         std = K.sqrt(variance + self.epsilon)
