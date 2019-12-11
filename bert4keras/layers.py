@@ -334,18 +334,19 @@ class EmbeddingDense(Layer):
             if embedding_layer.name != self.embedding_name:
 
                 def recursive_search(layer):
-                    """递归向上搜索，根据名字找Embedding层
+                    """递归向上搜索，根据名字找层
                     """
-                    last_layer = layer._inbound_nodes[0].inbound_layers
-                    if isinstance(last_layer, list):
-                        if len(last_layer) == 0:
-                            return None
-                        else:
-                            last_layer = last_layer[0]
-                    if last_layer.name == self.embedding_name:
-                        return last_layer
-                    else:
-                        return recursive_search(last_layer)
+                    inbound_layers = layer._inbound_nodes[0].inbound_layers
+                    if not isinstance(inbound_layers, list):
+                        inbound_layers = [inbound_layers]
+                    if len(inbound_layers) > 0:
+                        for layer in inbound_layers:
+                            if layer.name == self.embedding_name:
+                                return layer
+                            else:
+                                layer = recursive_search(layer)
+                                if layer is not None:
+                                    return layer
 
                 embedding_layer = recursive_search(embedding_layer)
                 if embedding_layer is None:
