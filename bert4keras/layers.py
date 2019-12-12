@@ -136,7 +136,7 @@ class MultiHeadAttention(Layer):
 
 class LayerNormalization(Layer):
     """(Conditional) Layer Normalization
-    project_units和project_activation参数仅为有条件输入时使用
+    project_*系列参数仅为有条件输入时(conditional=True)使用
     """
     def __init__(self,
                  conditional=False,
