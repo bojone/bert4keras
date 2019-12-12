@@ -135,15 +135,30 @@ class MultiHeadAttention(Layer):
 
 
 class LayerNormalization(Layer):
-    """Layer Norm
+    """(Conditional) Layer Normalization
+    project_units和project_activation参数仅为有条件输入时使用
     """
-    def __init__(self, **kwargs):
+    def __init__(self,
+                 conditional=False,
+                 project_units=None,
+                 project_activation=None,
+                 project_initializer='glorot_uniform',
+                 **kwargs):
         super(LayerNormalization, self).__init__(**kwargs)
+        self.conditional = conditional
+        self.project_units = project_units
+        self.project_activation = activations.get(project_activation)
+        self.project_initializer = initializers.get(project_initializer)
         self.epsilon = K.epsilon() * K.epsilon()
 
     def build(self, input_shape):
         super(LayerNormalization, self).build(input_shape)
-        shape = (input_shape[-1], )
+
+        if self.conditional:
+            shape = (input_shape[0][-1], )
+        else:
+            shape = (input_shape[-1], )
+
         self.gamma = self.add_weight(shape=shape,
                                      initializer='ones',
                                      name='gamma')
@@ -151,14 +166,53 @@ class LayerNormalization(Layer):
                                     initializer='zeros',
                                     name='beta')
 
+        if self.conditional:
+
+            if self.project_units is not None:
+                self.project_dense = Dense(
+                    units=self.project_units,
+                    activation=self.project_activation,
+                    use_bias=False,
+                    kernel_initializer=self.project_initializer)
+
+            self.beta_dense = Dense(units=shape[0],
+                                    use_bias=False,
+                                    kernel_initializer='zeros')
+            self.gamma_dense = Dense(units=shape[0],
+                                     use_bias=False,
+                                     kernel_initializer='zeros')
+
     def call(self, inputs):
-        beta, gamma = self.beta, self.gamma
+        """如果是条件Layer Norm，则默认以list为输入，第二个是condition
+        """
+        if self.conditional:
+            inputs, cond = inputs
+            for _ in range(K.ndim(inputs) - K.ndim(cond)):
+                cond = K.expand_dims(cond, 1)
+            if self.project_units is not None:
+                cond = self.project_dense(cond)
+            beta = self.beta_dense(cond)
+            gamma = self.gamma_dense(cond)
+            beta, gamma = self.beta + beta, self.gamma + gamma
+        else:
+            beta, gamma = self.beta, self.gamma
+
         mean = K.mean(inputs, axis=-1, keepdims=True)
         variance = K.mean(K.square(inputs - mean), axis=-1, keepdims=True)
         std = K.sqrt(variance + self.epsilon)
         outputs = (inputs - mean) / std
         outputs = outputs * gamma + beta
         return outputs
+
+    def get_config(self):
+        config = {
+            'conditional': self.conditional,
+            'project_units': self.project_units,
+            'project_activation': activations.serialize(self.project_activation),
+            'project_initializer': initializers.serialize(self.project_initializer),
+        }
+        base_config = super(LayerNormalization, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
 
 
 class PositionEmbedding(Layer):
