@@ -141,7 +141,7 @@ class LayerNormalization(Layer):
     def __init__(self,
                  conditional=False,
                  project_units=None,
-                 project_activation=None,
+                 project_activation='linear',
                  project_initializer='glorot_uniform',
                  **kwargs):
         super(LayerNormalization, self).__init__(**kwargs)
