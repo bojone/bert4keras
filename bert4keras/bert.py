@@ -470,6 +470,11 @@ def build_bert_model(config_path,
                      application='encoder',
                      keep_words=None,
                      albert=False,
+                     layer_norm_cond=None,
+                     layer_norm_cond_size=None,
+                     layer_norm_cond_hidden_size=None,
+                     layer_norm_cond_hidden_act=None,
+                     additional_input_layers=None,
                      return_keras_model=True):
     """根据配置文件构建bert模型，可选加载checkpoint权重
     """
@@ -480,7 +485,8 @@ def build_bert_model(config_path,
         'lm': Bert4LM,
     }
 
-    assert application in mapping, 'application must be one of %s' % list(mapping.keys())
+    assert application in mapping, 'application must be one of %s' % list(
+        mapping.keys())
     Bert = mapping[application]
 
     bert = Bert(vocab_size=config['vocab_size'],
@@ -500,7 +506,11 @@ def build_bert_model(config_path,
                 keep_words=keep_words,
                 block_sharing=albert)
 
-    bert.build()
+    bert.build(layer_norm_cond=layer_norm_cond,
+               layer_norm_cond_size=layer_norm_cond_size,
+               layer_norm_cond_hidden_size=layer_norm_cond_hidden_size,
+               layer_norm_cond_hidden_act=layer_norm_cond_hidden_act,
+               additional_input_layers=additional_input_layers)
 
     if checkpoint_path is not None:
         bert.load_weights_from_checkpoint(checkpoint_path)
