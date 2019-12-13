@@ -136,19 +136,19 @@ class MultiHeadAttention(Layer):
 
 class LayerNormalization(Layer):
     """(Conditional) Layer Normalization
-    project_*系列参数仅为有条件输入时(conditional=True)使用
+    hidden_*系列参数仅为有条件输入时(conditional=True)使用
     """
     def __init__(self,
                  conditional=False,
-                 project_units=None,
-                 project_activation='linear',
-                 project_initializer='glorot_uniform',
+                 hidden_units=None,
+                 hidden_activation='linear',
+                 hidden_initializer='glorot_uniform',
                  **kwargs):
         super(LayerNormalization, self).__init__(**kwargs)
         self.conditional = conditional
-        self.project_units = project_units
-        self.project_activation = activations.get(project_activation)
-        self.project_initializer = initializers.get(project_initializer)
+        self.hidden_units = hidden_units
+        self.hidden_activation = activations.get(hidden_activation)
+        self.hidden_initializer = initializers.get(hidden_initializer)
         self.epsilon = K.epsilon() * K.epsilon()
 
     def build(self, input_shape):
@@ -168,12 +168,12 @@ class LayerNormalization(Layer):
 
         if self.conditional:
 
-            if self.project_units is not None:
-                self.project_dense = Dense(
-                    units=self.project_units,
-                    activation=self.project_activation,
+            if self.hidden_units is not None:
+                self.hidden_dense = Dense(
+                    units=self.hidden_units,
+                    activation=self.hidden_activation,
                     use_bias=False,
-                    kernel_initializer=self.project_initializer)
+                    kernel_initializer=self.hidden_initializer)
 
             self.beta_dense = Dense(units=shape[0],
                                     use_bias=False,
@@ -187,10 +187,10 @@ class LayerNormalization(Layer):
         """
         if self.conditional:
             inputs, cond = inputs
+            if self.hidden_units is not None:
+                cond = self.hidden_dense(cond)
             for _ in range(K.ndim(inputs) - K.ndim(cond)):
                 cond = K.expand_dims(cond, 1)
-            if self.project_units is not None:
-                cond = self.project_dense(cond)
             beta = self.beta_dense(cond)
             gamma = self.gamma_dense(cond)
             beta, gamma = self.beta + beta, self.gamma + gamma
@@ -207,9 +207,9 @@ class LayerNormalization(Layer):
     def get_config(self):
         config = {
             'conditional': self.conditional,
-            'project_units': self.project_units,
-            'project_activation': activations.serialize(self.project_activation),
-            'project_initializer': initializers.serialize(self.project_initializer),
+            'hidden_units': self.hidden_units,
+            'hidden_activation': activations.serialize(self.hidden_activation),
+            'hidden_initializer': initializers.serialize(self.hidden_initializer),
         }
         base_config = super(LayerNormalization, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
