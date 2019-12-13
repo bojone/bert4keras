@@ -337,8 +337,9 @@ class BertModel(object):
             return [load_variable(name) for name in names]
 
         for layer_name, layer_variable_names in mapping.items():
-            weights = load_variables(layer_variable_names)
-            self.model.get_layer(layer_name).set_weights(weights)
+            values = load_variables(layer_variable_names)
+            weights = self.model.get_layer(layer_name).weights
+            K.batch_set_value(zip(weights, values))
 
     def save_weights_as_checkpoint(self, filename, reference, mapping=None):
         """保存模型的权重，跟Bert的checkpoint格式一致
