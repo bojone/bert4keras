@@ -55,12 +55,37 @@ class BertModel(object):
         self.block_sharing = block_sharing
         self.additional_outputs = []
 
-    def build(self):
+    def build(self,
+              layer_norm_cond=None,
+              layer_norm_cond_size=None,
+              layer_norm_cond_hidden_size=None,
+              layer_norm_cond_hidden_act=None,
+              additional_input_layers=None):
         """Bert模型构建函数
+        layer_norm_*系列参数为实现Conditional Layer Normalization时使用，
+        用来实现以“固定长度向量”为条件的条件Bert。
         """
+        # 构建输入层
         x_in = Input(shape=(None, ), name='Input-Token')
         s_in = Input(shape=(None, ), name='Input-Segment')
-        x, s = x_in, s_in
+        x, s = input_layers = [x_in, s_in]
+
+        if layer_norm_cond is not None:
+            z = layer_norm_cond
+        elif layer_norm_cond_size is not None:
+            z = Input(shape=(layer_norm_cond_size, ),
+                      name='LayerNorm-Condition')
+            input_layers.append(z)
+        else:
+            z = None
+
+        if additional_input_layers is not None:
+            if not isinstance(additional_input_layers, list):
+                input_layers.append(additional_input_layers)
+            else:
+                input_layers.extend(additional_input_layers)
+
+        layer_norm_cond_hidden_act = layer_norm_cond_hidden_act or 'linear'
 
         # 自行构建Mask
         sequence_mask = Lambda(lambda x: K.cast(K.greater(x, 0), K.floatx()),
@@ -81,7 +106,11 @@ class BertModel(object):
                               merge_mode='add',
                               embeddings_initializer=self.initializer,
                               name='Embedding-Position')(x)
-        x = LayerNormalization(name='Embedding-Norm')(x)
+        x = LayerNormalization(conditional=(z is not None),
+                               hidden_units=layer_norm_cond_hidden_size,
+                               hidden_activation=layer_norm_cond_hidden_act,
+                               hidden_initializer=self.initializer,
+                               name='Embedding-Norm')([x, z])
         if self.dropout_rate > 0:
             x = Dropout(rate=self.dropout_rate, name='Embedding-Dropout')(x)
         if self.embedding_size != self.hidden_size:
@@ -95,11 +124,13 @@ class BertModel(object):
             attention_name = 'Encoder-%d-MultiHeadSelfAttention' % (i + 1)
             feed_forward_name = 'Encoder-%d-FeedForward' % (i + 1)
             x, layers = self.transformer_block(
-                inputs=x,
+                inputs=[x, z],
                 sequence_mask=sequence_mask,
                 attention_mask=self.compute_attention_mask(i, s_in),
                 attention_name=attention_name,
                 feed_forward_name=feed_forward_name,
+                layer_norm_cond_hidden_size=layer_norm_cond_hidden_size,
+                layer_norm_cond_hidden_act=layer_norm_cond_hidden_act,
                 layers=layers)
             if not self.block_sharing:
                 layers = None
@@ -130,7 +161,11 @@ class BertModel(object):
                       activation=self.hidden_act,
                       kernel_initializer=self.initializer,
                       name='MLM-Dense')(x)
-            x = LayerNormalization(name='MLM-Norm')(x)
+            x = LayerNormalization(conditional=(z is not None),
+                                   hidden_units=layer_norm_cond_hidden_size,
+                                   hidden_activation=layer_norm_cond_hidden_act,
+                                   hidden_initializer=self.initializer,
+                                   name='MLM-Norm')([x, z])
             mlm_activation = 'softmax' if self.with_mlm is True else self.with_mlm
             x = EmbeddingDense(embedding_name='Embedding-Token',
                                activation=mlm_activation,
@@ -145,7 +180,7 @@ class BertModel(object):
         else:
             outputs = outputs[1:]
 
-        self.model = Model([x_in, s_in], outputs)
+        self.model = Model(input_layers, outputs)
 
     def transformer_block(self,
                           inputs,
@@ -153,11 +188,13 @@ class BertModel(object):
                           attention_mask=None,
                           attention_name='attention',
                           feed_forward_name='feed-forward',
+                          layer_norm_cond_hidden_size=None,
+                          layer_norm_cond_hidden_act='linear',
                           layers=None):
         """构建单个Transformer Block
         如果没传入layers则新建层；如果传入则重用旧层。
         """
-        x = inputs
+        x, z = inputs
         layers = layers or [
             MultiHeadAttention(heads=self.num_attention_heads,
                                head_size=self.attention_head_size,
@@ -166,7 +203,11 @@ class BertModel(object):
             Dropout(rate=self.dropout_rate,
                     name='%s-Dropout' % attention_name),
             Add(name='%s-Add' % attention_name),
-            LayerNormalization(name='%s-Norm' % attention_name),
+            LayerNormalization(conditional=(z is not None),
+                               hidden_units=layer_norm_cond_hidden_size,
+                               hidden_activation=layer_norm_cond_hidden_act,
+                               hidden_initializer=self.initializer,
+                               name='%s-Norm' % attention_name),
             FeedForward(units=self.intermediate_size,
                         groups=self.num_feed_forward_groups,
                         activation=self.hidden_act,
@@ -175,7 +216,11 @@ class BertModel(object):
             Dropout(rate=self.dropout_rate,
                     name='%s-Dropout' % feed_forward_name),
             Add(name='%s-Add' % feed_forward_name),
-            LayerNormalization(name='%s-Norm' % feed_forward_name),
+            LayerNormalization(conditional=(z is not None),
+                               hidden_units=layer_norm_cond_hidden_size,
+                               hidden_activation=layer_norm_cond_hidden_act,
+                               hidden_initializer=self.initializer,
+                               name='%s-Norm' % feed_forward_name),
         ]
         # Self Attention
         xi = x
@@ -190,14 +235,14 @@ class BertModel(object):
         if self.dropout_rate > 0:
             x = layers[1](x)
         x = layers[2]([xi, x])
-        x = layers[3](x)
+        x = layers[3]([x, z])
         # Feed Forward
         xi = x
         x = layers[4](x)
         if self.dropout_rate > 0:
             x = layers[5](x)
         x = layers[6]([xi, x])
-        x = layers[7](x)
+        x = layers[7]([x, z])
         return x, layers
 
     def compute_attention_mask(self, layer_id, segment_ids):
