@@ -204,6 +204,14 @@ class LayerNormalization(Layer):
         outputs = outputs * gamma + beta
         return outputs
 
+    def __call__(self, inputs, *args, **kwargs):
+        if isinstance(inputs, list):
+            inputs = [i for i in inputs if i is not None]
+            if len(inputs) == 1:
+                inputs = inputs[0]
+
+        return super(LayerNormalization, self).__call__(inputs, *args, **kwargs)
+
     def get_config(self):
         config = {
             'conditional': self.conditional,
