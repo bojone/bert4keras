@@ -38,6 +38,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 （注：徐亮版albert的开源时间早于Google版albert，这导致早期徐亮版albert的权重与Google版的不完全一致，换言之两者不能直接相互替换。为了减少代码冗余，bert4keras的0.2.4及后续版本均只支持加载<u>Google版</u>以徐亮版中<u>带Google字眼</u>的权重。如果要加载早期版本的权重，请用<a href="https://github.com/bojone/bert4keras/releases/tag/v0.2.3">0.2.3版本</a>。）
 
 ## 更新
+- <strong>2019.12.09</strong>: 新增Conditional Layer Normalization及相关demo。
 - <strong>2019.12.09</strong>: 各example的data_generator规范化；修复application='lm'时的一个错误。
 - <strong>2019.12.05</strong>: 优化tokenizer的do_lower_case，同时微调各个example。
 - <strong>2019.11.23</strong>: 将train.py重命名为optimizers.py，更新大量优化器实现，全面兼容keras和tf.keras。
