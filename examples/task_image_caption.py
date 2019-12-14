@@ -1,7 +1,7 @@
 #! -*- coding: utf-8 -*-
 # bert做image caption任务，coco数据集
 # 通过Conditional Layer Normalization融入条件信息
-# 请参考： https://kexue.fm/archives/7124
+# 请参考：https://kexue.fm/archives/7124
 
 from __future__ import print_function
 import glob
