@@ -65,7 +65,7 @@ def read_caption(f):
 
 
 def read_image(f):
-    """单图读取函数
+    """单图读取函数（对非方形的图片进行白色填充，使其变为方形）
     """
     img = cv2.imread(f)
     height, width = img.shape[:2]
