@@ -18,6 +18,7 @@ import cv2
 
 locals().update(get_all_attributes(keras.layers))  # from keras.layers import *
 
+
 # 模型配置
 maxlen = 64
 batch_size = 32
