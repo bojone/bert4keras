@@ -22,7 +22,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 
 之前基于keras-bert给出的<a href="https://github.com/bojone/bert_in_keras">例子</a>，仍适用于本项目，只需要将`bert_model`的加载方式换成本项目的。
 
-理论上兼容Python2和Python3，实验环境是Python 2.7、Tesorflow 1.13+以及Keras 2.3.1（已经在2.3.0、2.3.1、tf.keras下测试通过）。
+理论上兼容Python2和Python3，实验环境是Python 2.7、Tesorflow 1.13+以及Keras 2.3.1（已经在2.2.4、2.3.0、2.3.1、tf.keras下测试通过）。
 
 当然，乐于贡献的朋友如果发现了某些bug的话，也欢迎指出修正甚至Pull Requests～
 
@@ -38,6 +38,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 （注：徐亮版albert的开源时间早于Google版albert，这导致早期徐亮版albert的权重与Google版的不完全一致，换言之两者不能直接相互替换。为了减少代码冗余，bert4keras的0.2.4及后续版本均只支持加载<u>Google版</u>以徐亮版中<u>带Google字眼</u>的权重。如果要加载早期版本的权重，请用<a href="https://github.com/bojone/bert4keras/releases/tag/v0.2.3">0.2.3版本</a>。）
 
 ## 更新
+- <strong>2019.12.16</strong>: 通过跟keras 2.3+版本类似的思路给低版本引入层中层功能，从而恢复对低于2.3.0版本的keras的支持。
 - <strong>2019.12.14</strong>: 新增Conditional Layer Normalization及相关demo。
 - <strong>2019.12.09</strong>: 各example的data_generator规范化；修复application='lm'时的一个错误。
 - <strong>2019.12.05</strong>: 优化tokenizer的do_lower_case，同时微调各个example。
