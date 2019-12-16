@@ -393,7 +393,11 @@ class BertModel(object):
                 )
             K.batch_set_value(zip(weights, values))
 
-    def save_weights_as_checkpoint(self, filename, reference, mapping=None):
+    def save_weights_as_checkpoint(self,
+                                   filename,
+                                   reference,
+                                   mapping=None,
+                                   write_meta_graph=False):
         """保存模型的权重，跟Bert的checkpoint格式一致
         filename: 要保存的名字；
         reference: 参照的已有的checkpoint。
@@ -419,11 +423,10 @@ class BertModel(object):
         with tf.Graph().as_default():
             for n, w in weights.items():
                 create_variable(n, w)
-
-            sess = tf.Session()
-            sess.run(tf.global_variables_initializer())
-            saver = tf.train.Saver()
-            saver.save(sess, filename)
+            with tf.Session() as sess:
+                sess.run(tf.global_variables_initializer())
+                saver = tf.train.Saver()
+                saver.save(sess, filename, write_meta_graph=write_meta_graph)
 
 
 class Bert4Seq2seq(BertModel):
