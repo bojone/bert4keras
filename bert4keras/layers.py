@@ -38,6 +38,43 @@ def sequence_masking(x, mask, mode=0, axis=None):
             return x - (1 - mask) * 1e12
 
 
+if keras.__version__[-2:] != 'tf' and keras.__version__ < '2.3':
+
+    class Layer(keras.layers.Layer):
+        """重新定义Layer，赋予“层中层”功能
+        （仅keras 2.3以下版本需要）
+        """
+        def __setattr__(self, name, value):
+            if isinstance(value, keras.layers.Layer):
+                if not hasattr(self, '_layers'):
+                    self._layers = []
+                if value not in self._layers:
+                    self._layers.append(value)
+            super(Layer, self).__setattr__(name, value)
+
+        @property
+        def trainable_weights(self):
+            trainable = getattr(self, 'trainable', True)
+            if trainable:
+                trainable_weights = super(Layer, self).trainable_weights[:]
+                for l in getattr(self, '_layers', []):
+                    trainable_weights += l.trainable_weights
+                return trainable_weights
+            else:
+                return []
+
+        @property
+        def non_trainable_weights(self):
+            trainable = getattr(self, 'trainable', True)
+            non_trainable_weights = super(Layer, self).non_trainable_weights[:]
+            for l in getattr(self, '_layers', []):
+                if trainable:
+                    non_trainable_weights += l.non_trainable_weights
+                else:
+                    non_trainable_weights += l.weights
+            return non_trainable_weights
+
+
 class MultiHeadAttention(Layer):
     """多头注意力机制
     """
