@@ -84,6 +84,16 @@ def leaky_relu(x, alpha=0.2):
     return tf.nn.leaky_relu(x, alpha=alpha)
 
 
+def symbolic(f):
+    """恒等装饰器（兼容旧版本keras用）
+    """
+    return f
+
+
+# 给旧版本keras新增symbolic方法（装饰器），
+# 以便兼容optimizers.py中的代码
+K.symbolic = getattr(K, 'symbolic', None) or symbolic
+
 custom_objects = {
     'gelu_erf': gelu_erf,
     'gelu_tanh': gelu_tanh,
