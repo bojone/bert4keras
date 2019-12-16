@@ -6,11 +6,17 @@
 ## 说明
 这是笔者重新实现的keras版的bert，致力于用尽可能清爽的代码来实现keras下调用bert。
 
-目前已经基本实现bert，并且能成功加载官方权重，经验证模型输出跟keras-bert一致，大家可以放心使用。
-
 本项目的初衷是为了修改、定制上的方便，所以可能会频繁更新。
 
 因此欢迎star，但不建议fork，因为你fork下来的版本可能很快就过期了。
+
+## 功能
+目前已经实现：
+- 加载bert/roberta/albert的预训练权重进行finetune；
+- 实现语言模型、seq2seq所需要的attention mask；
+- 丰富的<a href="https://github.com/bojone/bert4keras/tree/master/examples">examples</a>；
+- 从零预训练代码（支持TPU、多GPU，请看<a href="https://github.com/bojone/bert4keras/tree/master/pretraining">pretraining</a>）；
+- 兼容keras、tf.keras
 
 ## 使用
 快速安装：
