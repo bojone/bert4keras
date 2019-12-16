@@ -11,7 +11,7 @@ config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
 checkpoint_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
 dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
-tokenizer = Tokenizer(dict_path) # 建立分词器
+tokenizer = Tokenizer(dict_path, do_lower_case=True) # 建立分词器
 model = build_bert_model(config_path, checkpoint_path) # 建立模型，加载权重
 
 # 编码测试
