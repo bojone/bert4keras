@@ -72,12 +72,24 @@ def piecewise_linear(t, schedule):
     return x
 
 
+def swish(x):
+    """swish函数（这样封装过后才有__name__属性）
+    """
+    return tf.nn.swish(x)
+
+
+def leaky_relu(x, alpha=0.2):
+    """leaky relu函数（这样封装过后才有__name__属性）
+    """
+    return tf.nn.leaky_relu(x, alpha=alpha)
+
+
 custom_objects = {
     'gelu_erf': gelu_erf,
     'gelu_tanh': gelu_tanh,
     'gelu': gelu_erf,
-    'swish': tf.nn.swish,
-    'leaky_relu': tf.nn.leaky_relu,
+    'swish': swish,
+    'leaky_relu': leaky_relu,
 }
 
 keras.utils.get_custom_objects().update(custom_objects)
