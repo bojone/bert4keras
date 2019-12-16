@@ -383,12 +383,15 @@ class BertModel(object):
 
         for layer_name, layer_variable_names in mapping.items():
             values = load_variables(layer_variable_names)
-            layer = self.model.get_layer(layer_name)
+            weights = self.model.get_layer(layer_name).weights
             if 'Norm' in layer_name:
-                K.batch_set_value(zip(layer.weights, values))
-            else:
-                # 如无必要，还是用set_weights好，能提示异常
-                layer.set_weights(values)
+                weights = weights[:2]
+            if len(weights) != len(values):
+                raise ValueError(
+                    'Expecting %s weights, but provide a list of %s weights.'
+                    % (len(weights), len(values))
+                )
+            K.batch_set_value(zip(weights, values))
 
     def save_weights_as_checkpoint(self, filename, reference, mapping=None):
         """保存模型的权重，跟Bert的checkpoint格式一致
