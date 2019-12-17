@@ -137,7 +137,7 @@ class BertModel(object):
 
         outputs = [x]
 
-        if self.with_pool:
+        if self.with_pool or self.with_nsp:
             # Pooler部分（提取CLS向量）
             x = outputs[0]
             x = Lambda(lambda x: x[:, 0], name='Pooler')(x)
