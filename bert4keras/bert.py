@@ -82,10 +82,10 @@ class BertModel(object):
             z = None
 
         if additional_input_layers is not None:
-            if not isinstance(additional_input_layers, list):
-                input_layers.append(additional_input_layers)
-            else:
+            if isinstance(additional_input_layers, list):
                 input_layers.extend(additional_input_layers)
+            else:
+                input_layers.append(additional_input_layers)
 
         layer_norm_cond_hidden_act = layer_norm_cond_hidden_act or 'linear'
 
