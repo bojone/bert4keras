@@ -2,7 +2,7 @@
 # 分离后端函数，主要是为了同时兼容原生keras和tf.keras
 # 通过设置环境变量TF_KERAS=1来切换tf.keras
 
-import os
+import os, sys
 from distutils.util import strtobool
 import numpy as np
 import tensorflow as tf
@@ -14,6 +14,7 @@ is_tf_keras = strtobool(os.environ.get('TF_KERAS', '0'))
 if is_tf_keras:
     import tensorflow.keras as keras
     import tensorflow.keras.backend as K
+    sys.modules['keras'] = keras
 else:
     import keras
     import keras.backend as K
