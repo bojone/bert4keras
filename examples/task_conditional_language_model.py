@@ -15,8 +15,7 @@ from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, DataGenerator
 from bert4keras.snippets import get_all_attributes
 from bert4keras.snippets import uniout  # 打印中文
-
-locals().update(get_all_attributes(keras.layers))  # from keras.layers import *
+from keras.layers import *
 
 
 # 模型配置
