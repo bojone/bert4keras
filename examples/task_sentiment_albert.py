@@ -10,8 +10,8 @@ from bert4keras.bert import build_bert_model
 from bert4keras.optimizers import Adam, extend_with_piecewise_linear_lr
 from bert4keras.snippets import sequence_padding, get_all_attributes
 from bert4keras.snippets import DataGenerator
+from keras.layers import *
 
-locals().update(get_all_attributes(keras.layers))  # from keras.layers import *
 set_gelu('tanh')  # 切换gelu版本
 
 
