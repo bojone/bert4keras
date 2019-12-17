@@ -83,6 +83,7 @@ class MultiHeadAttention(Layer):
                  head_size,
                  key_size=None,
                  kernel_initializer='glorot_uniform',
+                 max_relative_position=None,
                  **kwargs):
         super(MultiHeadAttention, self).__init__(**kwargs)
         self.heads = heads
@@ -90,6 +91,7 @@ class MultiHeadAttention(Layer):
         self.out_dim = heads * head_size
         self.key_size = key_size if key_size else head_size
         self.kernel_initializer = initializers.get(kernel_initializer)
+        self.max_relative_position = max_relative_position
 
     def build(self, input_shape):
         super(MultiHeadAttention, self).build(input_shape)
@@ -102,6 +104,27 @@ class MultiHeadAttention(Layer):
         self.o_dense = Dense(units=self.out_dim,
                              kernel_initializer=self.kernel_initializer)
 
+        if self.max_relative_position is not None:
+            if self.head_size != self.key_size:
+                raise ValueError('head_size must be equal to key_size ' +
+                                 'while use relative position embeddings.')
+
+            def initializer(shape, dtype=None):
+                vocab_size, depth = shape
+                embeddings = np.zeros(shape)
+                for pos in range(vocab_size):
+                    for i in range(depth // 2):
+                        theta = pos / np.power(10000, 2. * i / depth)
+                        embeddings[pos, 2 * i] = np.sin(theta)
+                        embeddings[pos, 2 * i + 1] = np.cos(theta)
+                return embeddings
+
+            shape = (2 * self.max_relative_position + 1, self.head_size)
+            self.embeddings = self.add_weight(name='relative_embeddings',
+                                              shape=shape,
+                                              initializer=initializer,
+                                              trainable=False)
+
     def call(self, inputs, q_mask=False, v_mask=False, a_mask=False):
         """实现多头注意力
         q_mask: 对输入的query序列的mask。
@@ -111,26 +134,18 @@ class MultiHeadAttention(Layer):
         a_mask: 对attention矩阵的mask。
                 不同的attention mask对应不同的应用。
         """
-        q, k, v = inputs[:3]
         # 处理mask
-        idx = 3
-        if q_mask:
-            q_mask = inputs[idx]
-            idx += 1
+        inputs = inputs[:]
+        for i, mask in enumerate([q_mask, v_mask, a_mask]):
+            if not mask:
+                inputs.insert(3 + i, None)
+        q, k, v, q_mask, v_mask = inputs[:5]
+        if len(inputs) == 5:
+            a_mask = 'history_only'
+        elif len(inputs) == 6:
+            a_mask = inputs[-1]
         else:
-            q_mask = None
-        if v_mask:
-            v_mask = inputs[idx]
-            idx += 1
-        else:
-            v_mask = None
-        if a_mask:
-            if len(inputs) > idx:
-                a_mask = inputs[idx]
-            else:
-                a_mask = 'history_only'
-        else:
-            a_mask = None
+            raise ValueError('wrong inputs for MultiHeadAttention.')
         # 线性变换
         qw = self.q_dense(q)
         kw = self.k_dense(k)
@@ -140,7 +155,21 @@ class MultiHeadAttention(Layer):
         kw = K.reshape(kw, (-1, K.shape(k)[1], self.heads, self.key_size))
         vw = K.reshape(vw, (-1, K.shape(v)[1], self.heads, self.head_size))
         # Attention
-        a = tf.einsum('bjhd,bkhd->bhjk', qw, kw) / self.key_size**0.5
+        a = tf.einsum('bjhd,bkhd->bhjk', qw, kw)
+        # 相对位置编码
+        if self.max_relative_position is not None:
+            q_ids = K.arange(K.shape(q)[1], dtype='int32')
+            q_ids = K.expand_dims(q_ids, 1)
+            v_ids = K.arange(K.shape(v)[1], dtype='int32')
+            v_ids = K.expand_dims(v_ids, 0)
+            pos_ids = v_ids - q_ids
+            pos_ids = K.clip(pos_ids, -self.max_relative_position,
+                             self.max_relative_position)
+            pos_ids = pos_ids + self.max_relative_position
+            pos_embeddings = K.gather(self.embeddings, pos_ids)
+            a = a + tf.einsum('bjhd,jkd->bhjk', qw, pos_embeddings)
+        # Attention（续）
+        a = a / self.key_size**0.5
         a = sequence_masking(a, v_mask, 1, -1)
         if a_mask is not None:
             if is_string(a_mask) and a_mask == 'history_only':
@@ -152,6 +181,8 @@ class MultiHeadAttention(Layer):
         a = K.softmax(a)
         # 完成输出
         o = tf.einsum('bhjk,bkhd->bjhd', a, vw)
+        if self.max_relative_position is not None:
+            o = o + tf.einsum('bhjk,jkd->bjhd', a, pos_embeddings)
         o = K.reshape(o, (-1, K.shape(o)[1], self.out_dim))
         o = self.o_dense(o)
         o = sequence_masking(o, q_mask, 0)
@@ -166,6 +197,7 @@ class MultiHeadAttention(Layer):
             'head_size': self.head_size,
             'key_size': self.key_size,
             'kernel_initializer': initializers.serialize(self.kernel_initializer),
+            'max_relative_position': self.max_relative_position,
         }
         base_config = super(MultiHeadAttention, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
