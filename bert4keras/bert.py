@@ -508,7 +508,7 @@ def build_bert_model(config_path,
     Bert = applications[application]
 
     bert = Bert(vocab_size=config['vocab_size'],
-                max_position_embeddings=config['max_position_embeddings'],
+                max_position_embeddings=config.get('max_position_embeddings'),
                 hidden_size=config['hidden_size'],
                 num_hidden_layers=config['num_hidden_layers'],
                 num_attention_heads=config['num_attention_heads'],
