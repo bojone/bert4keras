@@ -192,3 +192,22 @@ class DataGenerator(object):
         while True:
             for d in self.__iter__(True):
                 yield d
+
+
+class Hook:
+    """注入uniout模块，实现import时才触发
+    """
+    def __init__(self, module):
+        self.module = module
+
+    def __getattr__(self, attr):
+        if attr == 'uniout':
+            if is_py2:
+                import uniout
+        else:
+            return getattr(self.module, attr)
+
+
+Hook.__name__ = __name__
+sys.modules[__name__] = Hook(sys.modules[__name__])
+del Hook
