@@ -26,6 +26,7 @@ class BertModel(object):
             dropout_rate,  # Dropout比例
             initializer_range=None,  # 权重初始化方差
             embedding_size=None,  # 是否指定embedding_size
+            max_relative_position=None,  # 非None则使用相对位置编码
             num_feed_forward_groups=1,  # Feed Forward部分是否使用分组Dense
             with_pool=False,  # 是否包含Pool部分
             with_nsp=False,  # 是否包含NSP部分
@@ -46,6 +47,7 @@ class BertModel(object):
         self.dropout_rate = dropout_rate
         self.initializer_range = initializer_range or 0.02
         self.embedding_size = embedding_size or hidden_size
+        self.max_relative_position = max_relative_position
         self.num_feed_forward_groups = num_feed_forward_groups
         self.with_pool = with_pool
         self.with_nsp = with_nsp
@@ -101,11 +103,12 @@ class BertModel(object):
                       embeddings_initializer=self.initializer,
                       name='Embedding-Segment')(s)
         x = Add(name='Embedding-Token-Segment')([x, s])
-        x = PositionEmbedding(input_dim=self.max_position_embeddings,
-                              output_dim=self.embedding_size,
-                              merge_mode='add',
-                              embeddings_initializer=self.initializer,
-                              name='Embedding-Position')(x)
+        if self.max_relative_position is None:
+            x = PositionEmbedding(input_dim=self.max_position_embeddings,
+                                  output_dim=self.embedding_size,
+                                  merge_mode='add',
+                                  embeddings_initializer=self.initializer,
+                                  name='Embedding-Position')(x)
         x = LayerNormalization(conditional=(z is not None),
                                hidden_units=layer_norm_cond_hidden_size,
                                hidden_activation=layer_norm_cond_hidden_act,
@@ -199,6 +202,7 @@ class BertModel(object):
             MultiHeadAttention(heads=self.num_attention_heads,
                                head_size=self.attention_head_size,
                                kernel_initializer=self.initializer,
+                               max_relative_position=self.max_relative_position,
                                name=attention_name),
             Dropout(rate=self.dropout_rate,
                     name='%s-Dropout' % attention_name),
@@ -263,13 +267,14 @@ class BertModel(object):
         mapping = OrderedDict()
 
         mapping['Embedding-Token'] = ['bert/embeddings/word_embeddings']
-        mapping['Embedding-Position'] = ['bert/embeddings/position_embeddings']
         mapping['Embedding-Segment'] = ['bert/embeddings/token_type_embeddings']
+        if self.max_relative_position is None:
+            mapping['Embedding-Position'] = ['bert/embeddings/position_embeddings']
+
         mapping['Embedding-Norm'] = [
             'bert/embeddings/LayerNorm/gamma',
             'bert/embeddings/LayerNorm/beta',
         ]
-
         if self.embedding_size != self.hidden_size:
             mapping['Embedding-Mapping'] = [
                 'bert/encoder/embedding_hidden_mapping_in/kernel',
@@ -383,7 +388,7 @@ class BertModel(object):
 
         for layer_name, layer_variable_names in mapping.items():
             values = load_variables(layer_variable_names)
-            weights = self.model.get_layer(layer_name).weights
+            weights = self.model.get_layer(layer_name).trainable_weights
             if 'Norm' in layer_name:
                 weights = weights[:2]
             if len(weights) != len(values):
@@ -477,6 +482,7 @@ def build_bert_model(config_path,
                      with_pool=False,
                      with_nsp=False,
                      with_mlm=False,
+                     model='bert',
                      application='encoder',
                      keep_words=None,
                      albert=False,
@@ -489,15 +495,17 @@ def build_bert_model(config_path,
     """根据配置文件构建bert模型，可选加载checkpoint权重
     """
     config = json.load(open(config_path))
-    mapping = {
+
+    applications = {
         'encoder': BertModel,
         'seq2seq': Bert4Seq2seq,
         'lm': Bert4LM,
     }
+    if application not in applications:
+        raise ValueError('application must be one of ' +
+                         str(list(applications.keys())))
 
-    assert application in mapping, 'application must be one of %s' % list(
-        mapping.keys())
-    Bert = mapping[application]
+    Bert = applications[application]
 
     bert = Bert(vocab_size=config['vocab_size'],
                 max_position_embeddings=config['max_position_embeddings'],
@@ -509,12 +517,13 @@ def build_bert_model(config_path,
                 dropout_rate=config['hidden_dropout_prob'],
                 initializer_range=config.get('initializer_range'),
                 embedding_size=config.get('embedding_size'),
+                max_relative_position=(64 if model == 'nezha' else None),
                 num_feed_forward_groups=config.get('num_feed_forward_groups'),
                 with_pool=with_pool,
                 with_nsp=with_nsp,
                 with_mlm=with_mlm,
                 keep_words=keep_words,
-                block_sharing=albert)
+                block_sharing=(model == 'albert'))
 
     bert.build(layer_norm_cond=layer_norm_cond,
                layer_norm_cond_size=layer_norm_cond_size,
