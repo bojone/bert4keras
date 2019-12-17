@@ -5,6 +5,7 @@ import six
 import logging
 import numpy as np
 import re
+import sys
 
 
 is_py2 = six.PY2
