@@ -66,8 +66,8 @@ class data_generator(DataGenerator):
 bert = build_bert_model(
     config_path=config_path,
     checkpoint_path=checkpoint_path,
+    model='albert',
     with_pool=True,
-    albert=True,
     return_keras_model=False,
 )
 
