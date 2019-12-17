@@ -4,9 +4,8 @@
 import tensorflow as tf
 from bert4keras.backend import keras, K
 from bert4keras.snippets import get_all_attributes, is_string
+from keras.layers import *
 
-# 等价于 from keras.layers import *
-locals().update(get_all_attributes(keras.layers))
 
 initializers = keras.initializers
 activations = keras.activations
