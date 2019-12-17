@@ -3,7 +3,7 @@
 
 import tensorflow as tf
 from bert4keras.backend import keras, K
-from bert4keras.snippets import get_all_attributes, is_string
+from bert4keras.snippets import is_string
 from keras.layers import *
 
 
