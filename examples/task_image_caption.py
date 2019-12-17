@@ -16,8 +16,6 @@ from bert4keras.snippets import sequence_padding, get_all_attributes
 from bert4keras.snippets import is_string, DataGenerator
 import cv2
 
-locals().update(get_all_attributes(keras.layers))  # from keras.layers import *
-
 
 # 模型配置
 maxlen = 64
