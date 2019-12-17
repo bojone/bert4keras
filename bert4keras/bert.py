@@ -494,6 +494,7 @@ def build_bert_model(config_path,
     """根据配置文件构建bert模型，可选加载checkpoint权重
     """
     config = json.load(open(config_path))
+    model, application = model.lowe(), application.lower()
 
     applications = {
         'encoder': BertModel,
