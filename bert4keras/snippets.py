@@ -140,15 +140,6 @@ def parallel_apply(func,
         return results
 
 
-def get_all_attributes(something):
-    """获取类下的所有属性和方法
-    """
-    return {
-        name: getattr(something, name)
-        for name in dir(something) if name[0] != '_'
-    }
-
-
 def sequence_padding(inputs, length=None, padding=0):
     """Numpy函数，将序列padding到同一长度
     """
