@@ -67,6 +67,7 @@ def read_image(f):
     """单图读取函数（对非方形的图片进行白色填充，使其变为方形）
     """
     img = cv2.imread(f)
+    img = img[..., ::-1]  # cv2的读取模式为BGR，但keras的模型要求为RGB
     height, width = img.shape[:2]
     if height > width:
         height, width = img_size, width * img_size // height
