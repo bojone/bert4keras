@@ -193,6 +193,10 @@ class Hook:
         self.module = module
 
     def __getattr__(self, attr):
+        """使得 from bert4keras.backend import uniout
+        等效于 import uniout （自动识别Python版本，Python3
+        下则无操作。）
+        """
         if attr == 'uniout':
             if is_py2:
                 import uniout
