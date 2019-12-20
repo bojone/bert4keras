@@ -66,8 +66,7 @@ def build_train_bert_model():
     时要格外留意。
     """
     bert = build_bert_model(config_path, with_mlm='linear', return_keras_model=False)
-    bert_model = bert.model
-    proba = bert_model.output
+    proba = bert.model.output
 
     # 辅助输入
     token_ids = Input(shape=(None, ), dtype='int64', name='token_ids') # 目标id
@@ -97,7 +96,7 @@ def build_train_bert_model():
     loss = Lambda(mlm_loss, name='mlm_loss')([token_ids, proba, is_masked, seq_mask])
     acc = Lambda(mlm_acc, name='mlm_acc')([token_ids, proba, is_masked])
 
-    train_model = Model(bert_model.inputs + [token_ids, is_masked], [loss, acc])
+    train_model = Model(bert.model.inputs + [token_ids, is_masked], [loss, acc])
 
     # 优化器
     optimizer = extend_with_weight_decay(Adam)
