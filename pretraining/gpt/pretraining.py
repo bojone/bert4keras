@@ -1,5 +1,5 @@
 #! -*- coding: utf-8 -*-
-# RoBERTa预训练脚本，多GPU版/TPU版本
+# GPT预训练脚本，多GPU版/TPU版本
 
 import os, re
 os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
