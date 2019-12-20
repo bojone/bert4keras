@@ -95,7 +95,7 @@ class TrainingDataset:
             _mask_ids = _mask_ids[:self.sequence_length - 2]
 
             # 如果长度即将溢出
-            if len(mask_ids) + len(_mask_ids) > self.sequence_length - 1:
+            if len(token_ids) + len(_token_ids) > self.sequence_length - 1:
                 # 插入终止符
                 token_ids.append(self.token_sep_id)
                 mask_ids.append(0)
