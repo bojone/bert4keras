@@ -165,10 +165,8 @@ if __name__ == '__main__':
 
     from bert4keras.tokenizer import Tokenizer
     import json, glob, re
-    import jieba_fast as jieba
     from tqdm import tqdm
 
-    jieba.initialize()
     dict_path = '/home/spaces_ac_cn/chinese_L-12_H-768_A-12/vocab.txt'
     tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
@@ -192,7 +190,7 @@ if __name__ == '__main__':
 
     TD.process(
         corpus=tqdm(some_texts()),
-        record_name='../courpus_tfrecord/corpus.tfrecord',
+        record_name='../corpus_tfrecord/corpus.tfrecord',
         workers=40,
         max_queue_size=4000,
     )
