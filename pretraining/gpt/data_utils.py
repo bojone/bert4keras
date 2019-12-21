@@ -192,7 +192,7 @@ if __name__ == '__main__':
 
     TD.process(
         corpus=tqdm(some_texts()),
-        record_name='../courpus_tfrecord/corpus.%s.tfrecord' % i,
+        record_name='../courpus_tfrecord/corpus.tfrecord',
         workers=40,
         max_queue_size=4000,
     )
