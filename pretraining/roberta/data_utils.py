@@ -246,7 +246,7 @@ if __name__ == '__main__':
     for i in range(10): # 数据重复10遍
         TD.process(
             corpus=tqdm(some_texts()),
-            record_name='../courpus_tfrecord/corpus.%s.tfrecord' % i,
+            record_name='../corpus_tfrecord/corpus.%s.tfrecord' % i,
             workers=40,
             max_queue_size=4000,
         )
