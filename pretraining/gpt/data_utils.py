@@ -146,8 +146,8 @@ class TrainingDataset:
                 'Input-Segment': segment_ids,
             }
             y = {
-                'mlm_loss': K.zeros([1]),
-                'mlm_acc': K.zeros([1]),
+                'lm_loss': K.zeros([1]),
+                'lm_acc': K.zeros([1]),
             }
             return x, y
 
