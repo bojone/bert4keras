@@ -74,7 +74,7 @@ def build_train_bert_model():
         """
         y_true, y_pred, mask = inputs
         y_true = y_true[:, 1:]
-        y_pred = y_true[:, :-1]
+        y_pred = y_pred[:, :-1]
         mask = mask[:, 1:]
         loss = K.sparse_categorical_crossentropy(y_true, y_pred, from_logits=True)
         loss = K.sum(loss * mask) / (K.sum(mask) + K.epsilon())
@@ -84,8 +84,9 @@ def build_train_bert_model():
         """计算准确率的函数，需要封装为一个层
         """
         y_true, y_pred, mask = inputs
+        y_true = K.cast(y_true, K.floatx())
         y_true = y_true[:, 1:]
-        y_pred = y_true[:, :-1]
+        y_pred = y_pred[:, :-1]
         mask = mask[:, 1:]
         acc = keras.metrics.sparse_categorical_accuracy(y_true, y_pred)
         acc = K.sum(acc * mask) / (K.sum(mask) + K.epsilon())
