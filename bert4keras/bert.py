@@ -261,7 +261,7 @@ class BertModel(object):
             stddev=self.initializer_range)
 
     def filter(self, inputs):
-        """把None输入过滤掉
+        """将list中的None过滤掉
         """
         inputs = [i for i in inputs if i is not None]
         if len(inputs) == 1:
