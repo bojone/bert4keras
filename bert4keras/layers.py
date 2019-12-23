@@ -315,11 +315,19 @@ class PositionEmbedding(Layer):
         )
 
     def call(self, inputs):
-        input_shape = K.shape(inputs)
-        batch_size, seq_len = input_shape[0], input_shape[1]
-        pos_embeddings = self.embeddings[:seq_len]
-        pos_embeddings = K.expand_dims(pos_embeddings, 0)
-        pos_embeddings = K.tile(pos_embeddings, [batch_size, 1, 1])
+        """如果inputs是一个list，则默认第二个输入是传入的位置id，否则
+        是默认顺序id，即[0, 1, 2, 3, ...]
+        """
+        if isinstance(inputs, list):
+            inputs, pos_ids = inputs
+            pos_embeddings = K.gather(self.embeddings, pos_ids)
+        else:
+            input_shape = K.shape(inputs)
+            batch_size, seq_len = input_shape[0], input_shape[1]
+            pos_embeddings = self.embeddings[:seq_len]
+            pos_embeddings = K.expand_dims(pos_embeddings, 0)
+            pos_embeddings = K.tile(pos_embeddings, [batch_size, 1, 1])
+
         if self.merge_mode == 'add':
             return inputs + pos_embeddings
         else:
