@@ -7,15 +7,6 @@ from collections import OrderedDict
 import json
 
 
-def filter(inputs):
-    """把None输入过滤掉
-    """
-    inputs = [i for i in inputs if i is not None]
-    if len(inputs) == 1:
-        inputs = inputs[0]
-    return inputs
-
-
 class BertModel(object):
     """构建跟Bert一样结构的Transformer-based模型
     这是一个比较多接口的基础类，然后通过这个基础类衍生出更复杂的模型
@@ -119,7 +110,7 @@ class BertModel(object):
                                hidden_units=layer_norm_cond_hidden_size,
                                hidden_activation=layer_norm_cond_hidden_act,
                                hidden_initializer=self.initializer,
-                               name='Embedding-Norm')(filter([x, z]))
+                               name='Embedding-Norm')(self.filter([x, z]))
         if self.dropout_rate > 0:
             x = Dropout(rate=self.dropout_rate, name='Embedding-Dropout')(x)
         if self.embedding_size != self.hidden_size:
@@ -174,7 +165,7 @@ class BertModel(object):
                                    hidden_units=layer_norm_cond_hidden_size,
                                    hidden_activation=layer_norm_cond_hidden_act,
                                    hidden_initializer=self.initializer,
-                                   name='MLM-Norm')(filter([x, z]))
+                                   name='MLM-Norm')(self.filter([x, z]))
             mlm_activation = 'softmax' if self.with_mlm is True else self.with_mlm
             x = EmbeddingDense(embedding_name='Embedding-Token',
                                activation=mlm_activation,
@@ -245,14 +236,14 @@ class BertModel(object):
         if self.dropout_rate > 0:
             x = layers[1](x)
         x = layers[2]([xi, x])
-        x = layers[3](filter([x, z]))
+        x = layers[3](self.filter([x, z]))
         # Feed Forward
         xi = x
         x = layers[4](x)
         if self.dropout_rate > 0:
             x = layers[5](x)
         x = layers[6]([xi, x])
-        x = layers[7](filter([x, z]))
+        x = layers[7](self.filter([x, z]))
         return x, layers
 
     def compute_attention_mask(self, layer_id, segment_ids):
@@ -266,6 +257,15 @@ class BertModel(object):
         """
         return keras.initializers.TruncatedNormal(
             stddev=self.initializer_range)
+
+    def filter(self, inputs):
+        """把None输入过滤掉
+        """
+        inputs = [i for i in inputs if i is not None]
+        if len(inputs) == 1:
+            inputs = inputs[0]
+
+        return inputs
 
     def variable_mapping(self, variable_names):
         """构建Keras层与checkpoint的变量名之间的映射表
