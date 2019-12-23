@@ -16,9 +16,6 @@ def filter(inputs):
     return inputs
 
 
-Model = keras.models.Model
-
-
 class BertModel(object):
     """构建跟Bert一样结构的Transformer-based模型
     这是一个比较多接口的基础类，然后通过这个基础类衍生出更复杂的模型
@@ -192,7 +189,7 @@ class BertModel(object):
         else:
             outputs = outputs[1:]
 
-        self.model = Model(input_layers, outputs)
+        self.model = keras.models.Model(input_layers, outputs)
 
     def transformer_block(self,
                           inputs,
