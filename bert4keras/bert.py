@@ -493,6 +493,7 @@ def build_bert_model(config_path,
                      model='bert',
                      application='encoder',
                      keep_words=None,
+                     attention_mask=None,
                      position_ids=None,
                      layer_norm_cond=None,
                      layer_norm_cond_size=None,
@@ -515,6 +516,11 @@ def build_bert_model(config_path,
                          str(list(applications.keys())))
 
     Bert = applications[application]
+    
+    if attention_mask is not None:
+        class Bert(Bert):
+            def compute_attention_mask(self, layer_id, segment_ids):
+                return attention_mask
 
     bert = Bert(vocab_size=config['vocab_size'],
                 max_position_embeddings=config.get('max_position_embeddings'),
