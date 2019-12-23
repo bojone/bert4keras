@@ -55,6 +55,7 @@ class BertModel(object):
         self.additional_outputs = []
 
     def build(self,
+              position_ids=None,
               layer_norm_cond=None,
               layer_norm_cond_size=None,
               layer_norm_cond_hidden_size=None,
@@ -101,6 +102,7 @@ class BertModel(object):
                       name='Embedding-Segment')(s)
         x = Add(name='Embedding-Token-Segment')([x, s])
         if self.max_relative_position is None:
+            x = self.filter([x, position_ids])
             x = PositionEmbedding(input_dim=self.max_position_embeddings,
                                   output_dim=self.embedding_size,
                                   merge_mode='add',
@@ -491,6 +493,7 @@ def build_bert_model(config_path,
                      model='bert',
                      application='encoder',
                      keep_words=None,
+                     position_ids=None,
                      layer_norm_cond=None,
                      layer_norm_cond_size=None,
                      layer_norm_cond_hidden_size=None,
@@ -531,7 +534,8 @@ def build_bert_model(config_path,
                 keep_words=keep_words,
                 block_sharing=(model == 'albert'))
 
-    bert.build(layer_norm_cond=layer_norm_cond,
+    bert.build(position_ids=position_ids,
+               layer_norm_cond=layer_norm_cond,
                layer_norm_cond_size=layer_norm_cond_size,
                layer_norm_cond_hidden_size=layer_norm_cond_hidden_size,
                layer_norm_cond_hidden_act=layer_norm_cond_hidden_act,
