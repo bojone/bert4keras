@@ -426,6 +426,7 @@ class FeedForward(Layer):
         output_dim = input_shape[-1]
         if not isinstance(output_dim, int):
             output_dim = output_dim.value
+
         if self.groups is None or self.groups == 1:
             self.dense_1 = Dense(units=self.units,
                                  activation=self.activation,
