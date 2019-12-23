@@ -119,10 +119,10 @@ class MultiHeadAttention(Layer):
                 return embeddings
 
             shape = (2 * self.max_relative_position + 1, self.head_size)
-            self.embeddings = self.add_weight(name='relative_embeddings',
-                                              shape=shape,
-                                              initializer=initializer,
-                                              trainable=False)
+            self.relative_embeddings = self.add_weight(name='relative_embeddings',
+                                                       shape=shape,
+                                                       initializer=initializer,
+                                                       trainable=False)
 
     def call(self, inputs, q_mask=False, v_mask=False, a_mask=False):
         """实现多头注意力
@@ -165,7 +165,7 @@ class MultiHeadAttention(Layer):
             pos_ids = K.clip(pos_ids, -self.max_relative_position,
                              self.max_relative_position)
             pos_ids = pos_ids + self.max_relative_position
-            pos_embeddings = K.gather(self.embeddings, pos_ids)
+            pos_embeddings = K.gather(self.relative_embeddings, pos_ids)
             a = a + tf.einsum('bjhd,jkd->bhjk', qw, pos_embeddings)
         # Attention（续）
         a = a / self.key_size**0.5
