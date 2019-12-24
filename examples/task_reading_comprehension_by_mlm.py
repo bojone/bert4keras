@@ -68,7 +68,9 @@ class data_generator(DataGenerator):
     """数据生成器
     """
     def __iter__(self, random=False):
-        """单条样本格式：[CLS]篇章[SEP]问题[SEP]答案[SEP]
+        """单条样本格式为
+        输入：[CLS]篇章[SEP]问题[SEP][MASK][MASK][SEP]
+        输出：[CLS]篇章[SEP]问题[SEP]答案[SEP]
         """
         idxs = list(range(len(self.data)))
         if random:
