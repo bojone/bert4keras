@@ -165,7 +165,7 @@ def gen_answer(question, passages):
             idxs = list(get_ngram_set(t, i + 1)[a])
             if tokenizer._token_sep_id not in idxs:
                 idxs.append(tokenizer._token_sep_id)
-            # 排除掉passage以外的token
+            # pi是将passage以外的token的概率置零
             pi = np.zeros_like(p[i])
             pi[idxs] = p[i, idxs]
             a = a + (pi.argmax(), )
@@ -221,7 +221,6 @@ if __name__ == '__main__':
     evaluator = Evaluate()
     train_generator = data_generator(train_data, batch_size)
 
-    model.load_weights('./best_model.weights')
     model.fit_generator(train_generator.forfit(),
                         steps_per_epoch=len(train_generator),
                         epochs=epochs,
