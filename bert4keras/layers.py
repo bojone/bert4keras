@@ -3,6 +3,7 @@
 
 import tensorflow as tf
 from bert4keras.backend import keras, K
+from bert4keras.backend import search_layer
 from bert4keras.snippets import is_string
 from keras.layers import *
 
@@ -460,34 +461,15 @@ class EmbeddingDense(Layer):
 
     def call(self, inputs):
         if not hasattr(self, 'kernel'):
-            embedding_layer = inputs._keras_history[0]
+            embedding_layer = search_layer(inputs, self.embedding_name)
+            if embedding_layer is None:
+                raise Exception('Embedding layer not found')
 
-            if embedding_layer.name != self.embedding_name:
-
-                def recursive_search(layer):
-                    """递归向上搜索，根据名字找层
-                    """
-                    inbound_layers = layer._inbound_nodes[0].inbound_layers
-                    if not isinstance(inbound_layers, list):
-                        inbound_layers = [inbound_layers]
-                    if len(inbound_layers) > 0:
-                        for layer in inbound_layers:
-                            if layer.name == self.embedding_name:
-                                return layer
-                            else:
-                                layer = recursive_search(layer)
-                                if layer is not None:
-                                    return layer
-
-                embedding_layer = recursive_search(embedding_layer)
-                if embedding_layer is None:
-                    raise Exception('Embedding layer not found')
-
-                self.kernel = K.transpose(embedding_layer.embeddings)
-                self.units = K.int_shape(self.kernel)[1]
-                self.bias = self.add_weight(name='bias',
-                                            shape=(self.units, ),
-                                            initializer='zeros')
+            self.kernel = K.transpose(embedding_layer.embeddings)
+            self.units = K.int_shape(self.kernel)[1]
+            self.bias = self.add_weight(name='bias',
+                                        shape=(self.units, ),
+                                        initializer='zeros')
 
         outputs = K.dot(inputs, self.kernel)
         outputs = K.bias_add(outputs, self.bias)
