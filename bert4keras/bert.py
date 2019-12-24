@@ -324,7 +324,7 @@ class BertModel(object):
                 'bert/encoder/%s/output/LayerNorm/beta' % block_name,
             ]
 
-        if self.with_pool:
+        if self.with_pool or self.with_nsp:
             mapping['Pooler-Dense'] = [
                 'bert/pooler/dense/kernel',
                 'bert/pooler/dense/bias',
