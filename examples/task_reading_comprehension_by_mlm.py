@@ -160,8 +160,7 @@ def gen_answer(question, passages):
     results = {}
     for t, s, p in zip(all_p_token_ids, segment_ids, probas):
         p = p[s == 1]
-        a = tuple()
-        score = 0.
+        a, score = tuple(), 0.
         for i in range(max_a_len):
             idxs = list(get_ngram_set(t, i + 1)[a])
             if tokenizer._token_sep_id not in idxs:
