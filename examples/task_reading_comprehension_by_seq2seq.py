@@ -6,7 +6,6 @@
 
 import json, os
 import numpy as np
-import tensorflow as tf
 from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
