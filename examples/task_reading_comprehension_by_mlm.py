@@ -1,12 +1,11 @@
 #! -*- coding: utf-8 -*-
 # 用MLM的方式阅读理解任务
 # 数据集和评测同 https://github.com/bojone/dgcnn_for_reading_comprehension
-# 4个epoch后在valid上能达到0.78+的分数
-# (Accuracy=0.7361642181525457  F1=0.8250514654830805   Final=0.7806078418178131)
+# 10个epoch后在valid上能达到0.77+的分数
+# (Accuracy=0.7283155564499899  F1=0.8193880325761286   Final=0.7738517945130592)
 
 import json, os
 import numpy as np
-import tensorflow as tf
 from bert4keras.backend import keras, K, search_layer
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
