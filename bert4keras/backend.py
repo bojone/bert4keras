@@ -103,6 +103,31 @@ def search_layer(inputs, name, exclude=None):
                     return layer
 
 
+def sequence_masking(x, mask, mode=0, axis=None):
+    """为序列条件mask的函数
+    mask: 形如(batch_size, seq_len)的0-1矩阵；
+    mode: 如果是0，则直接乘以mask；
+          如果是1，则在padding部分减去一个大正数。
+    axis: 序列所在轴，默认为1；
+    """
+    if mask is None or mode not in [0, 1]:
+        return x
+    else:
+        if axis is None:
+            axis = 1
+        if axis == -1:
+            axis = K.ndim(x) - 1
+        assert axis > 0, 'axis muse be greater than 0'
+        for _ in range(axis - 1):
+            mask = K.expand_dims(mask, 1)
+        for _ in range(K.ndim(x) - K.ndim(mask) - axis + 1):
+            mask = K.expand_dims(mask, K.ndim(mask))
+        if mode == 0:
+            return x * mask
+        else:
+            return x - (1 - mask) * 1e12
+
+
 def swish(x):
     """swish函数（这样封装过后才有__name__属性）
     """
