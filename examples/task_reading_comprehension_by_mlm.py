@@ -1,8 +1,8 @@
 #! -*- coding: utf-8 -*-
 # 用MLM的方式阅读理解任务
 # 数据集和评测同 https://github.com/bojone/dgcnn_for_reading_comprehension
-# 10个epoch后在valid上能达到0.77+的分数
-# (Accuracy=0.7283155564499899  F1=0.8193880325761286   Final=0.7738517945130592)
+# 10个epoch后在valid上能达到约0.77的分数
+# (Accuracy=0.7282149325820084  F1=0.8207266829447049   Final=0.7744708077633566)
 
 import json, os
 import numpy as np
@@ -11,6 +11,8 @@ from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, DataGenerator
+from keras.layers import Lambda
+from keras.models import Model
 import codecs, re
 from tqdm import tqdm
 
@@ -19,7 +21,7 @@ max_p_len = 256
 max_q_len = 64
 max_a_len = 32
 batch_size = 32
-epochs = 8
+epochs = 10
 
 # bert配置
 config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
@@ -68,13 +70,13 @@ class data_generator(DataGenerator):
     """
     def __iter__(self, random=False):
         """单条样本格式为
-        输入：[CLS]篇章[SEP]问题[SEP][MASK][MASK][SEP]
-        输出：[CLS]篇章[SEP]问题[SEP]答案[SEP]
+        输入：[CLS][MASK][MASK][SEP]问题[SEP]篇章[SEP]
+        输出：答案
         """
         idxs = list(range(len(self.data)))
         if random:
             np.random.shuffle(idxs)
-        batch_masked_token_ids, batch_segment_ids, batch_token_ids = [], [], []
+        batch_token_ids, batch_segment_ids, batch_a_token_ids = [], [], []
         for i in idxs:
             D = self.data[i]
             question = D['question']
@@ -86,23 +88,23 @@ class data_generator(DataGenerator):
                 if all([a in passage[:max_p_len - 2] for a in answer.split(' ')]):
                     final_answer = answer.replace(' ', ',')
                     break
-            p_token_ids, _ = tokenizer.encode(passage, max_length=max_p_len)
-            q_token_ids, _ = tokenizer.encode(question, max_length=max_q_len + 1)
             a_token_ids, _ = tokenizer.encode(final_answer, max_length=max_a_len + 1)
-            pq_token_ids = p_token_ids + q_token_ids[1:]
-            masked_token_ids = pq_token_ids + [tokenizer._token_mask_id] * max_a_len
-            segment_ids = [0] * len(pq_token_ids) + [1] * max_a_len
-            token_ids = pq_token_ids + a_token_ids[1:]
-            token_ids += [0] * (max_a_len + 1 - len(a_token_ids))
-            batch_masked_token_ids.append(masked_token_ids)
-            batch_segment_ids.append(segment_ids)
+            q_token_ids, _ = tokenizer.encode(question, max_length=max_q_len + 1)
+            p_token_ids, _ = tokenizer.encode(passage, max_length=max_p_len + 1)
+            token_ids = [tokenizer._token_cls_id]
+            token_ids += ([tokenizer._token_mask_id] * max_a_len)
+            token_ids += [tokenizer._token_sep_id]
+            token_ids += (q_token_ids[1:] + p_token_ids[1:])
+            segment_ids = [0] * len(token_ids)
             batch_token_ids.append(token_ids)
-            if len(batch_token_ids) == self.batch_size or i == idxs[-1]:
-                batch_masked_token_ids = sequence_padding(batch_masked_token_ids)
-                batch_segment_ids = sequence_padding(batch_segment_ids)
+            batch_segment_ids.append(segment_ids)
+            batch_a_token_ids.append(a_token_ids[1:])
+            if len(batch_a_token_ids) == self.batch_size or i == idxs[-1]:
                 batch_token_ids = sequence_padding(batch_token_ids)
-                yield [batch_masked_token_ids, batch_segment_ids], batch_token_ids
-                batch_masked_token_ids, batch_segment_ids, batch_token_ids = [], [], []
+                batch_segment_ids = sequence_padding(batch_segment_ids)
+                batch_a_token_ids = sequence_padding(batch_a_token_ids, max_a_len)
+                yield [batch_token_ids, batch_segment_ids], batch_a_token_ids
+                batch_token_ids, batch_segment_ids, batch_a_token_ids = [], [], []
 
 
 model = build_bert_model(
@@ -111,17 +113,16 @@ model = build_bert_model(
     with_mlm=True,
     keep_words=keep_words,  # 只保留keep_words中的字，精简原字表
 )
+output = Lambda(lambda x: x[:, 1:max_a_len + 1])(model.output)
+model = Model(model.input, output)
 model.summary()
 
 
 def masked_cross_entropy(y_true, y_pred):
-    """叉熵作为loss，并mask掉输入部分的预测
+    """叉熵作为loss，并mask掉padding部分的预测
     """
-    segment_ids = search_layer(y_pred, 'Input-Segment').output
     y_true = K.reshape(y_true, [K.shape(y_true)[0], -1])
-    y_mask_1 = K.cast(segment_ids, K.floatx())
-    y_mask_2 = K.cast(K.not_equal(y_true, 0), K.floatx())
-    y_mask = y_mask_1 * y_mask_2
+    y_mask = K.cast(K.not_equal(y_true, 0), K.floatx())
     cross_entropy = K.sparse_categorical_crossentropy(y_true, y_pred)
     cross_entropy = K.sum(cross_entropy * y_mask) / K.sum(y_mask)
     return cross_entropy
@@ -149,18 +150,19 @@ def gen_answer(question, passages):
     all_p_token_ids, token_ids, segment_ids = [], [], []
     for passage in passages:
         passage = re.sub(u' |、|；|，', ',', passage)
-        p_token_ids = tokenizer.encode(passage, max_length=max_p_len)[0]
-        q_token_ids = tokenizer.encode(question, max_length=max_q_len + 1)[0]
-        pq_token_ids = p_token_ids + q_token_ids[1:]
+        p_token_ids, _ = tokenizer.encode(passage, max_length=max_p_len + 1)
+        q_token_ids, _ = tokenizer.encode(question, max_length=max_q_len + 1)
         all_p_token_ids.append(p_token_ids[1:])
-        token_ids.append(pq_token_ids + [tokenizer._token_mask_id] * max_a_len)
-        segment_ids.append([0] * len(pq_token_ids) + [1] * max_a_len)
+        token_ids.append([tokenizer._token_cls_id])
+        token_ids[-1] += ([tokenizer._token_mask_id] * max_a_len)
+        token_ids[-1] += [tokenizer._token_sep_id]
+        token_ids[-1] += (q_token_ids[1:] + p_token_ids[1:])
+        segment_ids.append([0] * len(token_ids[-1]))
     token_ids = sequence_padding(token_ids)
     segment_ids = sequence_padding(segment_ids)
     probas = model.predict([token_ids, segment_ids])
     results = {}
-    for t, s, p in zip(all_p_token_ids, segment_ids, probas):
-        p = p[s == 1]
+    for t, p in zip(all_p_token_ids, probas):
         a, score = tuple(), 0.
         for i in range(max_a_len):
             idxs = list(get_ngram_set(t, i + 1)[a])
