@@ -97,6 +97,8 @@ def extend_with_weight_decay(base_optimizer, name=None):
             super(new_optimizer, self).__init__(*args, **kwargs)
             self.weight_decay_rate = weight_decay_rate
             self.exclude_from_weight_decay = exclude_from_weight_decay or []
+            if not hasattr(self, 'learning_rate'):
+                self.learning_rate = self.lr
 
         @K.symbolic
         def get_updates(self, loss, params):
@@ -194,6 +196,8 @@ def extend_with_layer_adaptation(base_optimizer, name=None):
                      **kwargs):
             super(new_optimizer, self).__init__(*args, **kwargs)
             self.exclude_from_layer_adaptation = exclude_from_layer_adaptation or []
+            if not hasattr(self, 'learning_rate'):
+                self.learning_rate = self.lr
 
         @K.symbolic
         def get_updates(self, loss, params):
