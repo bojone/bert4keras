@@ -11,7 +11,7 @@ from bert4keras.backend import K
 
 
 class TrainingDataset:
-    """MLM预训练数据集生成器（gpt模式，即单项语言模型）
+    """LM预训练数据集生成器（gpt模式，即单向语言模型）
     """
     def __init__(self, tokenizer, sequence_length=512):
         """参数说明：
