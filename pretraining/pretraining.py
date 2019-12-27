@@ -22,7 +22,7 @@ model = 'roberta'
 # 语料路径和模型保存路径
 # 如果是TPU训练，那么语料必须存放在Google Cloud Storage上面，
 # 路径必须以gs://开通；如果是GPU训练，改为普通路径即可。
-model_saved_path = 'gs://xxxx/bert4keras/saved_model/latest/bert_model.ckpt'
+model_saved_path = 'gs://xxxx/bert4keras/saved_model/bert_model.ckpt'
 corpus_paths = [
     'gs://xxxx/bert4keras/corpus/corpus.%s.tfrecord' % i for i in range(10)
 ]
