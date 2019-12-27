@@ -53,7 +53,7 @@ floatx = K.floatx()
 
 if model == 'roberta':
 
-    dataset = TrainingDataset_RoBERTa.load_tfrecord(
+    dataset = TrainingDatasetRoBERTa.load_tfrecord(
         record_names=corpus_paths,
         sequence_length=sequence_length,
         batch_size=batch_size // grad_accum_steps,
@@ -61,7 +61,7 @@ if model == 'roberta':
 
 elif model == 'gpt':
 
-    dataset = TrainingDataset_GPT.load_tfrecord(
+    dataset = TrainingDatasetGPT.load_tfrecord(
         record_names=corpus_paths,
         sequence_length=sequence_length,
         batch_size=batch_size // grad_accum_steps,
