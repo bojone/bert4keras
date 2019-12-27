@@ -1,4 +1,16 @@
-# 提供一些预训练相关代码
+# 预训练相关代码
+
+目前支持RoBERTa和GPT模式的预训练。
+
+## 使用
+```
+python data_utils.py # 生成tfrecord
+python pretraining.py # 启动预训练过程
+```
+
+请阅读`data_utils.py`和`pretraining.py`修改相应的配置和参数，以适配自己的语料和设备。
+
+## 背景
 
 keras是一个友好的框架，通常我们都是基于tf后端使用，另外还有tf.keras可以使用，基本上跟keras 2.3.x的接口一致了。
 
