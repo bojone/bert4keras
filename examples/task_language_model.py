@@ -160,10 +160,12 @@ def random_generate(s, n=1, topk=5):
             target_ids[i].append(p_arg_topk[idx] + 3)
         for t in target_ids:
             if t[-1] == 3:
-                R.append(tokenizer.decode(t))
+                R.append(tokenizer.decode(token_ids + t))
         target_ids = [t for t in target_ids if t[-1] != 3]
         if len(target_ids) == 0:
             break
+    for t in target_ids:
+        R.append(tokenizer.decode(token_ids + t))
     return R
 
 
