@@ -236,8 +236,8 @@ class TrainingDatasetRoBERTa(TrainingDataset):
                 'is_masked': K.cast(is_masked, K.floatx()),
             }
             y = {
-                'mlm_loss': K.zeros([1]),
-                'mlm_acc': K.zeros([1]),
+                'mlm_loss': K.zeros_like(token_ids[..., 0]),
+                'mlm_acc': K.zeros_like(token_ids[..., 0]),
             }
             return x, y
 
@@ -287,8 +287,8 @@ class TrainingDatasetGPT(TrainingDataset):
                 'Input-Segment': segment_ids,
             }
             y = {
-                'lm_loss': K.zeros([1]),
-                'lm_acc': K.zeros([1]),
+                'lm_loss': K.zeros_like(token_ids[..., 0]),
+                'lm_acc': K.zeros_like(token_ids[..., 0]),
             }
             return x, y
 
