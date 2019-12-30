@@ -174,7 +174,7 @@ def just_show():
     s2 = u'虚竹飞身跃上松树的枝干，只见段延庆的钢杖深深嵌在树枝之中，全凭一股内力粘劲，挂住了下面四人，内力之深厚，实是非同小可。虚竹伸左手抓住钢杖，提将上来。'
     s3 = u'杨过居住在侠客岛，是令狐冲的弟子，武器是金蛇剑。'
     for s in [s1, s2, s3]:
-        t = [s + i for i in random_generate(s)]
+        t = random_generate(s)
         print(u'输入: %s' % s)
         print(u'结果: %s\n' % ('\n'.join(t)))
 
