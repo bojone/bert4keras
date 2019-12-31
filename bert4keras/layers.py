@@ -1,6 +1,7 @@
 #! -*- coding: utf-8 -*-
 # 自定义层
 
+import numpy as np
 import tensorflow as tf
 from bert4keras.backend import keras, K
 from bert4keras.backend import search_layer
