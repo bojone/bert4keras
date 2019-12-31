@@ -105,13 +105,14 @@ def evaluate(data):
 class Evaluator(keras.callbacks.Callback):
     def __init__(self):
         self.best_val_acc = 0.
+
     def on_epoch_end(self, epoch, logs=None):
         val_acc = evaluate(valid_generator)
         if val_acc > self.best_val_acc:
             self.best_val_acc = val_acc
             model.save_weights('best_model.weights')
         test_acc = evaluate(test_generator)
-        print(u'val_acc: %05f, best_val_acc: %05f, test_acc: %05f\n'
+        print(u'val_acc: %.5f, best_val_acc: %.5f, test_acc: %.5f\n'
               % (val_acc, self.best_val_acc, test_acc))
 
 
