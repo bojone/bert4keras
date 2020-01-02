@@ -32,7 +32,7 @@ class BasicTokenizer(object):
         self._token_mask = '[MASK]'
         self._do_lower_case = do_lower_case
 
-    def tokenize(self, text, add_cls=True, add_sep=True):
+    def tokenize(self, text, add_cls=True, add_sep=True, max_length=None):
         """分词函数
         """
         if self._do_lower_case:
@@ -48,6 +48,10 @@ class BasicTokenizer(object):
             tokens.insert(0, self._token_cls)
         if add_sep:
             tokens.append(self._token_sep)
+
+        if max_length is not None:
+            self.truncate_sequence(max_length, tokens, None, -2)
+
         return tokens
 
     def token_to_id(self, token):
