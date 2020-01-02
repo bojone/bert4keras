@@ -32,18 +32,10 @@ class BasicTokenizer(object):
         self._token_mask = '[MASK]'
         self._do_lower_case = do_lower_case
 
-    def tokenize(self,
-                 text,
-                 add_cls=True,
-                 add_sep=True,
-                 max_length=None,
-                 do_lower_case=None):
+    def tokenize(self, text, add_cls=True, add_sep=True, max_length=None):
         """分词函数
         """
-        if do_lower_case is None:
-            do_lower_case = self._do_lower_case
-
-        if do_lower_case:
+        if self._do_lower_case:
             if is_py2:
                 text = unicode(text)
             text = unicodedata.normalize('NFD', text)
