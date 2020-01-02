@@ -175,10 +175,10 @@ class Tokenizer(BasicTokenizer):
         """
         return self._token_dict_inv[i]
 
-    def decode(self, ids):
+    def decode(self, ids, tokens=None):
         """转为可读文本
         """
-        tokens = self.ids_to_tokens(ids)
+        tokens = tokens or self.ids_to_tokens(ids)
         tokens = [token for token in tokens if not self._is_special(token)]
 
         text, flag = '', False
