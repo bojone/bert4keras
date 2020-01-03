@@ -172,7 +172,7 @@ subject_model = Model(bert.model.inputs, subject_preds)
 
 # 传入subject，预测object
 # 通过Conditional Layer Normalization将subject融入到object的预测中
-output = bert.model.get_layer('Encoder-12-FeedForward-Add').output
+output = bert.model.layers[-2].get_output_at(-1)
 subject = Lambda(extrac_subject)([output, subject_ids])
 output = LayerNormalization(conditional=True)([output, subject])
 output = Dense(units=len(predicate2id) * 2,
