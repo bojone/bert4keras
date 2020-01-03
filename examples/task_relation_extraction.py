@@ -248,7 +248,6 @@ class SPO(tuple):
     使得在判断两个三元组是否等价时容错性更好。
     """
     def __init__(self, spo):
-        super(SPO, self).__init__(spo)
         self.spox = (
             tuple(tokenizer.tokenize(spo[0])),
             spo[1],
