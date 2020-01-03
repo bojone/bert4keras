@@ -131,11 +131,11 @@ class MultiHeadAttention(Layer):
         a = tf.einsum('bjhd,bkhd->bhjk', qw, kw)
         # 相对位置编码
         if self.max_relative_position is not None:
-            q_ids = K.arange(K.shape(q)[1], dtype='int32')
-            q_ids = K.expand_dims(q_ids, 1)
-            v_ids = K.arange(K.shape(v)[1], dtype='int32')
-            v_ids = K.expand_dims(v_ids, 0)
-            pos_ids = v_ids - q_ids
+            q_idxs = K.arange(0, K.shape(q)[1], dtype='int32')
+            q_idxs = K.expand_dims(q_idxs, 1)
+            v_idxs = K.arange(0, K.shape(v)[1], dtype='int32')
+            v_idxs = K.expand_dims(v_idxs, 0)
+            pos_ids = v_idxs - q_idxs
             pos_ids = K.clip(pos_ids, -self.max_relative_position,
                              self.max_relative_position)
             pos_ids = pos_ids + self.max_relative_position
