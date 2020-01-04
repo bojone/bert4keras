@@ -93,11 +93,17 @@ class BasicTokenizer(object):
         如果传入first_length，则强行padding第一个句子到指定长度；
         同理，如果传入second_length，则强行padding第二个句子到指定长度。
         """
-        first_tokens = self.tokenize(first_text)
+        if is_string(first_text):
+            first_tokens = self.tokenize(first_text)
+        else:
+            first_tokens = first_text
+
         if second_text is None:
             second_tokens = None
-        else:
+        elif is_string(second_text):
             second_tokens = self.tokenize(second_text, add_cls=False)
+        else:
+            second_tokens = second_text
 
         if max_length is not None:
             self.truncate_sequence(max_length, first_tokens, second_tokens, -2)
