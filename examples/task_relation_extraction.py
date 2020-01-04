@@ -9,7 +9,7 @@ import json
 import codecs
 import numpy as np
 import tensorflow as tf
-from bert4keras.backend import keras, set_gelu, K
+from bert4keras.backend import keras, K, batch_gather
 from bert4keras.layers import LayerNormalization
 from bert4keras.tokenizer import Tokenizer
 from bert4keras.bert import build_bert_model
@@ -131,24 +131,15 @@ class data_generator(DataGenerator):
                     batch_subject_labels, batch_subject_ids, batch_object_labels = [], [], []
 
 
-def batch_gather(params, indices):
-    """params.shape=[b, n, d]，indices.shape=[b]
-    从params的第i个序列中选出第indices[i]个向量，返回shape=[b, d]。
-    """
-    indices = K.cast(indices, 'int32')
-    batch_idxs = K.arange(0, K.shape(indices)[0])
-    indices = K.stack([batch_idxs, indices], 1)
-    return tf.gather_nd(params, indices)
-
-
 def extrac_subject(inputs):
     """根据subject_ids从output中取出subject的向量表征
     """
     output, subject_ids = inputs
-    start = batch_gather(output, subject_ids[:, 0])
-    end = batch_gather(output, subject_ids[:, 1])
-    subject = K.concatenate([start, end], 1)
-    return subject
+    subject_ids = K.cast(subject_ids, 'int32')
+    start = batch_gather(output, subject_ids[:, :1])
+    end = batch_gather(output, subject_ids[:, 1:])
+    subject = K.concatenate([start, end], 2)
+    return subject[:, 0]
 
 
 # 补充输入
