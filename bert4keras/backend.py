@@ -134,11 +134,12 @@ def batch_gather(params, indices):
     """
     try:
         return tf.gather(params, indices, batch_dims=-1)
-    except:
+    except Exception as e1:
         try:
             return tf.batch_gather(params, indices)
-        except Exception as e:
-            print(e.message)
+        except Exception as e2:
+            print(e1.message)
+            print(e2.message)
 
 
 def swish(x):
