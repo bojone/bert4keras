@@ -2,6 +2,7 @@
 # 分离后端函数，主要是为了同时兼容原生keras和tf.keras
 # 通过设置环境变量TF_KERAS=1来切换tf.keras
 
+from __future__ import print_function
 import os, sys
 from distutils.util import strtobool
 import numpy as np
@@ -126,6 +127,18 @@ def sequence_masking(x, mask, mode=0, axis=None):
             return x * mask
         else:
             return x - (1 - mask) * 1e12
+
+
+def batch_gather(params, indices):
+    """同tf旧版本的batch_gather
+    """
+    try:
+        return tf.gather(params, indices, batch_dims=-1)
+    except:
+        try:
+            return tf.batch_gather(params, indices)
+        except Exception as e:
+            print(e.message)
 
 
 def swish(x):
