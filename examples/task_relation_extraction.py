@@ -3,6 +3,7 @@
 # 文章介绍：https://kexue.fm/archives/7161
 # 数据集：http://ai.baidu.com/broad/download?dataset=sked
 # 最优f1=0.82198
+# 换用RoBERTa Large可以达到f1=0.829+
 
 import json
 import codecs
