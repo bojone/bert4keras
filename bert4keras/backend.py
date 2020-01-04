@@ -143,13 +143,13 @@ def batch_gather(params, indices):
 
 
 def swish(x):
-    """swish函数（这样封装过后才有__name__属性）
+    """swish函数（这样封装过后才有 __name__ 属性）
     """
     return tf.nn.swish(x)
 
 
 def leaky_relu(x, alpha=0.2):
-    """leaky relu函数（这样封装过后才有__name__属性）
+    """leaky relu函数（这样封装过后才有 __name__ 属性）
     """
     return tf.nn.leaky_relu(x, alpha=alpha)
 
