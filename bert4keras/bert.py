@@ -30,6 +30,8 @@ class BertModel(object):
             with_mlm=False,  # 是否包含MLM部分
             keep_words=None,  # 要保留的词ID列表
             block_sharing=False,  # 是否共享同一个transformer block
+            att_pool_size=None,  # 进行attention之前是否先pooling
+            ffn_pool_size=None,  # 输入FFN之前是否先pooling
     ):
         if keep_words is None:
             self.vocab_size = vocab_size
@@ -52,6 +54,10 @@ class BertModel(object):
         self.hidden_act = hidden_act
         self.keep_words = keep_words
         self.block_sharing = block_sharing
+        if att_pool_size is not None and not isinstance(att_pool_size, list):
+            self.att_pool_size = [att_pool_size] * num_hidden_layers
+        if ffn_pool_size is not None and not isinstance(ffn_pool_size, list):
+            self.ffn_pool_size = [ffn_pool_size] * num_hidden_layers
         self.additional_outputs = []
 
     def build(self,
@@ -227,6 +233,12 @@ class BertModel(object):
         ]
         # Self Attention
         xi = x
+        if self.att_pool_size is not None:
+            pool_size = self.att_pool_size.pop(0)
+            x = AveragePooling1D(pool_size, padding='same')(x)
+            sequence_mask = Reshape((-1, 1))(sequence_mask)
+            sequence_mask = MaxPooling1D(pool_size, padding='same')(sequence_mask)
+            sequence_mask = Reshape((-1, ))(sequence_mask)
         if attention_mask is None:
             x = layers[0]([x, x, x, sequence_mask], v_mask=True)
         elif attention_mask is 'history_only':
@@ -237,13 +249,22 @@ class BertModel(object):
                           a_mask=True)
         if self.dropout_rate > 0:
             x = layers[1](x)
+        if self.att_pool_size is not None:
+            x = UpSampling1D(pool_size)(x)
+            x = Lambda(lambda x: x[0][:, :K.shape(x[1])[1]])([x, xi])
         x = layers[2]([xi, x])
         x = layers[3](self.filter([x, z]))
         # Feed Forward
         xi = x
+        if self.ffn_pool_size is not None:
+            pool_size = self.ffn_pool_size.pop(0)
+            x = AveragePooling1D(pool_size, padding='same')(x)
         x = layers[4](x)
         if self.dropout_rate > 0:
             x = layers[5](x)
+        if self.ffn_pool_size is not None:
+            x = UpSampling1D(pool_size)(x)
+            x = Lambda(lambda x: x[0][:, :K.shape(x[1])[1]])([x, xi])
         x = layers[6]([xi, x])
         x = layers[7](self.filter([x, z]))
         return x, layers
@@ -500,6 +521,8 @@ def build_bert_model(config_path,
                      layer_norm_cond_hidden_size=None,
                      layer_norm_cond_hidden_act=None,
                      additional_input_layers=None,
+                     att_pool_size=None,
+                     ffn_pool_size=None,
                      return_keras_model=True):
     """根据配置文件构建bert模型，可选加载checkpoint权重
     """
@@ -538,7 +561,9 @@ def build_bert_model(config_path,
                 with_nsp=with_nsp,
                 with_mlm=with_mlm,
                 keep_words=keep_words,
-                block_sharing=(model == 'albert'))
+                block_sharing=(model == 'albert'),
+                att_pool_size=att_pool_size,
+                ffn_pool_size=ffn_pool_size)
 
     bert.build(position_ids=position_ids,
                layer_norm_cond=layer_norm_cond,
