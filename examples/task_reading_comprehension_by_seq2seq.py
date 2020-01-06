@@ -148,7 +148,7 @@ def gen_answer(question, passages, topk=2, mode='extractive'):
         segment_ids.append([0] * len(token_ids[-1]))
     target_ids = [[] for _ in range(topk)]  # 候选答案id
     target_scores = [0] * topk  # 候选答案分数
-    for i in range(max_a_len):  # 强制要求输出不超过max_q_len字
+    for i in range(max_a_len):  # 强制要求输出不超过max_a_len字
         _target_ids, _segment_ids = [], []
         # 篇章与候选答案组合
         for tids, sids in zip(token_ids, segment_ids):
@@ -206,7 +206,7 @@ def gen_answer(question, passages, topk=2, mode='extractive'):
         best_one = np.argmax(target_scores)
         if target_ids[best_one][-1] == 3:
             return tokenizer.decode(target_ids[best_one])
-    # 如果max_output_len字都找不到结束符，直接返回
+    # 如果max_a_len字都找不到结束符，直接返回
     return tokenizer.decode(target_ids[np.argmax(target_scores)])
 
 
