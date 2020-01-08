@@ -55,6 +55,7 @@ class MultiHeadAttention(Layer):
                  heads,
                  head_size,
                  key_size=None,
+                 pool_size=None,
                  kernel_initializer='glorot_uniform',
                  max_relative_position=None,
                  **kwargs):
@@ -62,7 +63,8 @@ class MultiHeadAttention(Layer):
         self.heads = heads
         self.head_size = head_size
         self.out_dim = heads * head_size
-        self.key_size = key_size if key_size else head_size
+        self.key_size = key_size or head_size
+        self.pool_size = pool_size or 1
         self.kernel_initializer = initializers.get(kernel_initializer)
         self.max_relative_position = max_relative_position
 
@@ -119,6 +121,16 @@ class MultiHeadAttention(Layer):
             a_mask = inputs[-1]
         else:
             raise ValueError('wrong inputs for MultiHeadAttention.')
+        # Pooling
+        if self.pool_size > 1:
+            q_in_len = K.shape(q)[1]
+            q = q[:, ::self.pool_size]
+            k = k[:, ::self.pool_size]
+            v = v[:, ::self.pool_size]
+            if v_mask is not None:
+                v_mask = v_mask[:, ::self.pool_size]
+            if a_mask is not None and not is_string(a_mask):
+                a_mask = a_mask[..., ::self.pool_size, ::self.pool_size]
         # 线性变换
         qw = self.q_dense(q)
         kw = self.k_dense(k)
@@ -158,6 +170,13 @@ class MultiHeadAttention(Layer):
             o = o + tf.einsum('bhjk,jkd->bjhd', a, pos_embeddings)
         o = K.reshape(o, (-1, K.shape(o)[1], self.out_dim))
         o = self.o_dense(o)
+        # 恢复长度
+        if self.pool_size > 1:
+            o_shape = K.shape(o)
+            o = K.tile(o, (1, 1, self.pool_size))
+            o = K.reshape(o, (o_shape[0], -1, o_shape[2]))
+            o = o[:, :q_in_len]
+        # 返回结果
         o = sequence_masking(o, q_mask, 0)
         return o
 
@@ -169,6 +188,7 @@ class MultiHeadAttention(Layer):
             'heads': self.heads,
             'head_size': self.head_size,
             'key_size': self.key_size,
+            'pool_size': self.pool_size,
             'kernel_initializer': initializers.serialize(self.kernel_initializer),
             'max_relative_position': self.max_relative_position,
         }
@@ -380,12 +400,14 @@ class FeedForward(Layer):
                  groups=1,
                  activation='relu',
                  kernel_initializer='glorot_uniform',
+                 pool_size=None,
                  **kwargs):
         super(FeedForward, self).__init__(**kwargs)
         self.units = units
         self.groups = groups
         self.activation = activations.get(activation)
         self.kernel_initializer = initializers.get(kernel_initializer)
+        self.pool_size = pool_size or 1
 
     def build(self, input_shape):
         super(FeedForward, self).build(input_shape)
@@ -409,8 +431,21 @@ class FeedForward(Layer):
                                       kernel_initializer=self.kernel_initializer)
 
     def call(self, inputs):
-        x = self.dense_1(inputs)
+        x = inputs
+        # Pooling
+        if self.pool_size > 1:
+            x_in_len = K.shape(x)[1]
+            x = x[:, ::self.pool_size]
+        # 执行FFN
+        x = self.dense_1(x)
         x = self.dense_2(x)
+        # 恢复长度
+        if self.pool_size > 1:
+            x_shape = K.shape(x)
+            x = K.tile(x, (1, 1, self.pool_size))
+            x = K.reshape(x, (x_shape[0], -1, x_shape[2]))
+            x = x[:, :x_in_len]
+        # 返回结果
         return x
 
     def get_config(self):
@@ -418,6 +453,7 @@ class FeedForward(Layer):
             'units': self.units,
             'activation': activations.serialize(self.activation),
             'kernel_initializer': initializers.serialize(self.kernel_initializer),
+            'pool_size': self.pool_size,
         }
         base_config = super(FeedForward, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
