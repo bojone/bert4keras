@@ -143,6 +143,8 @@ class BertModel(object):
                 feed_forward_name=feed_forward_name,
                 layer_norm_cond_hidden_size=layer_norm_cond_hidden_size,
                 layer_norm_cond_hidden_act=layer_norm_cond_hidden_act,
+                attention_pool_size=self.att_pool_size[i],
+                feed_forward_pool_size=self.ffn_pool_size[i],
                 layers=layers)
             if not self.block_sharing:
                 layers = None
@@ -202,6 +204,8 @@ class BertModel(object):
                           feed_forward_name='feed-forward',
                           layer_norm_cond_hidden_size=None,
                           layer_norm_cond_hidden_act='linear',
+                          attention_pool_size=None,
+                          feed_forward_pool_size=None,
                           layers=None):
         """构建单个Transformer Block
         如果没传入layers则新建层；如果传入则重用旧层。
@@ -212,6 +216,7 @@ class BertModel(object):
                                head_size=self.attention_head_size,
                                kernel_initializer=self.initializer,
                                max_relative_position=self.max_relative_position,
+                               pool_size=attention_pool_size,
                                name=attention_name),
             Dropout(rate=self.dropout_rate,
                     name='%s-Dropout' % attention_name),
@@ -225,6 +230,7 @@ class BertModel(object):
                         groups=self.num_feed_forward_groups,
                         activation=self.hidden_act,
                         kernel_initializer=self.initializer,
+                        pool_size=feed_forward_pool_size,
                         name=feed_forward_name),
             Dropout(rate=self.dropout_rate,
                     name='%s-Dropout' % feed_forward_name),
@@ -237,12 +243,6 @@ class BertModel(object):
         ]
         # Self Attention
         xi = x
-        if self.att_pool_size is not None:
-            pool_size = self.att_pool_size.pop(0)
-            x = AveragePooling1D(pool_size, padding='same')(x)
-            sequence_mask = Reshape((-1, 1))(sequence_mask)
-            sequence_mask = MaxPooling1D(pool_size, padding='same')(sequence_mask)
-            sequence_mask = Reshape((-1, ))(sequence_mask)
         if attention_mask is None:
             x = layers[0]([x, x, x, sequence_mask], v_mask=True)
         elif attention_mask is 'history_only':
@@ -253,22 +253,13 @@ class BertModel(object):
                           a_mask=True)
         if self.dropout_rate > 0:
             x = layers[1](x)
-        if self.att_pool_size is not None:
-            x = UpSampling1D(pool_size)(x)
-            x = Lambda(lambda x: x[0][:, :K.shape(x[1])[1]])([x, xi])
         x = layers[2]([xi, x])
         x = layers[3](self.filter([x, z]))
         # Feed Forward
         xi = x
-        if self.ffn_pool_size is not None:
-            pool_size = self.ffn_pool_size.pop(0)
-            x = AveragePooling1D(pool_size, padding='same')(x)
         x = layers[4](x)
         if self.dropout_rate > 0:
             x = layers[5](x)
-        if self.ffn_pool_size is not None:
-            x = UpSampling1D(pool_size)(x)
-            x = Lambda(lambda x: x[0][:, :K.shape(x[1])[1]])([x, xi])
         x = layers[6]([xi, x])
         x = layers[7](self.filter([x, z]))
         return x, layers
