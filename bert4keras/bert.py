@@ -54,14 +54,14 @@ class BertModel(object):
         self.hidden_act = hidden_act
         self.keep_words = keep_words
         self.block_sharing = block_sharing
-        if att_pool_size is not None and not isinstance(att_pool_size, list):
+        if isinstance(att_pool_size, list):
+            self.att_pool_size = att_pool_size
+        else:
             self.att_pool_size = [att_pool_size] * num_hidden_layers
+        if isinstance(ffn_pool_size, list):
+            self.ffn_pool_size = ffn_pool_size
         else:
-            self.att_pool_size = None
-        if ffn_pool_size is not None and not isinstance(ffn_pool_size, list):
             self.ffn_pool_size = [ffn_pool_size] * num_hidden_layers
-        else:
-            self.ffn_pool_size = None
         self.additional_outputs = []
 
     def build(self,
