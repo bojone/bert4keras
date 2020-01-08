@@ -145,7 +145,7 @@ class MultiHeadAttention(Layer):
         a = a / self.key_size**0.5
         a = sequence_masking(a, v_mask, 1, -1)
         if a_mask is not None:
-            if is_string(a_mask) and a_mask == 'history_only':
+            if is_string(a_mask):
                 ones = K.ones_like(a[:1, :1])
                 a_mask = (ones - tf.linalg.band_part(ones, -1, 0)) * 1e12
                 a = a - a_mask
