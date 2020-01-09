@@ -48,6 +48,13 @@ if keras.__version__[-2:] != 'tf' and keras.__version__ < '2.3':
             return non_trainable_weights
 
 
+class ZeroMasking(Layer):
+    """啥都不做，就是加上mask
+    """
+    def compute_mask(self, inputs, mask=None):
+        return K.cast(K.greater(inputs, 0), K.floatx())
+
+
 class MultiHeadAttention(Layer):
     """多头注意力机制
     """
@@ -498,6 +505,7 @@ class EmbeddingDense(Layer):
 
 
 custom_objects = {
+    'ZeroMasking': ZeroMasking,
     'MultiHeadAttention': MultiHeadAttention,
     'LayerNormalization': LayerNormalization,
     'PositionEmbedding': PositionEmbedding,
