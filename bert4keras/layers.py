@@ -107,7 +107,7 @@ class MultiHeadAttention(Layer):
                                                        initializer=initializer,
                                                        trainable=False)
 
-    def call(self, inputs, q_mask=False, v_mask=False, a_mask=False):
+    def call(self, inputs, q_mask=None, v_mask=None, a_mask=None):
         """实现多头注意力
         q_mask: 对输入的query序列的mask。
                 主要是将输出结果的padding部分置0。
@@ -116,18 +116,16 @@ class MultiHeadAttention(Layer):
         a_mask: 对attention矩阵的mask。
                 不同的attention mask对应不同的应用。
         """
-        # 处理mask
-        inputs = inputs[:]
-        for i, mask in enumerate([q_mask, v_mask, a_mask]):
-            if not mask:
-                inputs.insert(3 + i, None)
-        q, k, v, q_mask, v_mask = inputs[:5]
-        if len(inputs) == 5:
-            a_mask = 'history_only'
-        elif len(inputs) == 6:
-            a_mask = inputs[-1]
-        else:
-            raise ValueError('wrong inputs for MultiHeadAttention.')
+        q, k, v = inputs[:3]
+        if a_mask:
+            if len(inputs) == 3:
+                a_mask = 'history_only'
+            else:
+                a_mask = inputs[3]
+        if q_mask is not None:
+            q_mask = search_layer(q, q_mask).output_mask
+        if v_mask is not None:
+            v_mask = search_layer(v, v_mask).output_mask
         # Pooling
         if self.pool_size > 1:
             q_in_len = K.shape(q)[1]
