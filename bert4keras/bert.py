@@ -80,26 +80,25 @@ class BertModel(object):
         s_in = Input(shape=(None, ), name='Input-Segment')
         x, s = input_layers = [x_in, s_in]
 
+        # 条件输入
         if layer_norm_cond is not None:
             z = layer_norm_cond
         elif layer_norm_cond_size is not None:
-            z = Input(shape=(layer_norm_cond_size, ),
-                      name='LayerNorm-Condition')
+            z = Input(shape=(layer_norm_cond_size, ), name='LayerNorm-Condition')
             input_layers.append(z)
         else:
             z = None
+        layer_norm_cond_hidden_act = layer_norm_cond_hidden_act or 'linear'
 
+        # 补充输入层
         if additional_input_layers is not None:
             if isinstance(additional_input_layers, list):
                 input_layers.extend(additional_input_layers)
             else:
                 input_layers.append(additional_input_layers)
 
-        layer_norm_cond_hidden_act = layer_norm_cond_hidden_act or 'linear'
-
-        # 自行构建Mask
-        sequence_mask = Lambda(lambda x: K.cast(K.greater(x, 0), K.floatx()),
-                               name='Sequence-Mask')(x)
+        # 补充mask
+        x = ZeroMasking(name='Sequence-Mask')(x)
 
         # Embedding部分
         x = Embedding(input_dim=self.vocab_size,
@@ -137,7 +136,6 @@ class BertModel(object):
             feed_forward_name = 'Encoder-%d-FeedForward' % (i + 1)
             x, layers = self.transformer_block(
                 inputs=[x, z],
-                sequence_mask=sequence_mask,
                 attention_mask=self.compute_attention_mask(i, s_in),
                 attention_name=attention_name,
                 feed_forward_name=feed_forward_name,
@@ -198,7 +196,6 @@ class BertModel(object):
 
     def transformer_block(self,
                           inputs,
-                          sequence_mask,
                           attention_mask=None,
                           attention_name='attention',
                           feed_forward_name='feed-forward',
@@ -242,15 +239,14 @@ class BertModel(object):
                                name='%s-Norm' % feed_forward_name),
         ]
         # Self Attention
-        xi = x
+        xi, x = x, [x, x, x]
+        v_mask = 'Sequence-Mask'
         if attention_mask is None:
-            x = layers[0]([x, x, x, sequence_mask], v_mask=True)
+            x = layers[0](x, v_mask=v_mask)
         elif attention_mask is 'history_only':
-            x = layers[0]([x, x, x, sequence_mask], v_mask=True, a_mask=True)
+            x = layers[0](x, v_mask=v_mask, a_mask=True)
         else:
-            x = layers[0]([x, x, x, sequence_mask, attention_mask],
-                          v_mask=True,
-                          a_mask=True)
+            x = layers[0](x + [attention_mask], v_mask=v_mask, a_mask=True)
         if self.dropout_rate > 0:
             x = layers[1](x)
         x = layers[2]([xi, x])
