@@ -179,7 +179,7 @@ object_model = Model(bert.model.inputs + [subject_ids], object_preds)
 train_model = Model(bert.model.inputs + [subject_labels, subject_ids, object_labels],
                     [subject_preds, object_preds])
 
-mask = bert.model.get_layer('Sequence-Mask').output
+mask = bert.model.get_layer('Sequence-Mask').output_mask
 
 subject_loss = K.binary_crossentropy(subject_labels, subject_preds)
 subject_loss = K.mean(subject_loss, 2)
