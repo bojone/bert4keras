@@ -7,7 +7,7 @@ os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
 import tensorflow as tf
 from data_utils import *
 from bert4keras.bert import build_bert_model
-from bert4keras.backend import keras, K
+from bert4keras.backend import keras, K, search_layer
 from bert4keras.optimizers import Adam
 from bert4keras.optimizers import extend_with_weight_decay
 from bert4keras.optimizers import extend_with_layer_adaptation
@@ -83,7 +83,8 @@ def build_bert_model_with_mlm():
     def mlm_loss(inputs):
         """计算loss的函数，需要封装为一个层
         """
-        y_true, y_pred, is_masked, seq_mask = inputs
+        y_true, y_pred, is_masked = inputs
+        seq_mask = search_layer(y_pred, 'Sequence-Mask').output_mask
         loss = K.sparse_categorical_crossentropy(y_true,
                                                  y_pred,
                                                  from_logits=True)
@@ -102,9 +103,7 @@ def build_bert_model_with_mlm():
         acc = K.sum(acc * is_masked) / (K.sum(is_masked) + K.epsilon())
         return acc
 
-    seq_mask = bert.model.get_layer('Sequence-Mask').output
-    mlm_loss = Lambda(mlm_loss,
-                      name='mlm_loss')([token_ids, proba, is_masked, seq_mask])
+    mlm_loss = Lambda(mlm_loss, name='mlm_loss')([token_ids, proba, is_masked])
     mlm_acc = Lambda(mlm_acc, name='mlm_acc')([token_ids, proba, is_masked])
 
     train_model = Model(bert.model.inputs + [token_ids, is_masked],
@@ -131,7 +130,8 @@ def build_bert_model_with_lm():
     def lm_loss(inputs):
         """计算loss的函数，需要封装为一个层
         """
-        y_true, y_pred, mask = inputs
+        y_true, y_pred = inputs
+        mask = search_layer(y_pred, 'Sequence-Mask').output_mask
         y_true, y_pred, mask = y_true[:, 1:], y_pred[:, :-1], mask[:, 1:]
         loss = K.sparse_categorical_crossentropy(y_true,
                                                  y_pred,
@@ -142,16 +142,16 @@ def build_bert_model_with_lm():
     def lm_acc(inputs):
         """计算准确率的函数，需要封装为一个层
         """
-        y_true, y_pred, mask = inputs
+        y_true, y_pred = inputs
+        mask = search_layer(y_pred, 'Sequence-Mask').output_mask
         y_true = K.cast(y_true, floatx)
         y_true, y_pred, mask = y_true[:, 1:], y_pred[:, :-1], mask[:, 1:]
         acc = keras.metrics.sparse_categorical_accuracy(y_true, y_pred)
         acc = K.sum(acc * mask) / (K.sum(mask) + K.epsilon())
         return acc
 
-    mask = bert.model.get_layer('Sequence-Mask').output
-    lm_loss = Lambda(lm_loss, name='lm_loss')([token_ids, proba, mask])
-    lm_acc = Lambda(lm_acc, name='lm_acc')([token_ids, proba, mask])
+    lm_loss = Lambda(lm_loss, name='lm_loss')([token_ids, proba])
+    lm_acc = Lambda(lm_acc, name='lm_acc')([token_ids, proba])
 
     train_model = Model(bert.model.inputs, [lm_loss, lm_acc])
 
@@ -207,8 +207,7 @@ if tpu_address is None:
     strategy = tf.distribute.MirroredStrategy()
 else:
     # TPU模式
-    resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
-        tpu=tpu_address)
+    resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu=tpu_address)
     tf.config.experimental_connect_to_host(resolver.master())
     tf.tpu.experimental.initialize_tpu_system(resolver)
     strategy = tf.distribute.experimental.TPUStrategy(resolver)
