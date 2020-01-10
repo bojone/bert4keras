@@ -53,8 +53,13 @@ if keras.__version__[-2:] != 'tf' and keras.__version__ < '2.3':
 class ZeroMasking(Layer):
     """啥都不做，就是加上mask
     """
-    def compute_mask(self, inputs, mask=None):
-        return K.cast(K.greater(inputs, 0), K.floatx())
+    def call(self, inputs):
+        self._output_mask = K.cast(K.greater(inputs, 0), K.floatx())
+        return inputs
+
+    @property
+    def output_mask(self):
+        return self._output_mask
 
 
 class MultiHeadAttention(Layer):
@@ -124,8 +129,14 @@ class MultiHeadAttention(Layer):
                 a_mask = 'history_only'
             else:
                 a_mask = inputs[3]
-        q_mask = getattr(search_layer(q, q_mask), 'output_mask', None)
-        v_mask = getattr(search_layer(v, v_mask), 'output_mask', None)
+        if q_mask is not None:
+            if not hasattr(self, 'q_mask_layer'):
+                self.q_mask_layer = search_layer(q, q_mask)
+            q_mask = self.q_mask_layer.output_mask
+        if v_mask is not None:
+            if not hasattr(self, 'v_mask_layer'):
+                self.v_mask_layer = search_layer(v, v_mask)
+            v_mask = self.v_mask_layer.output_mask
         # Pooling
         if self.pool_size > 1:
             is_self_attention = (q is k is v)
