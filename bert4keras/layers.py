@@ -6,6 +6,8 @@ import tensorflow as tf
 from bert4keras.backend import keras, K
 from bert4keras.backend import search_layer
 from bert4keras.backend import sequence_masking
+from bert4keras.backend import pool1d
+from bert4keras.backend import divisible_temporal_padding
 from bert4keras.snippets import is_string
 from keras import initializers, activations
 from keras.layers import *
