@@ -187,10 +187,7 @@ class MultiHeadAttention(Layer):
         o = self.o_dense(o)
         # 恢复长度
         if self.pool_size > 1:
-            o_shape = K.shape(o)
-            o = K.tile(o, (1, 1, self.pool_size))
-            o = K.reshape(o, (o_shape[0], -1, o_shape[2]))
-            o = o[:, :q_in_len]
+            o = K.repeat_elements(o, self.pool_size, 1)[:, :q_in_len]
         # 返回结果
         o = sequence_masking(o, q_mask, 0)
         return o
@@ -459,10 +456,7 @@ class FeedForward(Layer):
         x = self.dense_2(x)
         # 恢复长度
         if self.pool_size > 1:
-            x_shape = K.shape(x)
-            x = K.tile(x, (1, 1, self.pool_size))
-            x = K.reshape(x, (x_shape[0], -1, x_shape[2]))
-            x = x[:, :x_in_len]
+            x = K.repeat_elements(x, self.pool_size, 1)[:, :x_in_len]
         # 返回结果
         return x
 
