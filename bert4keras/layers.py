@@ -128,10 +128,20 @@ class MultiHeadAttention(Layer):
             v_mask = search_layer(v, v_mask).output_mask
         # Pooling
         if self.pool_size > 1:
+            is_self_attention = (q is k is v)
             q_in_len = K.shape(q)[1]
-            q = q[:, ::self.pool_size]
-            k = k[:, ::self.pool_size]
-            v = v[:, ::self.pool_size]
+            q = sequence_masking(q, q_mask, 0)
+            q = divisible_temporal_padding(q, self.pool_size)
+            q = pool1d(q, self.pool_size, self.pool_size, pool_mode='avg')
+            if is_self_attention:
+                k = v = q
+            else:
+                k = sequence_masking(k, v_mask, 0)
+                k = divisible_temporal_padding(k, self.pool_size)
+                k = pool1d(k, self.pool_size, self.pool_size, pool_mode='avg')
+                v = sequence_masking(v, v_mask, 0)
+                v = divisible_temporal_padding(v, self.pool_size)
+                v = pool1d(v, self.pool_size, self.pool_size, pool_mode='avg')
             if v_mask is not None:
                 v_mask = v_mask[:, ::self.pool_size]
             if a_mask is not None and not is_string(a_mask):
