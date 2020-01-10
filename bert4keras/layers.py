@@ -124,10 +124,8 @@ class MultiHeadAttention(Layer):
                 a_mask = 'history_only'
             else:
                 a_mask = inputs[3]
-        if q_mask is not None:
-            q_mask = search_layer(q, q_mask).output_mask
-        if v_mask is not None:
-            v_mask = search_layer(v, v_mask).output_mask
+        q_mask = getattr(search_layer(q, q_mask), 'output_mask', None)
+        v_mask = getattr(search_layer(v, v_mask), 'output_mask', None)
         # Pooling
         if self.pool_size > 1:
             is_self_attention = (q is k is v)
@@ -451,8 +449,7 @@ class FeedForward(Layer):
         x = inputs
         # Pooling
         if self.pool_size > 1:
-            if mask is not None:
-                mask = search_layer(x, mask).output_mask
+            mask = getattr(search_layer(x, mask), 'output_mask', None)
             x_in_len = K.shape(x)[1]
             x = sequence_masking(x, mask, 0)
             x = divisible_temporal_padding(x, self.pool_size)
