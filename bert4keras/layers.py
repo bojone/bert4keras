@@ -445,12 +445,15 @@ class FeedForward(Layer):
                                       groups=self.groups,
                                       kernel_initializer=self.kernel_initializer)
 
-    def call(self, inputs):
+    def call(self, inputs, mask=None):
         x = inputs
         # Pooling
         if self.pool_size > 1:
             x_in_len = K.shape(x)[1]
-            x = x[:, ::self.pool_size]
+            x_mask = search_layer(x, mask).output_mask
+            x = sequence_masking(x, x_mask, 0)
+            x = divisible_temporal_padding(x, self.pool_size)
+            x = pool1d(x, self.pool_size, self.pool_size, pool_mode='avg')
         # 执行FFN
         x = self.dense_1(x)
         x = self.dense_2(x)
