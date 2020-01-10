@@ -240,20 +240,21 @@ class BertModel(object):
         ]
         # Self Attention
         xi, x = x, [x, x, x]
-        v_mask = 'Sequence-Mask'
+        mask = 'Sequence-Mask'
         if attention_mask is None:
-            x = layers[0](x, v_mask=v_mask)
+            x = layers[0](x, q_mask=mask, v_mask=mask)
         elif attention_mask is 'history_only':
-            x = layers[0](x, v_mask=v_mask, a_mask=True)
+            x = layers[0](x, q_mask=mask, v_mask=mask, a_mask=True)
         else:
-            x = layers[0](x + [attention_mask], v_mask=v_mask, a_mask=True)
+            x.append(attention_mask)
+            x = layers[0](x, q_mask=mask, v_mask=mask, a_mask=True)
         if self.dropout_rate > 0:
             x = layers[1](x)
         x = layers[2]([xi, x])
         x = layers[3](self.filter([x, z]))
         # Feed Forward
         xi = x
-        x = layers[4](x)
+        x = layers[4](x, mask=mask)
         if self.dropout_rate > 0:
             x = layers[5](x)
         x = layers[6]([xi, x])
