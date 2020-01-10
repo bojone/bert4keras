@@ -161,9 +161,8 @@ def pool1d(x,
 def divisible_temporal_padding(x, n):
     """将一维向量序列右padding到长度能被n整除
     """
-    x_len = K.shape(x)[1]
-    r_len = x_len % n
-    p_len = K.switch(r_len > 0, x_len - r_len, 0)
+    r_len = K.shape(x)[1] % n
+    p_len = K.switch(r_len > 0, n - r_len, 0)
     return K.temporal_padding(x, (0, p_len))
 
 
