@@ -451,9 +451,10 @@ class FeedForward(Layer):
         x = inputs
         # Pooling
         if self.pool_size > 1:
+            if mask is not None:
+                mask = search_layer(x, mask).output_mask
             x_in_len = K.shape(x)[1]
-            x_mask = search_layer(x, mask).output_mask
-            x = sequence_masking(x, x_mask, 0)
+            x = sequence_masking(x, mask, 0)
             x = divisible_temporal_padding(x, self.pool_size)
             x = pool1d(x, self.pool_size, self.pool_size, pool_mode='avg')
         # 执行FFN
