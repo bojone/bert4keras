@@ -140,6 +140,33 @@ def batch_gather(params, indices):
             raise ValueError('%s\n%s\n' % (e1.message, e2.message))
 
 
+def pool1d(x,
+           pool_size,
+           strides=1,
+           padding='valid',
+           data_format=None,
+           pool_mode='max'):
+    """向量序列的pool函数
+    """
+    x = K.expand_dims(x, 1)
+    x = K.pool2d(x,
+                 pool_size=(1, pool_size),
+                 strides=(1, strides),
+                 padding=padding,
+                 data_format=data_format,
+                 pool_mode=pool_mode)
+    return x[:, 0]
+
+
+def divisible_temporal_padding(x, n):
+    """将一维向量序列右padding到长度能被n整除
+    """
+    x_len = K.shape(x)[1]
+    r_len = x_len % n
+    p_len = K.switch(r_len > 0, x_len - r_len, 0)
+    return K.temporal_padding(x, (0, p_len))
+
+
 def swish(x):
     """swish函数（这样封装过后才有 __name__ 属性）
     """
