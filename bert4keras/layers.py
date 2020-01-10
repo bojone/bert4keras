@@ -457,7 +457,10 @@ class FeedForward(Layer):
         x = inputs
         # Pooling
         if self.pool_size > 1:
-            mask = getattr(search_layer(x, mask), 'output_mask', None)
+            if mask is not None:
+                if not hasattr(self, 'mask_layer'):
+                    self.mask_layer = search_layer(x, mask)
+                mask = self.mask_layer.output_mask
             x_in_len = K.shape(x)[1]
             x = sequence_masking(x, mask, 0)
             x = divisible_temporal_padding(x, self.pool_size)
