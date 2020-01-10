@@ -46,7 +46,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 
 ## 更新
 - <strong>2020.01.10</strong>: 重写模型mask方案，某种程度上让代码更为简练清晰；后端优化。
-- <strong>2019.12.27</strong>: 重构预训练代码，减少冗余；目前支持RoBERTa和GPT两种预训练方式。
+- <strong>2019.12.27</strong>: 重构预训练代码，减少冗余；目前支持RoBERTa和GPT两种预训练方式，详见<a href="https://github.com/bojone/bert4keras/tree/master/pretraining/">pretraining</a>。
 - <strong>2019.12.17</strong>: 适配华为的<a href="https://github.com/huawei-noah/Pretrained-Language-Model/tree/master/NEZHA">nezha</a>权重，只需要在`build_bert_model`函数里加上`model='nezha'`；此外原来albert的加载方式`albert=True`改为`model='albert'`。
 - <strong>2019.12.16</strong>: 通过跟keras 2.3+版本类似的思路给低版本引入层中层功能，从而恢复对低于2.3.0版本的keras的支持。
 - <strong>2019.12.14</strong>: 新增Conditional Layer Normalization及相关demo。
