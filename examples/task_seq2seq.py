@@ -71,6 +71,7 @@ else:
         workers=10,
         max_queue_size=100,
         callback=_total_count,
+        # dummy=True,  # 如果在Windows跑，请设置dummy=True
     )
 
     tokens = [(i, j) for i, j in tokens.items() if j >= min_count]
