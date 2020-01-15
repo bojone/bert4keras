@@ -391,6 +391,7 @@ def extend_with_gradient_accumulation(base_optimizer, name=None):
         def get_updates(self, loss, params):
             # 更新判据
             cond = K.equal(self.iterations % self.grad_accum_steps, 0)
+            cond = K.cast(cond, K.floatx())
             # 获取梯度
             grads = self.get_gradients(loss, params)
             self.accum_grads = [
@@ -402,7 +403,7 @@ def extend_with_gradient_accumulation(base_optimizer, name=None):
             old_update = K.update
 
             def new_update(x, new_x):
-                new_x = K.switch(cond, new_x, x)
+                new_x = cond * new_x + (1 - cond) * x
                 return old_update(x, new_x)
 
             K.update = new_update
@@ -412,7 +413,7 @@ def extend_with_gradient_accumulation(base_optimizer, name=None):
             # 累积梯度
             with tf.control_dependencies(updates):
                 accum_updates = [
-                    K.update(ag, K.switch(cond, g, ag + g))
+                    K.update(ag, g + (1 - cond) * ag)
                     for g, ag in zip(grads, self.accum_grads)
                 ]
 
