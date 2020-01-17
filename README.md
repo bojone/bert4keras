@@ -19,7 +19,11 @@
 - 兼容keras、tf.keras
 
 ## 使用
-快速安装：
+安装稳定版：
+```shell
+pip install bert4keras
+```
+安装最新版：
 ```shell
 pip install git+https://www.github.com/bojone/bert4keras.git
 ```
