@@ -13,7 +13,7 @@ def load_vocab(dict_path):
     token_dict = {}
     with codecs.open(dict_path, encoding='utf-8') as reader:
         for line in reader:
-            token = line.strip()
+            token = line.strip('\n')
             token_dict[token] = len(token_dict)
 
     return token_dict
