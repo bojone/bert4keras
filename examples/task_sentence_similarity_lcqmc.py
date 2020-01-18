@@ -4,12 +4,12 @@
 
 import json
 import numpy as np
-import codecs
 from bert4keras.backend import keras, set_gelu, K
 from bert4keras.tokenizer import Tokenizer
 from bert4keras.bert import build_bert_model
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, DataGenerator
+from bert4keras.snippets import open
 from keras.layers import *
 
 set_gelu('tanh') # 切换gelu版本
@@ -24,7 +24,7 @@ dict_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/vocab.txt'
 
 def load_data(filename):
     D = []
-    with codecs.open(filename, encoding='utf-8') as f:
+    with open(filename, encoding='utf-8') as f:
         for l in f:
             text1, text2, label = l.strip().split('\t')
             D.append((text1, text2, int(label)))
