@@ -45,6 +45,18 @@ def string_matching(s, keywords):
     return False
 
 
+def convert_to_unicode(text):
+    """字符串转换为unicode格式（假设输入为utf-8格式）
+    """
+    if is_py2:
+        if isinstance(text, str):
+            text = text.decode('utf-8', 'ignore')
+    else:
+        if isinstance(text, bytes):
+            text = text.decode('utf-8', 'ignore')
+    return text
+
+
 class Progress:
     """显示进度，自己简单封装，比tqdm更可控一些
     iterable: 可迭代的对象；
