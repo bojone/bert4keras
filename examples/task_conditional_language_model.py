@@ -4,15 +4,15 @@
 # 请参考：https://kexue.fm/archives/7124
 
 from __future__ import print_function
-import glob
+import glob, os, json, re
 import numpy as np
 from tqdm import tqdm
-import os, json, codecs, re
 from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, DataGenerator
+from bert4keras.snippets import open
 from bert4keras.snippets import uniout  # 打印中文
 from keras.layers import *
 
@@ -50,7 +50,7 @@ tokenizer = Tokenizer(token_dict, do_lower_case=True)  # 建立分词器
 def load_data(filenames):
     D = []
     for filename in filenames:
-        with codecs.open(filename, encoding='utf-8') as f:
+        with open(filename, encoding='utf-8') as f:
             for l in f:
                 text, label = l.strip().split('\t')
                 if len(text) <= maxlen - 2:
