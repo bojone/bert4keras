@@ -50,6 +50,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 （注：徐亮版albert的开源时间早于Google版albert，这导致早期徐亮版albert的权重与Google版的不完全一致，换言之两者不能直接相互替换。为了减少代码冗余，bert4keras的0.2.4及后续版本均只支持加载<u>Google版</u>以徐亮版中<u>带Google字眼</u>的权重。如果要加载早期版本的权重，请用<a href="https://github.com/bojone/bert4keras/releases/tag/v0.2.3">0.2.3版本</a>。）
 
 ## 更新
+- <strong>2020.01.18</strong>: 调整文本处理方式，去掉codecs的使用。
 - <strong>2020.01.17</strong>: 各api日趋稳定，为了方便大家使用，打包到<a href="https://pypi.org/project/bert4keras/">pypi</a>，首个打包版本号为0.4.6。
 - <strong>2020.01.10</strong>: 重写模型mask方案，某种程度上让代码更为简练清晰；后端优化。
 - <strong>2019.12.27</strong>: 重构预训练代码，减少冗余；目前支持RoBERTa和GPT两种预训练方式，详见<a href="https://github.com/bojone/bert4keras/tree/master/pretraining/">pretraining</a>。
