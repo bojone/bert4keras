@@ -7,7 +7,7 @@ from __future__ import print_function
 import glob
 import numpy as np
 from tqdm import tqdm
-import os, json, codecs, re
+import os, json, re
 from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
