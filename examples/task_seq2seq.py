@@ -42,7 +42,7 @@ else:
     def _batch_texts():
         texts = []
         for txt in txts:
-            text = codecs.open(txt, encoding='utf-8').read()
+            text = open(txt, encoding='utf-8').read()
             texts.append(text)
             if len(texts) == 100:
                 yield texts
@@ -77,7 +77,7 @@ else:
     tokens = sorted(tokens, key=lambda t: -t[1])
     tokens = [t[0] for t in tokens]
     json.dump(tokens,
-              codecs.open(seq2seq_config, 'w', encoding='utf-8'),
+              open(seq2seq_config, 'w', encoding='utf-8'),
               indent=4,
               ensure_ascii=False)
 
