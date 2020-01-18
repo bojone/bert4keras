@@ -3,16 +3,15 @@
 # 介绍链接：https://kexue.fm/archives/6933
 
 from __future__ import print_function
-import glob
+import glob, os, json
 import numpy as np
 from tqdm import tqdm
-import os, json, codecs
 from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import parallel_apply, sequence_padding
-from bert4keras.snippets import DataGenerator
+from bert4keras.snippets import DataGenerator, open
 
 
 seq2seq_config = 'seq2seq_config.json'
@@ -106,7 +105,7 @@ class data_generator(DataGenerator):
         batch_token_ids, batch_segment_ids = [], []
         for i in idxs:
             txt = self.data[i]
-            text = codecs.open(txt, encoding='utf-8').read()
+            text = open(txt, encoding='utf-8').read()
             text = text.split('\n')
             if len(text) > 1:
                 title = text[0]
