@@ -4,14 +4,14 @@
 # 8个epoch后在valid上能达到约0.77的分数
 # (Accuracy=0.7259005836184343	F1=0.813860036706151	Final=0.7698803101622926)
 
-import json, os
+import json, os, re
 import numpy as np
 from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, DataGenerator
-import codecs, re
+from bert4keras.snippets import open
 from tqdm import tqdm
 
 
@@ -213,7 +213,7 @@ def gen_answer(question, passages, topk=2, mode='extractive'):
 def predict_to_file(data, filename, topk=2, mode='extractive'):
     """将预测结果输出到文件，方便评估
     """
-    with codecs.open(filename, 'w', encoding='utf-8') as f:
+    with open(filename, 'w', encoding='utf-8') as f:
         for d in tqdm(iter(data), desc=u'正在预测(共%s条样本)' % len(data)):
             q_text = d['question']
             p_texts = [p['passage'] for p in d['passages']]
