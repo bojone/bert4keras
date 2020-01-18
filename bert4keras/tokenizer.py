@@ -1,17 +1,15 @@
 #! -*- coding: utf-8 -*-
 # 工具函数
 
-import unicodedata
-import codecs
-import re
-from bert4keras.snippets import is_string, is_py2
+import unicodedata, re
+from bert4keras.snippets import is_string, is_py2, open
 
 
 def load_vocab(dict_path):
     """从bert的词典文件中读取词典
     """
     token_dict = {}
-    with codecs.open(dict_path, encoding='utf-8') as reader:
+    with open(dict_path, encoding='utf-8') as reader:
         for line in reader:
             token = line.strip()
             token_dict[token] = len(token_dict)
