@@ -6,7 +6,6 @@
 # 换用RoBERTa Large可以达到f1=0.829+
 
 import json
-import codecs
 import numpy as np
 import tensorflow as tf
 from bert4keras.backend import keras, K, batch_gather
@@ -15,6 +14,7 @@ from bert4keras.tokenizer import Tokenizer
 from bert4keras.bert import build_bert_model
 from bert4keras.optimizers import Adam, ExponentialMovingAverage
 from bert4keras.snippets import sequence_padding, DataGenerator
+from bert4keras.snippets import open
 from keras.layers import *
 from keras.models import Model
 from tqdm import tqdm
@@ -29,7 +29,7 @@ dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
 def load_data(filename):
     D = []
-    with codecs.open(filename, encoding='utf-8') as f:
+    with open(filename, encoding='utf-8') as f:
         for l in f:
             l = json.loads(l)
             D.append({
@@ -47,7 +47,7 @@ train_data = load_data('/root/kg/datasets/train_data.json')
 valid_data = load_data('/root/kg/datasets/dev_data.json')
 predicate2id, id2predicate = {}, {}
 
-with codecs.open('/root/kg/datasets/all_50_schemas') as f:
+with open('/root/kg/datasets/all_50_schemas') as f:
     for l in f:
         l = json.loads(l)
         if l['predicate'] not in predicate2id:
@@ -257,7 +257,7 @@ def evaluate(data):
     """评估函数，计算f1、precision、recall
     """
     X, Y, Z = 1e-10, 1e-10, 1e-10
-    f = codecs.open('dev_pred.json', 'w', encoding='utf-8')
+    f = open('dev_pred.json', 'w', encoding='utf-8')
     pbar = tqdm()
     for d in data:
         R = set([SPO(spo) for spo in extract_spoes(d['text'])])
