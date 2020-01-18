@@ -2,15 +2,15 @@
 # bert做language model任务，小说生成
 
 from __future__ import print_function
-import glob
+import glob, os, json, re
 import numpy as np
 from tqdm import tqdm
-import os, json, codecs, re
 from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, DataGenerator
+from bert4keras.snippets import open
 
 
 lm_config = 'lm_config.json'
@@ -58,7 +58,7 @@ else:
     tokens = sorted(tokens, key=lambda t: -t[1])
     tokens = [t[0] for t in tokens]
     json.dump(tokens,
-              codecs.open(lm_config, 'w', encoding='utf-8'),
+              open(lm_config, 'w', encoding='utf-8'),
               indent=4,
               ensure_ascii=False)
 
