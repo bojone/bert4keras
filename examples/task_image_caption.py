@@ -60,7 +60,7 @@ def read_caption(f):
         }
     for caption in data['annotations']:
         images[caption['image_id']]['caption'].append(caption['caption'])
-    return images.values()
+    return list(images.values())
 
 
 def read_image(f):
