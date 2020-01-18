@@ -8,6 +8,8 @@ import re
 import sys
 
 
+_open_ = open
+
 is_py2 = six.PY2
 
 if not is_py2:
