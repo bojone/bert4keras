@@ -29,8 +29,7 @@ dict_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/vocab.txt'
 novels = []
 
 for txt in glob.glob('/root/金庸/*/*.txt'):
-    txt = open(txt).read()
-    txt = txt.decode('gbk', 'ignore')
+    txt = open(txt, encoding='gbk').read()
     txt = txt.replace('\r', '').replace('\n', '')
     txt = txt.replace(u'整理制作，并提供下载', '')
     txt = re.sub(u'www.*?com', '', txt)
