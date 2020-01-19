@@ -398,7 +398,7 @@ class BertModel(object):
 
         values = [load_variable(name) for name in mapping]
 
-        bert_layers = [
+        bert_layer_names = [
             'Embedding-Token',
             'Embedding-Segment',
             'Embedding-Position',
@@ -407,14 +407,14 @@ class BertModel(object):
         ]
 
         for i in range(self.num_hidden_layers):
-            bert_layers.extend([
+            bert_layer_names.extend([
                 'Encoder-%d-MultiHeadSelfAttention' % (i + 1),
                 'Encoder-%d-MultiHeadSelfAttention-Norm' % (i + 1),
                 'Encoder-%d-FeedForward' % (i + 1),
                 'Encoder-%d-FeedForward-Norm' % (i + 1),
             ])
 
-        bert_layers.extend([
+        bert_layer_names.extend([
             'Pooler-Dense',
             'NSP-Proba',
             'MLM-Dense',
@@ -423,8 +423,11 @@ class BertModel(object):
         ])
 
         weights = []
-        for layer in self.model.layers:
-            if layer.name not in bert_layers:
+        for layer_name in bert_layer_names:
+            try:
+                layer = self.model.get_layer(layer_name)
+                layer_weights = layer.trainable_weights
+            except:
                 continue
             if 'Norm' in layer.name:
                 layer_weights = layer_weights[:2]
