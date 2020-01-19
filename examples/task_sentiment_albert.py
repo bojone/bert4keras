@@ -14,6 +14,7 @@ from keras.layers import *
 set_gelu('tanh')  # 切换gelu版本
 
 
+num_classes = 2
 maxlen = 128
 batch_size = 32
 config_path = '/root/kg/bert/albert_small_zh_google/albert_config.json'
@@ -70,8 +71,8 @@ bert = build_bert_model(
     return_keras_model=False,
 )
 
-output = Dropout(rate=0.1)(bert.model.output)
-output = Dense(units=2,
+output = Lambda(lambda x: x[:, 0], name='CLS-token')(bert.model.output)
+output = Dense(units=num_classes,
                activation='softmax',
                kernel_initializer=bert.initializer)(output)
 
