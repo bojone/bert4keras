@@ -282,115 +282,110 @@ class BertModel(object):
 
         return inputs
 
-    def variable_mapping(self, variable_names):
+    def variable_mapping(self, source='bert'):
         """构建Keras层与checkpoint的变量名之间的映射表
         """
-        mapping = OrderedDict()
-
-        mapping['Embedding-Token'] = ['bert/embeddings/word_embeddings']
-        mapping['Embedding-Segment'] = ['bert/embeddings/token_type_embeddings']
+        mapping = [
+            'bert/embeddings/word_embeddings',
+            'bert/embeddings/token_type_embeddings',
+        ]
         if self.max_relative_position is None:
-            mapping['Embedding-Position'] = ['bert/embeddings/position_embeddings']
+            mapping.extend(['bert/embeddings/position_embeddings'])
 
-        mapping['Embedding-Norm'] = [
+        mapping.extend([
             'bert/embeddings/LayerNorm/gamma',
             'bert/embeddings/LayerNorm/beta',
-        ]
+        ])
+
         if self.embedding_size != self.hidden_size:
-            mapping['Embedding-Mapping'] = [
+            mapping.extend([
                 'bert/encoder/embedding_hidden_mapping_in/kernel',
                 'bert/encoder/embedding_hidden_mapping_in/bias',
+            ])
+
+        if source == 'albert':
+            block_weight_names = [
+                'bert/encoder/transformer/group_0/inner_group_0/attention_1/self/query/kernel',
+                'bert/encoder/transformer/group_0/inner_group_0/attention_1/self/query/bias',
+                'bert/encoder/transformer/group_0/inner_group_0/attention_1/self/key/kernel',
+                'bert/encoder/transformer/group_0/inner_group_0/attention_1/self/key/bias',
+                'bert/encoder/transformer/group_0/inner_group_0/attention_1/self/value/kernel',
+                'bert/encoder/transformer/group_0/inner_group_0/attention_1/self/value/bias',
+                'bert/encoder/transformer/group_0/inner_group_0/attention_1/output/dense/kernel',
+                'bert/encoder/transformer/group_0/inner_group_0/attention_1/output/dense/bias',
+                'bert/encoder/transformer/group_0/inner_group_0/LayerNorm/gamma',
+                'bert/encoder/transformer/group_0/inner_group_0/LayerNorm/beta',
+                'bert/encoder/transformer/group_0/inner_group_0/ffn_1/intermediate/dense/kernel',
+                'bert/encoder/transformer/group_0/inner_group_0/ffn_1/intermediate/dense/bias',
+                'bert/encoder/transformer/group_0/inner_group_0/ffn_1/intermediate/output/dense/kernel',
+                'bert/encoder/transformer/group_0/inner_group_0/ffn_1/intermediate/output/dense/bias',
+                'bert/encoder/transformer/group_0/inner_group_0/LayerNorm_1/gamma',
+                'bert/encoder/transformer/group_0/inner_group_0/LayerNorm_1/beta',
             ]
 
-        for i in range(self.num_hidden_layers):
-            try:
-                self.model.get_layer('Encoder-%d-MultiHeadSelfAttention' % (i + 1))
-            except ValueError:
-                continue
-            if ('bert/encoder/layer_%d/attention/self/query/kernel' % i) in variable_names:
+        if not self.block_sharing and source != 'albert':
+            for i in range(self.num_hidden_layers):
                 block_name = 'layer_%d' % i
-            else:
-                block_name = 'transformer/group_0/inner_group_0'
-
-            mapping['Encoder-%d-MultiHeadSelfAttention' % (i + 1)] = [
-                'bert/encoder/%s/attention/self/query/kernel' % block_name,
-                'bert/encoder/%s/attention/self/query/bias' % block_name,
-                'bert/encoder/%s/attention/self/key/kernel' % block_name,
-                'bert/encoder/%s/attention/self/key/bias' % block_name,
-                'bert/encoder/%s/attention/self/value/kernel' % block_name,
-                'bert/encoder/%s/attention/self/value/bias' % block_name,
-                'bert/encoder/%s/attention/output/dense/kernel' % block_name,
-                'bert/encoder/%s/attention/output/dense/bias' % block_name,
-            ]
-            mapping['Encoder-%d-MultiHeadSelfAttention-Norm' % (i + 1)] = [
-                'bert/encoder/%s/attention/output/LayerNorm/gamma' % block_name,
-                'bert/encoder/%s/attention/output/LayerNorm/beta' % block_name,
-            ]
-            mapping['Encoder-%d-FeedForward' % (i + 1)] = [
-                'bert/encoder/%s/intermediate/dense/kernel' % block_name,
-                'bert/encoder/%s/intermediate/dense/bias' % block_name,
-                'bert/encoder/%s/output/dense/kernel' % block_name,
-                'bert/encoder/%s/output/dense/bias' % block_name,
-            ]
-            mapping['Encoder-%d-FeedForward-Norm' % (i + 1)] = [
-                'bert/encoder/%s/output/LayerNorm/gamma' % block_name,
-                'bert/encoder/%s/output/LayerNorm/beta' % block_name,
-            ]
+                mapping.extend([
+                    'bert/encoder/%s/attention/self/query/kernel' % block_name,
+                    'bert/encoder/%s/attention/self/query/bias' % block_name,
+                    'bert/encoder/%s/attention/self/key/kernel' % block_name,
+                    'bert/encoder/%s/attention/self/key/bias' % block_name,
+                    'bert/encoder/%s/attention/self/value/kernel' % block_name,
+                    'bert/encoder/%s/attention/self/value/bias' % block_name,
+                    'bert/encoder/%s/attention/output/dense/kernel' % block_name,
+                    'bert/encoder/%s/attention/output/dense/bias' % block_name,
+                    'bert/encoder/%s/attention/output/LayerNorm/gamma' % block_name,
+                    'bert/encoder/%s/attention/output/LayerNorm/beta' % block_name,
+                    'bert/encoder/%s/intermediate/dense/kernel' % block_name,
+                    'bert/encoder/%s/intermediate/dense/bias' % block_name,
+                    'bert/encoder/%s/output/dense/kernel' % block_name,
+                    'bert/encoder/%s/output/dense/bias' % block_name,
+                    'bert/encoder/%s/output/LayerNorm/gamma' % block_name,
+                    'bert/encoder/%s/output/LayerNorm/beta' % block_name,
+                ])
+        elif not self.block_sharing and source == 'albert':
+            mapping.extend(block_weight_names * self.num_hidden_layers)
+        else:
+            mapping.extend(block_weight_names)
 
         if self.with_pool or self.with_nsp:
-            mapping['Pooler-Dense'] = [
+            mapping.extend([
                 'bert/pooler/dense/kernel',
                 'bert/pooler/dense/bias',
-            ]
+            ])
             if self.with_nsp:
-                mapping['NSP-Proba'] = [
+                mapping.extend([
                     'cls/seq_relationship/output_weights',
                     'cls/seq_relationship/output_bias',
-                ]
+                ])
 
         if self.with_mlm:
-            mapping['MLM-Dense'] = [
+            mapping.extend([
                 'cls/predictions/transform/dense/kernel',
                 'cls/predictions/transform/dense/bias',
-            ]
-            mapping['MLM-Norm'] = [
                 'cls/predictions/transform/LayerNorm/gamma',
                 'cls/predictions/transform/LayerNorm/beta',
-            ]
-            mapping['MLM-Proba'] = ['cls/predictions/output_bias']
+                'cls/predictions/output_bias',
+            ])
 
         return mapping
 
-    def load_weights_from_checkpoint(self, checkpoint_file, mapping=None):
+    def load_weights_from_checkpoint(self,
+                                     checkpoint_file,
+                                     source='bert',
+                                     mapping=None):
         """从预训练好的Bert的checkpoint中加载权重
-        为了简化写法，对变量名的匹配引入了一定的模糊匹配能力。
         """
-        variable_names = [
-            n[0] for n in tf.train.list_variables(checkpoint_file)
-            if 'adam' not in n[0]
-        ]
         if mapping is None:
-            mapping = self.variable_mapping(variable_names)
-
-        def similarity(a, b, n=4):
-            # 基于n-grams的jaccard相似度
-            a = set([a[i:i + n] for i in range(len(a) - n)])
-            b = set([b[i:i + n] for i in range(len(b) - n)])
-            a_and_b = a & b
-            if not a_and_b:
-                return 0.
-            a_or_b = a | b
-            return 1. * len(a_and_b) / len(a_or_b)
+            mapping = self.variable_mapping(source)
 
         def load_variable(name):
             # 加载单个变量的函数
-            sims = [similarity(name, n) for n in variable_names]
-            found_name = variable_names.pop(np.argmax(sims))
-            print('==> searching: %s, found name: %s' % (name, found_name))
-            variable = tf.train.load_variable(checkpoint_file, found_name)
+            variable = tf.train.load_variable(checkpoint_file, name)
             if name in [
-                'bert/embeddings/word_embeddings',
-                'cls/predictions/output_bias',
+                    'bert/embeddings/word_embeddings',
+                    'cls/predictions/output_bias',
             ]:
                 if self.keep_words is None:
                     return variable
@@ -401,45 +396,33 @@ class BertModel(object):
             else:
                 return variable
 
-        def load_variables(names):
-            # 批量加载的函数
-            if not isinstance(names, list):
-                names = [names]
-            return [load_variable(name) for name in names]
+        values = [load_variable(name) for name in mapping]
+        weights = []
 
-        for layer_name, layer_variable_names in mapping.items():
-            values = load_variables(layer_variable_names)
-            weights = self.model.get_layer(layer_name).trainable_weights
-            if 'Norm' in layer_name:
-                weights = weights[:2]
-            if len(weights) != len(values):
-                raise ValueError(
-                    'Expecting %s weights, but provide a list of %s weights.'
-                    % (len(weights), len(values))
-                )
-            K.batch_set_value(zip(weights, values))
+        for layer in self.model.layers:
+            layer_weights = layer.trainable_weights
+            if 'Norm' in layer.name:
+                layer_weights = layer_weights[:2]
+            weights.extend(layer_weights)
+
+        if len(weights) != len(values):
+            raise ValueError(
+                'Expecting %s weights, but provide a list of %s weights.' %
+                (len(weights), len(values)))
+
+        K.batch_set_value(zip(weights, values))
 
     def save_weights_as_checkpoint(self,
                                    filename,
-                                   reference,
+                                   source='bert',
                                    mapping=None,
                                    write_meta_graph=False):
         """保存模型的权重，跟Bert的checkpoint格式一致
-        filename: 要保存的名字；
-        reference: 参照的已有的checkpoint。
         """
-        variable_names = [
-            n[0] for n in tf.train.list_variables(reference)
-            if 'adam' not in n[0]
-        ]
-        if mapping is None:
-            mapping = self.variable_mapping(variable_names)
+        weights = self.model.get_weights()
 
-        weights = {}
-        for layer_name, layer_variable_names in mapping.items():
-            layer_weights = self.model.get_layer(layer_name).get_weights()
-            for n, w in zip(layer_variable_names, layer_weights):
-                weights[n] = w
+        if mapping is None:
+            mapping = self.variable_mapping(source)
 
         def create_variable(name, value):
             if name == 'cls/seq_relationship/output_weights':
@@ -447,7 +430,7 @@ class BertModel(object):
             return tf.Variable(value, name=name)
 
         with tf.Graph().as_default():
-            for n, w in weights.items():
+            for n, w in zip(mapping, weights):
                 create_variable(n, w)
             with tf.Session() as sess:
                 sess.run(tf.global_variables_initializer())
@@ -565,7 +548,11 @@ def build_bert_model(config_path,
                additional_input_layers=additional_input_layers)
 
     if checkpoint_path is not None:
-        bert.load_weights_from_checkpoint(checkpoint_path)
+        if model[:6] == 'albert':
+            source = 'albert'
+        else:
+            source = 'bert'
+        bert.load_weights_from_checkpoint(checkpoint_path, source)
 
     if return_keras_model:
         return bert.model
