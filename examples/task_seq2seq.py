@@ -4,6 +4,7 @@
 
 from __future__ import print_function
 import glob, os, json
+from io import open
 import numpy as np
 from tqdm import tqdm
 from bert4keras.backend import keras, K
@@ -11,7 +12,7 @@ from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import parallel_apply, sequence_padding
-from bert4keras.snippets import DataGenerator, open
+from bert4keras.snippets import DataGenerator
 
 
 seq2seq_config = 'seq2seq_config.json'
