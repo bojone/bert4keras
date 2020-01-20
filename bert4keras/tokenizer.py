@@ -2,7 +2,8 @@
 # 工具函数
 
 import unicodedata, re
-from bert4keras.snippets import is_string, is_py2, open
+from bert4keras.snippets import is_string, is_py2
+from io import open
 
 
 def load_vocab(dict_path):
