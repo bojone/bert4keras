@@ -282,7 +282,7 @@ class BertModel(object):
 
         return inputs
 
-    def variable_mapping(self, source='bert'):
+    def variable_mapping(self, reference='bert'):
         """构建Keras层与checkpoint的变量名之间的映射表
         """
         mapping = [
@@ -303,7 +303,7 @@ class BertModel(object):
                 'bert/encoder/embedding_hidden_mapping_in/bias',
             ])
 
-        if source == 'albert':
+        if reference == 'albert':
             block_weight_names = [
                 'bert/encoder/transformer/group_0/inner_group_0/attention_1/self/query/kernel',
                 'bert/encoder/transformer/group_0/inner_group_0/attention_1/self/query/bias',
@@ -323,7 +323,7 @@ class BertModel(object):
                 'bert/encoder/transformer/group_0/inner_group_0/LayerNorm_1/beta',
             ]
 
-        if not self.block_sharing and source != 'albert':
+        if not self.block_sharing and reference != 'albert':
             for i in range(self.num_hidden_layers):
                 block_name = 'layer_%d' % i
                 mapping.extend([
@@ -344,7 +344,7 @@ class BertModel(object):
                     'bert/encoder/%s/output/LayerNorm/gamma' % block_name,
                     'bert/encoder/%s/output/LayerNorm/beta' % block_name,
                 ])
-        elif not self.block_sharing and source == 'albert':
+        elif not self.block_sharing and reference == 'albert':
             mapping.extend(block_weight_names * self.num_hidden_layers)
         else:
             mapping.extend(block_weight_names)
@@ -373,12 +373,12 @@ class BertModel(object):
 
     def load_weights_from_checkpoint(self,
                                      checkpoint_file,
-                                     source='bert',
+                                     reference='bert',
                                      mapping=None):
         """从预训练好的Bert的checkpoint中加载权重
         """
         if mapping is None:
-            mapping = self.variable_mapping(source)
+            mapping = self.variable_mapping(reference)
 
         def load_variable(name):
             # 加载单个变量的函数
@@ -442,7 +442,7 @@ class BertModel(object):
 
     def save_weights_as_checkpoint(self,
                                    filename,
-                                   source='bert',
+                                   reference='bert',
                                    mapping=None,
                                    write_meta_graph=False):
         """保存模型的权重，跟Bert的checkpoint格式一致
@@ -450,7 +450,7 @@ class BertModel(object):
         weights = self.model.get_weights()
 
         if mapping is None:
-            mapping = self.variable_mapping(source)
+            mapping = self.variable_mapping(reference)
 
         def create_variable(name, value):
             if name == 'cls/seq_relationship/output_weights':
@@ -577,10 +577,10 @@ def build_bert_model(config_path,
 
     if checkpoint_path is not None:
         if model[:6] == 'albert':
-            source = 'albert'
+            reference = 'albert'
         else:
-            source = 'bert'
-        bert.load_weights_from_checkpoint(checkpoint_path, source)
+            reference = 'bert'
+        bert.load_weights_from_checkpoint(checkpoint_path, reference)
 
     if return_keras_model:
         return bert.model
