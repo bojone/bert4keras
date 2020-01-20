@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='bert4keras',
-    version='0.4.7',
+    version='0.4.8',
     description='an elegant bert4keras',
     # long_description=open('README.rst').read(),
     license='Apache License 2.0',
