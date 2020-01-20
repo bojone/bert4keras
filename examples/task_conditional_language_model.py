@@ -5,6 +5,7 @@
 
 from __future__ import print_function
 import glob, os, json, re
+from io import open
 import numpy as np
 from tqdm import tqdm
 from bert4keras.backend import keras, K
@@ -12,7 +13,6 @@ from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, DataGenerator
-from bert4keras.snippets import open
 from bert4keras.snippets import uniout  # 打印中文
 from keras.layers import *
 
