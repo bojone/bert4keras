@@ -6,11 +6,11 @@ from bert4keras.snippets import is_string, is_py2
 from io import open
 
 
-def load_vocab(dict_path):
+def load_vocab(dict_path, encoding='utf-8'):
     """从bert的词典文件中读取词典
     """
     token_dict = {}
-    with open(dict_path, encoding='utf-8') as reader:
+    with open(dict_path, encoding=encoding) as reader:
         for line in reader:
             token = line.strip()
             token_dict[token] = len(token_dict)
