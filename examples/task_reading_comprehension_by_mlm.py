@@ -99,7 +99,7 @@ class data_generator(DataGenerator):
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
             batch_a_token_ids.append(a_token_ids[1:])
-            if len(batch_a_token_ids) == self.batch_size or i == idxs[-1]:
+            if len(batch_token_ids) == self.batch_size or i == idxs[-1]:
                 batch_token_ids = sequence_padding(batch_token_ids)
                 batch_segment_ids = sequence_padding(batch_segment_ids)
                 batch_a_token_ids = sequence_padding(batch_a_token_ids, max_a_len)
