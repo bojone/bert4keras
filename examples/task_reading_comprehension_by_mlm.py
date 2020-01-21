@@ -119,7 +119,7 @@ model.summary()
 
 
 def masked_cross_entropy(y_true, y_pred):
-    """叉熵作为loss，并mask掉padding部分的预测
+    """交叉熵作为loss，并mask掉padding部分的预测
     """
     y_true = K.reshape(y_true, [K.shape(y_true)[0], -1])
     y_mask = K.cast(K.not_equal(y_true, 0), K.floatx())
