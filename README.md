@@ -40,14 +40,15 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 
 目前支持加载的权重：
 - <strong>Google原版bert</strong>: https://github.com/google-research/bert
-- <strong>徐亮版roberta</strong>: https://github.com/brightmart/roberta_zh
+- <strong>brightmart版roberta</strong>: https://github.com/brightmart/roberta_zh
 - <strong>哈工大版roberta</strong>: https://github.com/ymcui/Chinese-BERT-wwm
 - <strong>Google原版albert</strong><sup><a href="https://github.com/bojone/bert4keras/issues/29#issuecomment-552188981">[例子]</a></sup>: https://github.com/google-research/google-research/tree/master/albert
-- <strong>徐亮版albert</strong>: https://github.com/brightmart/albert_zh
+- <strong>brightmart版albert</strong>: https://github.com/brightmart/albert_zh
+- <strong>转换后的albert</strong>: https://github.com/bojone/albert_zh
 - <strong>华为的NEZHA</strong>: https://github.com/huawei-noah/Pretrained-Language-Model/tree/master/NEZHA
 - <strong>自研语言模型</strong>: https://github.com/ZhuiyiTechnology/pretrained-models
 
-（注：徐亮版albert的开源时间早于Google版albert，这导致早期徐亮版albert的权重与Google版的不完全一致，换言之两者不能直接相互替换。为了减少代码冗余，bert4keras的0.2.4及后续版本均只支持加载<u>Google版</u>以徐亮版中<u>带Google字眼</u>的权重。如果要加载早期版本的权重，请用<a href="https://github.com/bojone/bert4keras/releases/tag/v0.2.3">0.2.3版本</a>。）
+（注：brightmart版albert的开源时间早于Google版albert，这导致早期brightmart版albert的权重与Google版的不完全一致，换言之两者不能直接相互替换。为了减少代码冗余，bert4keras的0.2.4及后续版本均只支持加载<u>Google版</u>以brightmart版中<u>带Google字眼</u>的权重。如果要加载早期版本的权重，请用<a href="https://github.com/bojone/bert4keras/releases/tag/v0.2.3">0.2.3版本</a>。）
 
 ## 更新
 - <strong>2020.01.18</strong>: 调整文本处理方式，去掉codecs的使用。
