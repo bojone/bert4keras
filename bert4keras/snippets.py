@@ -8,6 +8,7 @@ import re
 import sys
 
 
+_open_ = open
 is_py2 = six.PY2
 
 if not is_py2:
@@ -43,6 +44,67 @@ def string_matching(s, keywords):
         if re.search(k, s):
             return True
     return False
+
+
+def convert_to_unicode(text, encoding='utf-8'):
+    """字符串转换为unicode格式（假设输入为utf-8格式）
+    """
+    if is_py2:
+        if isinstance(text, str):
+            text = text.decode(encoding, 'ignore')
+    else:
+        if isinstance(text, bytes):
+            text = text.decode(encoding, 'ignore')
+    return text
+
+
+def convert_to_str(text, encoding='utf-8'):
+    """字符串转换为str格式（假设输入为utf-8格式）
+    """
+    if is_py2:
+        if isinstance(text, unicode):
+            text = text.encode(encoding, 'ignore')
+    else:
+        if isinstance(text, bytes):
+            text = text.decode(encoding, 'ignore')
+    return text
+
+
+class open:
+    """模仿python自带的open函数，主要是为了同时兼容py2和py3
+    """
+    def __init__(self, name, mode='r', encoding=None):
+        if is_py2:
+            self.file = _open_(name, mode)
+        else:
+            self.file = _open_(name, mode, encoding=encoding)
+        self.encoding = encoding
+
+    def __iter__(self):
+        for l in self.file:
+            if self.encoding:
+                l = convert_to_unicode(l, self.encoding)
+            yield l
+
+    def read(self):
+        text = self.file.read()
+        if self.encoding:
+            text = convert_to_unicode(text, self.encoding)
+        return text
+
+    def write(self, text):
+        if self.encoding:
+            s = convert_to_str(text, self.encoding)
+        self.file.write(s)
+
+    def close(self):
+        self.file.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, tb):
+        self.close()
 
 
 class Progress:
