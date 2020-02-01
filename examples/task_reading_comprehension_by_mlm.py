@@ -5,13 +5,13 @@
 # (Accuracy=0.7282149325820084  F1=0.8207266829447049   Final=0.7744708077633566)
 
 import json, os, re
-from io import open
 import numpy as np
 from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, DataGenerator
+from bert4keras.snippets import open
 from keras.layers import Lambda
 from keras.models import Model
 from tqdm import tqdm
