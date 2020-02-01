@@ -6,7 +6,6 @@
 # 换用RoBERTa Large可以达到f1=0.829+
 
 import json
-from io import open
 import numpy as np
 import tensorflow as tf
 from bert4keras.backend import keras, K, batch_gather
@@ -15,6 +14,7 @@ from bert4keras.tokenizer import Tokenizer
 from bert4keras.bert import build_bert_model
 from bert4keras.optimizers import Adam, ExponentialMovingAverage
 from bert4keras.snippets import sequence_padding, DataGenerator
+from bert4keras.snippets import open
 from keras.layers import *
 from keras.models import Model
 from tqdm import tqdm
