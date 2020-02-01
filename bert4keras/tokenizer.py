@@ -3,7 +3,7 @@
 
 import unicodedata, re
 from bert4keras.snippets import is_string, is_py2
-from io import open
+from bert4keras.snippets import open
 
 
 def load_vocab(dict_path, encoding='utf-8'):
