@@ -94,8 +94,8 @@ class open:
 
     def write(self, text):
         if self.encoding:
-            s = convert_to_str(text, self.encoding)
-        self.file.write(s)
+            text = convert_to_str(text, self.encoding)
+        self.file.write(text)
 
     def close(self):
         self.file.close()
