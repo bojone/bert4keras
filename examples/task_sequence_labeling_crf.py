@@ -152,6 +152,8 @@ def word_segment(text):
 
 def simple_evaluate(data):
     """简单的评测
+    该评测指标不等价于官方的评测指标，但基本呈正相关关系，
+    可以用来快速筛选模型。
     """
     total, right = 0., 0.
     for w_true in tqdm(data):
