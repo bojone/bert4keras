@@ -518,8 +518,7 @@ class EmbeddingDense(Layer):
 
 class ConditionalRandomField(Layer):
     """纯Keras实现CRF层
-    CRF层本质上是一个带训练参数的loss计算层，因此CRF层只用来训练模型，
-    而预测则需要另外建立模型。
+    CRF层本质上是一个带训练参数的loss计算层。
     """
     def __init__(self, lr_multiplier=1, **kwargs):
         super(ConditionalRandomField, self).__init__(**kwargs)
