@@ -21,8 +21,8 @@ epochs = 10
 num_labels = 4
 batch_size = 32
 bert_layers = 12
-learing_rate = 1e-5  # bert_layers越小，层数应该要越大
-crf_lr_multiplier = 1  # 必要时增加CRF层的学习率
+learing_rate = 1e-5  # bert_layers越小，学习率应该要越大
+crf_lr_multiplier = 1  # 必要时扩大CRF层的学习率
 
 # bert配置
 config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
