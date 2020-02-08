@@ -167,9 +167,12 @@ def simple_evaluate(data):
 
 def predict_to_file(in_file, out_file):
     """预测结果到文件，便于用官方脚本评测
-    官方评测代码示例（执行完毕后查看myscore.txt的内容末尾）：
+    使用示例：
+    predict_to_file('/root/icwb2-data/testing/pku_test.utf8', 'myresult.txt')
+    官方评测代码示例：
     data_dir="/root/icwb2-data"
     $data_dir/scripts/score $data_dir/gold/pku_training_words.utf8 $data_dir/gold/pku_test_gold.utf8 myresult.txt > myscore.txt
+    （执行完毕后查看myscore.txt的内容末尾）
     """
     fw = open(out_file, 'w', encoding='utf-8')
     with open(in_file, encoding='utf-8') as fr:
