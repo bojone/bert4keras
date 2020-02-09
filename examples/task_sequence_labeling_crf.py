@@ -186,17 +186,17 @@ def predict_to_file(in_file, out_file):
 
 class Evaluate(keras.callbacks.Callback):
     def __init__(self):
-        self.best_acc = 0
+        self.best_val_acc = 0
 
     def on_epoch_end(self, epoch, logs=None):
         trans = K.eval(CRF.trans)
         print(trans)
         acc = simple_evaluate(valid_data)
         # 保存最优
-        if acc >= self.best_acc:
+        if acc >= self.best_val_acc:
             self.best_acc = acc
             model.save_weights('./best_model.weights')
-        print('acc: %.5f, best acc: %.5f' % (acc, self.best_acc))
+        print('acc: %.5f, best acc: %.5f' % (acc, self.best_val_acc))
 
 
 if __name__ == '__main__':
