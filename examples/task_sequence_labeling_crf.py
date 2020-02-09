@@ -194,7 +194,7 @@ class Evaluate(keras.callbacks.Callback):
         acc = simple_evaluate(valid_data)
         # 保存最优
         if acc >= self.best_val_acc:
-            self.best_acc = acc
+            self.best_val_acc = acc
             model.save_weights('./best_model.weights')
         print('acc: %.5f, best acc: %.5f' % (acc, self.best_val_acc))
 
