@@ -1,6 +1,7 @@
 #! -*- coding: utf-8 -*-
-# 用CRF做中文分词
+# 用CRF做中文分词（CWS, Chinese Word Segmentation）
 # 数据集 http://sighan.cs.uchicago.edu/bakeoff2005/
+# 最后测试集的F1约为96.1%
 
 import re, os, json
 import numpy as np
