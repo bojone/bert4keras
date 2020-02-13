@@ -47,22 +47,12 @@ train_data.extend(train_data)
 train_data.extend(webqa_data)  # 将SogouQA和WebQA按2:1的比例混合
 
 # 加载并精简词表，建立分词器
-_token_dict = load_vocab(dict_path)  # 读取词典
-token_dict, keep_words = {}, []  # keep_words是在bert中保留的字表
-
-for t in ['[PAD]', '[UNK]', '[CLS]', '[SEP]']:
-    token_dict[t] = len(token_dict)
-    keep_words.append(_token_dict[t])
-
-for t, _ in sorted(_token_dict.items(), key=lambda s: s[1]):
-    if t not in token_dict:
-        if len(t) == 3 and (Tokenizer._is_cjk_character(t[-1])
-                            or Tokenizer._is_punctuation(t[-1])):
-            continue
-        token_dict[t] = len(token_dict)
-        keep_words.append(_token_dict[t])
-
-tokenizer = Tokenizer(token_dict, do_lower_case=True)  # 建立分词器
+token_dict, keep_tokens = load_vocab(
+    dict_path=dict_path,
+    simplified=True,
+    startwith=['[PAD]', '[UNK]', '[CLS]', '[SEP]'],
+)
+tokenizer = Tokenizer(token_dict, do_lower_case=True)
 
 
 class data_generator(DataGenerator):
@@ -111,7 +101,7 @@ model = build_bert_model(
     config_path,
     checkpoint_path,
     with_mlm=True,
-    keep_words=keep_words,  # 只保留keep_words中的字，精简原字表
+    keep_tokens=keep_tokens,  # 只保留keep_tokens中的字，精简原字表
 )
 output = Lambda(lambda x: x[:, 1:max_a_len + 1])(model.output)
 model = Model(model.input, output)
