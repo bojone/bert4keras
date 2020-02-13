@@ -28,15 +28,15 @@ class BertModel(object):
             with_pool=False,  # 是否包含Pool部分
             with_nsp=False,  # 是否包含NSP部分
             with_mlm=False,  # 是否包含MLM部分
-            keep_words=None,  # 要保留的词ID列表
+            keep_tokens=None,  # 要保留的词ID列表
             block_sharing=False,  # 是否共享同一个transformer block
             att_pool_size=None,  # 进行attention之前是否先pooling
             ffn_pool_size=None,  # 输入FFN之前是否先pooling
     ):
-        if keep_words is None:
+        if keep_tokens is None:
             self.vocab_size = vocab_size
         else:
-            self.vocab_size = len(keep_words)
+            self.vocab_size = len(keep_tokens)
         self.max_position_embeddings = max_position_embeddings
         self.hidden_size = hidden_size
         self.num_hidden_layers = num_hidden_layers
@@ -52,7 +52,7 @@ class BertModel(object):
         self.with_nsp = with_nsp
         self.with_mlm = with_mlm
         self.hidden_act = hidden_act
-        self.keep_words = keep_words
+        self.keep_tokens = keep_tokens
         self.block_sharing = block_sharing
         if isinstance(att_pool_size, list):
             self.att_pool_size = att_pool_size
@@ -387,10 +387,10 @@ class BertModel(object):
                     'bert/embeddings/word_embeddings',
                     'cls/predictions/output_bias',
             ]:
-                if self.keep_words is None:
+                if self.keep_tokens is None:
                     return variable
                 else:
-                    return variable[self.keep_words]
+                    return variable[self.keep_tokens]
             elif name == 'cls/seq_relationship/output_weights':
                 return variable.T
             else:
@@ -516,7 +516,7 @@ def build_bert_model(config_path,
                      with_mlm=False,
                      model='bert',
                      application='encoder',
-                     keep_words=None,
+                     keep_tokens=None,
                      attention_mask=None,
                      position_ids=None,
                      layer_norm_cond=None,
@@ -563,7 +563,7 @@ def build_bert_model(config_path,
                 with_pool=with_pool,
                 with_nsp=with_nsp,
                 with_mlm=with_mlm,
-                keep_words=keep_words,
+                keep_tokens=keep_tokens,
                 block_sharing=(model == 'albert'),
                 att_pool_size=att_pool_size,
                 ffn_pool_size=ffn_pool_size)
