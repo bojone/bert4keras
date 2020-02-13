@@ -16,11 +16,11 @@ def load_vocab(dict_path, encoding='utf-8', simplified=False, startwith=None):
             token_dict[token] = len(token_dict)
 
     if simplified:  # 过滤冗余部分token
-        new_token_dict, keep_words = {}, []
+        new_token_dict, keep_tokens = {}, []
         startwith = startwith or []
         for t in startwith:
             new_token_dict[t] = len(new_token_dict)
-            keep_words.append(token_dict[t])
+            keep_tokens.append(token_dict[t])
 
         for t, _ in sorted(token_dict.items(), key=lambda s: s[1]):
             if t not in new_token_dict:
@@ -33,9 +33,9 @@ def load_vocab(dict_path, encoding='utf-8', simplified=False, startwith=None):
                             break
                 if keep:
                     new_token_dict[t] = len(new_token_dict)
-                    keep_words.append(token_dict[t])
+                    keep_tokens.append(token_dict[t])
 
-        return new_token_dict, keep_words
+        return new_token_dict, keep_tokens
     else:
         return token_dict
 
