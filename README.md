@@ -51,6 +51,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 （注：brightmart版albert的开源时间早于Google版albert，这导致早期brightmart版albert的权重与Google版的不完全一致，换言之两者不能直接相互替换。为了减少代码冗余，bert4keras的0.2.4及后续版本均只支持加载<u>Google版</u>以brightmart版中<u>带Google字眼</u>的权重。如果要加载早期版本的权重，请用<a href="https://github.com/bojone/bert4keras/releases/tag/v0.2.3">0.2.3版本</a>，或者考虑作者转换过的<a href="https://github.com/bojone/albert_zh">albert_zh</a>。）
 
 ## 更新
+- <strong>2020.02.13</strong>: 优化`load_vocab`函数；将`build_bert_model`中的`keep_words`参数更名为`keep_tokens`，此处改动可能会对部分脚本产生影响。
 - <strong>2020.01.18</strong>: 调整文本处理方式，去掉codecs的使用。
 - <strong>2020.01.17</strong>: 各api日趋稳定，为了方便大家使用，打包到<a href="https://pypi.org/project/bert4keras/">pypi</a>，首个打包版本号为0.4.6。
 - <strong>2020.01.10</strong>: 重写模型mask方案，某种程度上让代码更为简练清晰；后端优化。
