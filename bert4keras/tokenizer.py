@@ -6,7 +6,7 @@ from bert4keras.snippets import is_string, is_py2
 from bert4keras.snippets import open
 
 
-def load_vocab(dict_path, encoding='utf-8'):
+def load_vocab(dict_path, encoding='utf-8', simplified=False, startwith=None):
     """从bert的词典文件中读取词典
     """
     token_dict = {}
@@ -15,7 +15,29 @@ def load_vocab(dict_path, encoding='utf-8'):
             token = line.strip()
             token_dict[token] = len(token_dict)
 
-    return token_dict
+    if simplified:  # 过滤冗余部分token
+        new_token_dict, keep_words = {}, []
+        startwith = startwith or []
+        for t in startwith:
+            new_token_dict[t] = len(new_token_dict)
+            keep_words.append(token_dict[t])
+
+        for t, _ in sorted(token_dict.items(), key=lambda s: s[1]):
+            if t not in new_token_dict:
+                keep = True
+                if len(t) > 1:
+                    for c in t:
+                        if (Tokenizer._is_cjk_character(c)
+                                or Tokenizer._is_punctuation(c)):
+                            keep = False
+                            break
+                if keep:
+                    new_token_dict[t] = len(new_token_dict)
+                    keep_words.append(token_dict[t])
+
+        return new_token_dict, keep_words
+    else:
+        return token_dict
 
 
 class BasicTokenizer(object):
