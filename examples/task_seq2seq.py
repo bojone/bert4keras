@@ -82,16 +82,16 @@ else:
               indent=4,
               ensure_ascii=False)
 
-token_dict, keep_words = {}, []  # keep_words是在bert中保留的字表
+token_dict, keep_tokens = {}, []  # keep_tokens是在bert中保留的字表
 
 for t in ['[PAD]', '[UNK]', '[CLS]', '[SEP]']:
     token_dict[t] = len(token_dict)
-    keep_words.append(_token_dict[t])
+    keep_tokens.append(_token_dict[t])
 
 for t in tokens:
     if t in _token_dict and t not in token_dict:
         token_dict[t] = len(token_dict)
-        keep_words.append(_token_dict[t])
+        keep_tokens.append(_token_dict[t])
 
 tokenizer = Tokenizer(token_dict, do_lower_case=True)  # 建立分词器
 
@@ -127,7 +127,7 @@ model = build_bert_model(
     config_path,
     checkpoint_path,
     application='seq2seq',
-    keep_words=keep_words,  # 只保留keep_words中的字，精简原字表
+    keep_tokens=keep_tokens,  # 只保留keep_tokens中的字，精简原字表
 )
 
 model.summary()
