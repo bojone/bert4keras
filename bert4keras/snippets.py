@@ -248,6 +248,43 @@ class DataGenerator(object):
                 yield d
 
 
+class BeamSearch(object):
+    """通用beam search基类
+    """
+    def __init__(self, start_id, end_id, maxlen):
+        self.start_id = start_id
+        self.end_id = end_id
+        self.maxlen = maxlen
+        if start_id is None:
+            self.first_output_ids = np.empty((1, 0), dtype=int)
+        else:
+            self.first_output_ids = np.array([[self.start_id]])
+
+    def predict(self, inputs, output_ids, step):
+        """用户需自定义递归预测函数
+        """
+        raise NotImplementedError
+
+    def decode(self, inputs, topk):
+        """beam search过程
+        """
+        inputs = [np.array([i] * topk) for i in inputs]
+        output_ids, output_scores = self.first_output_ids, np.zeros(1)
+        for step in range(self.maxlen):
+            scores = self.predict(inputs, output_ids, step)  # 计算当前得分
+            scores = output_scores.reshape((-1, 1)) + scores  # 综合累积得分
+            indices = scores.argpartition(-topk, axis=None)[-topk:]  # 仅保留topk
+            indices_1 = indices // scores.shape[1]  # 行索引
+            indices_2 = (indices % scores.shape[1]).reshape((-1, 1))  # 列索引
+            output_ids = np.concatenate([output_ids[indices_1], indices_2], 1)  # 更新输出
+            output_scores = np.take_along_axis(scores, indices, axis=None)  # 更新得分
+            best_one = output_scores.argmax()  # 取最优
+            if indices_2[best_one] == self.end_id:  # 判断是否可以输出
+                return output_ids[best_one]
+        # 达到长度直接输出
+        return output_ids[output_scores.argmax()]
+
+
 class Hook:
     """注入uniout模块，实现import时才触发
     """
