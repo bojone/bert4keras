@@ -11,7 +11,7 @@ from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import parallel_apply, sequence_padding
-from bert4keras.snippets import DataGenerator
+from bert4keras.snippets import DataGenerator, BeamSearch
 from bert4keras.snippets import open
 
 
@@ -143,45 +143,35 @@ model.add_loss(cross_entropy)
 model.compile(optimizer=Adam(1e-5))
 
 
-def gen_sent(s, topk=2, title_maxlen=32):
-    """beam search解码
-    每次只保留topk个最优候选结果；如果topk=1，那么就是贪心搜索
+class AutoTitle(BeamSearch):
+    """基于beam search的解码器
     """
-    content_maxlen = maxlen - title_maxlen
-    token_ids, segment_ids = tokenizer.encode(s, max_length=content_maxlen)
-    target_ids = [[] for _ in range(topk)]  # 候选答案id
-    target_scores = [0] * topk  # 候选答案分数
-    for i in range(title_maxlen):  # 强制要求输出不超过title_maxlen字
-        _target_ids = [token_ids + t for t in target_ids]
-        _segment_ids = [segment_ids + [1] * len(t) for t in target_ids]
-        _probas = model.predict([_target_ids, _segment_ids
-                                 ])[:, -1, 3:]  # 直接忽略[PAD], [UNK], [CLS]
-        _log_probas = np.log(_probas + 1e-6)  # 取对数，方便计算
-        _topk_arg = _log_probas.argsort(axis=1)[:, -topk:]  # 每一项选出topk
-        _candidate_ids, _candidate_scores = [], []
-        for j, (ids, sco) in enumerate(zip(target_ids, target_scores)):
-            # 预测第一个字的时候，输入的topk事实上都是同一个，
-            # 所以只需要看第一个，不需要遍历后面的。
-            if i == 0 and j > 0:
-                continue
-            for k in _topk_arg[j]:
-                _candidate_ids.append(ids + [k + 3])
-                _candidate_scores.append(sco + _log_probas[j][k])
-        _topk_arg = np.argsort(_candidate_scores)[-topk:]  # 从中选出新的topk
-        target_ids = [_candidate_ids[k] for k in _topk_arg]
-        target_scores = [_candidate_scores[k] for k in _topk_arg]
-        best_one = np.argmax(target_scores)
-        if target_ids[best_one][-1] == 3:
-            return tokenizer.decode(target_ids[best_one])
-    # 如果title_maxlen字都找不到结束符，直接返回
-    return tokenizer.decode(target_ids[np.argmax(target_scores)])
+    def predict(self, inputs, output_ids, step):
+        token_ids, segment_ids = inputs
+        if step == 0:
+            token_ids, segment_ids = token_ids[:1], segment_ids[:1]
+        else:
+            token_ids = np.concatenate([token_ids, output_ids], 1)
+            segment_ids = np.concatenate([segment_ids, np.ones_like(output_ids)], 1)
+        return np.log(model.predict([token_ids, segment_ids])[:, -1])
+
+    def generate(self, text, topk=2):
+        max_c_len = maxlen - self.maxlen
+        token_ids, segment_ids = tokenizer.encode(text, max_length=max_c_len)
+        output_ids = self.decode([token_ids, segment_ids], topk)
+        return tokenizer.decode(output_ids)
+
+
+autotitle = AutoTitle(start_id=None,
+                      end_id=tokenizer._token_sep_id,
+                      maxlen=32)
 
 
 def just_show():
     s1 = u'夏天来临，皮肤在强烈紫外线的照射下，晒伤不可避免，因此，晒后及时修复显得尤为重要，否则可能会造成长期伤害。专家表示，选择晒后护肤品要慎重，芦荟凝胶是最安全，有效的一种选择，晒伤严重者，还请及 时 就医 。'
     s2 = u'8月28日，网络爆料称，华住集团旗下连锁酒店用户数据疑似发生泄露。从卖家发布的内容看，数据包含华住旗下汉庭、禧玥、桔子、宜必思等10余个品牌酒店的住客信息。泄露的信息包括华住官网注册资料、酒店入住登记的身份信息及酒店开房记录，住客姓名、手机号、邮箱、身份证号、登录账号密码等。卖家对这个约5亿条数据打包出售。第三方安全平台威胁猎人对信息出售者提供的三万条数据进行验证，认为数据真实性非常高。当天下午 ，华 住集 团发声明称，已在内部迅速开展核查，并第一时间报警。当晚，上海警方消息称，接到华住集团报案，警方已经介入调查。'
     for s in [s1, s2]:
-        print(u'生成标题:', gen_sent(s))
+        print(u'生成标题:', autotitle.generate(s))
     print()
 
 
