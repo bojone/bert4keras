@@ -12,8 +12,8 @@ from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
-from bert4keras.snippets import sequence_padding
-from bert4keras.snippets import is_string, DataGenerator
+from bert4keras.snippets import sequence_padding, is_string
+from bert4keras.snippets import DataGenerator, BeamSearch
 import cv2
 
 
@@ -146,40 +146,26 @@ model.add_loss(cross_entropy)
 model.compile(optimizer=Adam(1e-5))
 
 
-def gen_caption(image, topk=2, caption_maxlen=64):
-    """beam search解码
-    每次只保留topk个最优候选结果；如果topk=1，那么就是贪心搜索
+class AutoCaption(BeamSearch):
+    """基于beam search的解码器
     """
-    if is_string(image):
-        image = read_image(image)
-    image = np.array([image for _ in range(topk)])
-    image = preprocess_input(image)
-    target_ids = [[tokenizer._token_cls_id] for _ in range(topk)]  # 候选答案id
-    target_scores = [0] * topk  # 候选答案分数
-    for i in range(caption_maxlen):  # 强制要求输出不超过caption_maxlen字
-        _target_ids = target_ids
-        _segment_ids = [[0] * len(t) for t in target_ids]
-        _probas = model.predict([_target_ids, _segment_ids,
-                                 image])[:, -1, 3:]  # 直接忽略[PAD], [UNK], [CLS]
-        _log_probas = np.log(_probas + 1e-6)  # 取对数，方便计算
-        _topk_arg = _log_probas.argsort(axis=1)[:, -topk:]  # 每一项选出topk
-        _candidate_ids, _candidate_scores = [], []
-        for j, (ids, sco) in enumerate(zip(target_ids, target_scores)):
-            # 预测第一个字的时候，输入的topk事实上都是同一个，
-            # 所以只需要看第一个，不需要遍历后面的。
-            if i == 0 and j > 0:
-                continue
-            for k in _topk_arg[j]:
-                _candidate_ids.append(ids + [k + 3])
-                _candidate_scores.append(sco + _log_probas[j][k])
-        _topk_arg = np.argsort(_candidate_scores)[-topk:]  # 从中选出新的topk
-        target_ids = [_candidate_ids[k] for k in _topk_arg]
-        target_scores = [_candidate_scores[k] for k in _topk_arg]
-        best_one = np.argmax(target_scores)
-        if target_ids[best_one][-1] == 3:
-            return tokenizer.decode(target_ids[best_one])
-    # 如果caption_maxlen字都找不到结束符，直接返回
-    return tokenizer.decode(target_ids[np.argmax(target_scores)])
+    def predict(self, inputs, output_ids, step):
+        image = inputs[0]
+        token_ids = output_ids
+        segment_ids = np.zeros_like(token_ids)
+        return np.log(model.predict([token_ids, segment_ids, image])[:, -1])
+
+    def generate(self, image, topk=2):
+        if is_string(image):
+            image = read_image(image)
+        image = preprocess_input(image)
+        output_ids = self.decode([image], topk)
+        return tokenizer.decode(output_ids)
+
+
+autocaption = AutoCaption(start_id=tokenizer._token_cls_id,
+                          end_id=tokenizer._token_sep_id,
+                          maxlen=maxlen)
 
 
 def just_show():
@@ -188,7 +174,7 @@ def just_show():
         img = '/root/caption/coco/val2014/%s' % D['image_id']
         print(u'image_id:', D['image_id'])
         print(u'url:', D['url'])
-        print(u'predict:', gen_caption(img))
+        print(u'predict:', autocaption.generate(img))
         print(u'references:', D['caption'])
         print()
 
