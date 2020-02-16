@@ -109,19 +109,6 @@ model.add_loss(cross_entropy)
 model.compile(optimizer=Adam(1e-5))
 
 
-def get_ngram_set(x, n):
-    """生成ngram合集，返回结果格式是:
-    {(n-1)-gram: set([n-gram的第n个字集合])}
-    """
-    result = {}
-    for i in range(len(x) - n + 1):
-        k = tuple(x[i: i + n])
-        if k[:-1] not in result:
-            result[k[:-1]] = set()
-        result[k[:-1]].add(k[-1])
-    return result
-
-
 class ReadingComprehension(BeamSearch):
     """beam search解码来生成答案
     passages为多篇章组成的list，从多篇文章中自动决策出最优的答案，
