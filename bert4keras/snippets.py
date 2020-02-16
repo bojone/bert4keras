@@ -97,6 +97,9 @@ class open:
             text = convert_to_str(text, self.encoding)
         self.file.write(text)
 
+    def flush(self):
+        self.file.flush()
+
     def close(self):
         self.file.close()
 
