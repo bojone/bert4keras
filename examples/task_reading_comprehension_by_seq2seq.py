@@ -197,10 +197,10 @@ class ReadingComprehension(BeamSearch):
         return tokenizer.decode(output_ids)
 
 
-reading = ReadingComprehension(start_id=None,
-                               end_id=tokenizer._token_sep_id,
-                               maxlen=max_a_len,
-                               mode='extractive')
+reader = ReadingComprehension(start_id=None,
+                              end_id=tokenizer._token_sep_id,
+                              maxlen=max_a_len,
+                              mode='extractive')
 
 
 def predict_to_file(data, filename, topk=2):
@@ -210,7 +210,7 @@ def predict_to_file(data, filename, topk=2):
         for d in tqdm(iter(data), desc=u'正在预测(共%s条样本)' % len(data)):
             q_text = d['question']
             p_texts = [p['passage'] for p in d['passages']]
-            a = reading.answer(q_text, p_texts, topk)
+            a = reader.answer(q_text, p_texts, topk)
             if a:
                 s = u'%s\t%s\n' % (d['id'], a)
             else:
