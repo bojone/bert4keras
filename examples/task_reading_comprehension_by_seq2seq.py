@@ -142,7 +142,7 @@ class ReadingComprehension(BeamSearch):
             else:
                 token_ids = np.concatenate([token_ids, output_ids], 1)
                 segment_ids = np.zeros_like(token_ids)
-                segment_ids[:, -len(output_ids):] = 1
+                segment_ids[:, -output_ids.shape[1]:] = 1
             all_token_ids.extend(token_ids)
             all_segment_ids.extend(segment_ids)
         padded_all_token_ids = sequence_padding(all_token_ids)
