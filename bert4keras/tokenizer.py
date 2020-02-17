@@ -26,7 +26,7 @@ def load_vocab(dict_path, encoding='utf-8', simplified=False, startwith=None):
             if t not in new_token_dict:
                 keep = True
                 if len(t) > 1:
-                    for c in t:
+                    for c in (t[2:] if t[:2] == '##' else t):
                         if (Tokenizer._is_cjk_character(c)
                                 or Tokenizer._is_punctuation(c)):
                             keep = False
