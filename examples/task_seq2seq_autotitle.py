@@ -14,8 +14,7 @@ from bert4keras.snippets import sequence_padding, open
 from bert4keras.snippets import DataGenerator, BeamSearch
 
 
-seq2seq_config = 'seq2seq_config.json'
-min_count = 128
+# 基本参数
 maxlen = 256
 batch_size = 16
 steps_per_epoch = 1000
