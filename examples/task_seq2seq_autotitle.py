@@ -10,9 +10,8 @@ from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
-from bert4keras.snippets import parallel_apply, sequence_padding
+from bert4keras.snippets import sequence_padding, open
 from bert4keras.snippets import DataGenerator, BeamSearch
-from bert4keras.snippets import open
 
 
 seq2seq_config = 'seq2seq_config.json'
@@ -30,70 +29,13 @@ dict_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/vocab.txt'
 # 训练样本。THUCNews数据集，每个样本保存为一个txt。
 txts = glob.glob('/root/thuctc/THUCNews/*/*.txt')
 
-
-_token_dict = load_vocab(dict_path)  # 读取词典
-_tokenizer = Tokenizer(_token_dict, do_lower_case=True)  # 建立临时分词器
-
-if os.path.exists(seq2seq_config):
-
-    tokens = json.load(open(seq2seq_config))
-
-else:
-
-    def _batch_texts():
-        texts = []
-        for txt in txts:
-            text = open(txt, encoding='utf-8').read()
-            texts.append(text)
-            if len(texts) == 100:
-                yield texts
-                texts = []
-        if texts:
-            yield texts
-
-    def _tokenize_and_count(texts):
-        _tokens = {}
-        for text in texts:
-            for token in _tokenizer.tokenize(text):
-                _tokens[token] = _tokens.get(token, 0) + 1
-        return _tokens
-
-    tokens = {}
-
-    def _total_count(result):
-        for k, v in result.items():
-            tokens[k] = tokens.get(k, 0) + v
-
-    # 10进程来完成词频统计
-    parallel_apply(
-        func=_tokenize_and_count,
-        iterable=tqdm(_batch_texts(), desc=u'构建词汇表中'),
-        workers=10,
-        max_queue_size=100,
-        callback=_total_count,
-        # dummy=True,  # 如果在Windows跑，请设置dummy=True
-    )
-
-    tokens = [(i, j) for i, j in tokens.items() if j >= min_count]
-    tokens = sorted(tokens, key=lambda t: -t[1])
-    tokens = [t[0] for t in tokens]
-    json.dump(tokens,
-              open(seq2seq_config, 'w', encoding='utf-8'),
-              indent=4,
-              ensure_ascii=False)
-
-token_dict, keep_tokens = {}, []  # keep_tokens是在bert中保留的字表
-
-for t in ['[PAD]', '[UNK]', '[CLS]', '[SEP]']:
-    token_dict[t] = len(token_dict)
-    keep_tokens.append(_token_dict[t])
-
-for t in tokens:
-    if t in _token_dict and t not in token_dict:
-        token_dict[t] = len(token_dict)
-        keep_tokens.append(_token_dict[t])
-
-tokenizer = Tokenizer(token_dict, do_lower_case=True)  # 建立分词器
+# 加载并精简词表，建立分词器
+token_dict, keep_tokens = load_vocab(
+    dict_path=dict_path,
+    simplified=True,
+    startwith=['[PAD]', '[UNK]', '[CLS]', '[SEP]'],
+)
+tokenizer = Tokenizer(token_dict, do_lower_case=True)
 
 
 class data_generator(DataGenerator):
