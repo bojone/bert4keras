@@ -100,7 +100,7 @@ model = build_bert_model(
     checkpoint_path,
 )
 
-output_layer = 'Encoder-%s-FeedForward-Norm' % bert_layers
+output_layer = 'Transformer-%s-FeedForward-Norm' % bert_layers
 output = model.get_layer(output_layer).output
 output = Dense(num_labels)(output)
 CRF = ConditionalRandomField(lr_multiplier=crf_lr_multiplier)
