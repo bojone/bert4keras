@@ -132,8 +132,8 @@ class BertModel(object):
         # 主要Transformer部分
         layers = None
         for i in range(self.num_hidden_layers):
-            attention_name = 'Encoder-%d-MultiHeadSelfAttention' % (i + 1)
-            feed_forward_name = 'Encoder-%d-FeedForward' % (i + 1)
+            attention_name = 'Transformer-%d-MultiHeadSelfAttention' % (i + 1)
+            feed_forward_name = 'Transformer-%d-FeedForward' % (i + 1)
             x, layers = self.transformer_block(
                 inputs=[x, z],
                 attention_mask=self.compute_attention_mask(i, s_in),
@@ -408,10 +408,10 @@ class BertModel(object):
 
         for i in range(self.num_hidden_layers):
             bert_layer_names.extend([
-                'Encoder-%d-MultiHeadSelfAttention' % (i + 1),
-                'Encoder-%d-MultiHeadSelfAttention-Norm' % (i + 1),
-                'Encoder-%d-FeedForward' % (i + 1),
-                'Encoder-%d-FeedForward-Norm' % (i + 1),
+                'Transformer-%d-MultiHeadSelfAttention' % (i + 1),
+                'Transformer-%d-MultiHeadSelfAttention-Norm' % (i + 1),
+                'Transformer-%d-FeedForward' % (i + 1),
+                'Transformer-%d-FeedForward-Norm' % (i + 1),
             ])
 
         bert_layer_names.extend([
