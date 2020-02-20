@@ -104,6 +104,19 @@ class data_generator(DataGenerator):
                 batch_token_ids, batch_segment_ids, batch_labels = [], [], []
 
 
+"""
+下面的代码使用的是bert类型的模型，如果你用的是albert，那么前几行请改为：
+
+model = build_bert_model(
+    config_path,
+    checkpoint_path,
+    model='albert',
+)
+
+output_layer = 'Transformer-1-FeedForward-Norm'
+output = model.get_layer(output_layer).get_output_at(bert_layers - 1)
+"""
+
 model = build_bert_model(
     config_path,
     checkpoint_path,
