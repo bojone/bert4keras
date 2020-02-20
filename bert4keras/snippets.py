@@ -273,6 +273,7 @@ class BeamSearch(object):
         """
         inputs = [np.array([i] * topk) for i in inputs]
         output_ids, output_scores = self.first_output_ids, np.zeros(1)
+        quasi_output, quasi_score = [], -np.inf
         for step in range(self.maxlen):
             scores = self.predict(inputs, output_ids, step)  # 计算当前得分
             scores = output_scores.reshape((-1, 1)) + scores  # 综合累积得分
@@ -282,8 +283,22 @@ class BeamSearch(object):
             output_ids = np.concatenate([output_ids[indices_1], indices_2], 1)  # 更新输出
             output_scores = np.take_along_axis(scores, indices, axis=None)  # 更新得分
             best_one = output_scores.argmax()  # 取最优
-            if indices_2[best_one] == self.end_id:  # 判断是否可以输出
-                return output_ids[best_one]
+            if indices_2[best_one, 0] == self.end_id:  # 判断是否可以输出
+                if output_scores[best_one] >= quasi_score:  # 跟缓存比较
+                    return output_ids[best_one]  # 返回当前最优
+                else:
+                    return quasi_output  # 返回缓存的准输出
+            else:
+                flag = (indices_2[:, 0] == self.end_id)  # 标记已完成序列
+                if flag.any():
+                    idx = output_scores[flag].argmax()  # 准最优序列
+                    quasi_output = output_ids[idx]  # 准最优序列
+                    quasi_score = output_scores[idx]  # 准最优得分
+                    flag = (flag == False)  # 反转标记
+                    inputs = [i[flag] for i in inputs]  # 过滤输入
+                    output_ids = output_ids[flag]  # 过滤候选集
+                    output_scores = output_scores[flag]  # 过滤候选得分
+                    topk = flag.sum()  # 更新topk的值
         # 达到长度直接输出
         return output_ids[output_scores.argmax()]
 
