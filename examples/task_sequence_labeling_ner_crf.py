@@ -105,7 +105,7 @@ class data_generator(DataGenerator):
 
 
 """
-下面的代码使用的是bert类型的模型，如果你用的是albert，那么前几行请改为：
+后面的代码使用的是bert类型的模型，如果你用的是albert，那么前几行请改为：
 
 model = build_bert_model(
     config_path,
