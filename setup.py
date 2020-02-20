@@ -4,9 +4,9 @@ from setuptools import setup, find_packages
 
 setup(
     name='bert4keras',
-    version='0.5.1',
+    version='0.5.2',
     description='an elegant bert4keras',
-    # long_description=open('README.rst').read(),
+    long_description='详细介绍请看 https://github.com/bojone/bert4keras',
     license='Apache License 2.0',
     url='https://github.com/bojone/bert4keras',
     author='bojone',
