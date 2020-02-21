@@ -113,7 +113,9 @@ class AutoTitle(BeamSearch):
         return tokenizer.decode(output_ids)
 
 
-autotitle = AutoTitle(start_id=None, end_id=tokenizer._token_sep_id, maxlen=32)
+autotitle = AutoTitle(start_id=None,
+                      end_id=tokenizer._token_sep_id,
+                      maxlen=32)
 
 
 class Evaluate(keras.callbacks.Callback):
