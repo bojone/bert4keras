@@ -125,13 +125,13 @@ class Evaluate(keras.callbacks.Callback):
         model.save_weights('./best_model.weights')  # 保存模型
         print('valid_data:', self.evaluate(valid_data))  # 评测模型
 
-    def evaluate(self, data):
+    def evaluate(self, data, topk=2):
         total = 0
         rouge_1, rouge_2, rouge_l, bleu = 0, 0, 0, 0
         for title, content in tqdm(data):
             total += 1
             title = ' '.join(title)
-            pred_title = ' '.join(autotitle.generate(content))
+            pred_title = ' '.join(autotitle.generate(content, topk))
             scores = self.rouge.get_scores(hyps=pred_title, refs=title)
             rouge_1 += scores[0]['rouge-1']['f']
             rouge_2 += scores[0]['rouge-2']['f']
