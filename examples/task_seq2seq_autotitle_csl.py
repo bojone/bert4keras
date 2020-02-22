@@ -1,7 +1,7 @@
 #! -*- coding: utf-8 -*-
 # bert做Seq2Seq任务，采用UNILM方案
 # 介绍链接：https://kexue.fm/archives/6933
-# 数据集：https://github.com/CLUEbenchmark/CLGE
+# 数据集：https://github.com/CLUEbenchmark/CLGE 中的CSL数据集
 # 补充了评测指标bleu、rouge-1、rouge-2、rouge-l
 
 from __future__ import print_function
