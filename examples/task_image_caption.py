@@ -159,7 +159,7 @@ class AutoCaption(AutoRegressiveDecoder):
         else:
             return np.log(probas)
 
-    def generate(self, image, topk=2):
+    def generate(self, image, topk=1):
         if is_string(image):
             image = read_image(image)
         image = preprocess_input(image)
