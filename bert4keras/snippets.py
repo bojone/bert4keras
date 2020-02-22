@@ -251,6 +251,14 @@ class DataGenerator(object):
                 yield d
 
 
+def softmax(x, axis=-1):
+    """numpy版softmax
+    """
+    x = x - x.max(axis=axis, keepdims=True)
+    x = np.exp(x)
+    return x / x.sum(axis=axis, keepdims=True)
+
+
 class AutoRegressiveDecoder(object):
     """通用自回归生成模型解码基类
     包含beam search和random sample两种策略
@@ -263,6 +271,29 @@ class AutoRegressiveDecoder(object):
             self.first_output_ids = np.empty((1, 0), dtype=int)
         else:
             self.first_output_ids = np.array([[self.start_id]])
+
+    @staticmethod
+    def set_rtype(default='probas'):
+        """用来给predict方法加上rtype参数，并作相应的处理
+        """
+        def predict_decorator(predict):
+            def new_predict(self, inputs, output_ids, step, rtype=default):
+                assert rtype in ['probas', 'logits']
+                result = predict(self, inputs, output_ids, step)
+                if default == 'probas':
+                    if rtype == 'probas':
+                        return result
+                    else:
+                        return np.log(result + 1e-12)
+                else:
+                    if rtype == 'probas':
+                        return softmax(result, -1)
+                    else:
+                        return result
+
+            return new_predict
+
+        return predict_decorator
 
     def predict(self, inputs, output_ids, step, rtype='logits'):
         """用户需自定义递归预测函数
