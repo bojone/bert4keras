@@ -11,7 +11,7 @@ from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, open
-from bert4keras.snippets import DataGenerator, BeamSearch
+from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
 from tqdm import tqdm
 
 
@@ -109,7 +109,7 @@ model.add_loss(cross_entropy)
 model.compile(optimizer=Adam(1e-5))
 
 
-class ReadingComprehension(BeamSearch):
+class ReadingComprehension(AutoRegressiveDecoder):
     """beam search解码来生成答案
     passages为多篇章组成的list，从多篇文章中自动决策出最优的答案，
     如果没答案，则返回空字符串。
@@ -133,16 +133,12 @@ class ReadingComprehension(BeamSearch):
 
     def predict(self, inputs, output_ids, step):
         inputs = [i for i in inputs if i[0, 0] > -1]  # 过滤掉无答案篇章
-        topk = 1 if step == 0 else len(inputs[0])
+        topk = len(inputs[0])
         all_token_ids, all_segment_ids = [], []
         for token_ids in inputs:  # inputs里每个元素都代表一个篇章
-            if step == 0:
-                token_ids = token_ids[:1]
-                segment_ids = np.zeros_like(token_ids)
-            else:
-                token_ids = np.concatenate([token_ids, output_ids], 1)
-                segment_ids = np.zeros_like(token_ids)
-                segment_ids[:, -output_ids.shape[1]:] = 1
+            token_ids = np.concatenate([token_ids, output_ids], 1)
+            segment_ids = np.zeros_like(token_ids)
+            segment_ids[:, -output_ids.shape[1]:] = 1
             all_token_ids.extend(token_ids)
             all_segment_ids.extend(segment_ids)
         padded_all_token_ids = sequence_padding(all_token_ids)
@@ -193,7 +189,7 @@ class ReadingComprehension(BeamSearch):
             p_token_ids = tokenizer.encode(passage, max_length=max_p_len)[0]
             q_token_ids = tokenizer.encode(question, max_length=max_q_len + 1)[0]
             token_ids.append(p_token_ids + q_token_ids[1:])
-        output_ids = self.decode(token_ids, topk)
+        output_ids = self.beam_search(token_ids, topk)  # 基于beam search
         return tokenizer.decode(output_ids)
 
 
