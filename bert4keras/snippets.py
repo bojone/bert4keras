@@ -251,8 +251,9 @@ class DataGenerator(object):
                 yield d
 
 
-class BeamSearch(object):
-    """通用beam search基类
+class AutoRegressiveDecoder(object):
+    """通用自回归生成模型解码基类
+    包含beam search和random sample两种策略
     """
     def __init__(self, start_id, end_id, maxlen):
         self.start_id = start_id
@@ -263,19 +264,26 @@ class BeamSearch(object):
         else:
             self.first_output_ids = np.array([[self.start_id]])
 
-    def predict(self, inputs, output_ids, step):
+    def predict(self, inputs, output_ids, step, rtype='logits'):
         """用户需自定义递归预测函数
+        rtype为字符串logits或probas，用户定义的时候，应当根据rtype来
+        返回不同的结果，rtype=probas时返回归一化的概率，rtype=logits时
+        则返回softmax前的结果或者概率对数。
         """
         raise NotImplementedError
 
-    def decode(self, inputs, topk):
-        """beam search过程
+    def beam_search(self, inputs, topk):
+        """beam search解码
+        说明：这里的topk即beam size；
+        返回：最优解码序列。
         """
-        inputs = [np.array([i] * topk) for i in inputs]
+        inputs = [np.array([i]) for i in inputs]
         output_ids, output_scores = self.first_output_ids, np.zeros(1)
         quasi_output, quasi_score = [], -np.inf
         for step in range(self.maxlen):
-            scores = self.predict(inputs, output_ids, step)  # 计算当前得分
+            scores = self.predict(inputs, output_ids, step, 'logits')  # 计算当前得分
+            if step == 0:  # 第1步预测后将输入重复topk次
+                inputs = [np.repeat(i, topk, axis=0) for i in inputs]
             scores = output_scores.reshape((-1, 1)) + scores  # 综合累积得分
             indices = scores.argpartition(-topk, axis=None)[-topk:]  # 仅保留topk
             indices_1 = indices // scores.shape[1]  # 行索引
@@ -294,13 +302,51 @@ class BeamSearch(object):
                     idx = output_scores[flag].argmax()  # 准最优序列
                     quasi_output = output_ids[idx]  # 准最优序列
                     quasi_score = output_scores[idx]  # 准最优得分
-                    flag = (flag == False)  # 反转标记
-                    inputs = [i[flag] for i in inputs]  # 过滤输入
-                    output_ids = output_ids[flag]  # 过滤候选集
-                    output_scores = output_scores[flag]  # 过滤候选得分
+                    flag = (flag == False)  # 标记未完成序列
+                    inputs = [i[flag] for i in inputs]  # 只保留未完成部分输入
+                    output_ids = output_ids[flag]  # 只保留未完成部分候选集
+                    output_scores = output_scores[flag]  # 只保留未完成部分候选得分
                     topk = flag.sum()  # 更新topk的值
         # 达到长度直接输出
         return output_ids[output_scores.argmax()]
+
+    def random_sample(self, inputs, n, topk=None):
+        """随机采样n个结果
+        说明：非None的topk表示每一步只从概率最高的topk个中采样；
+        返回：n个解码序列组成的list。
+        """
+        inputs = [np.array([i]) for i in inputs]
+        output_ids = self.first_output_ids
+        results = []
+        for step in range(self.maxlen):
+            probas = self.predict(inputs, output_ids, step, 'probas')  # 计算当前概率
+            if step == 0:  # 第1步预测后将结果重复n次
+                probas = np.repeat(probas, n, axis=0)
+                inputs = [np.repeat(i, n, axis=0) for i in inputs]
+                output_ids = np.repeat(output_ids, n, axis=0)
+            if topk is not None:
+                indices = probas.argpartition(-topk, axis=1)[:, -topk:]  # 仅保留topk
+                probas = np.take_along_axis(probas, indices, axis=1)  # topk概率
+            probas /= probas.sum(axis=1, keepdims=True)  # 重新归一化
+            sample_func = lambda p: np.random.choice(len(p), p=p)  # 按概率采样函数
+            sample_ids = np.apply_along_axis(sample_func, 1, probas)  # 执行采样
+            sample_ids = sample_ids.reshape((-1, 1))  # 对齐形状
+            if topk is not None:
+                sample_ids = np.take_along_axis(indices, sample_ids, axis=1)  # 对齐原id
+            output_ids = np.concatenate([output_ids, sample_ids], 1)  # 更新输出
+            flag = (sample_ids[:, 0] == self.end_id)  # 标记已完成序列
+            for ids in output_ids[flag]:  # 存好已完成序列
+                results.append(ids)
+            flag = (flag == False)  # 标记未完成序列
+            inputs = [i[flag] for i in inputs]  # 只保留未完成部分输入
+            output_ids = output_ids[flag]  # 只保留未完成部分候选集
+            if len(output_ids) == 0:
+                break
+        # 如果还有未完成序列，直接放入结果
+        for ids in output_ids:
+            results.append(ids)
+        # 返回结果
+        return results
 
 
 class Hook:
