@@ -13,7 +13,7 @@ from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, open
-from bert4keras.snippets import DataGenerator, BeamSearch
+from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
 from rouge import Rouge  # pip install rouge
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 
@@ -94,22 +94,23 @@ model.add_loss(cross_entropy)
 model.compile(optimizer=Adam(1e-5))
 
 
-class AutoTitle(BeamSearch):
-    """基于beam search的解码器
+class AutoTitle(AutoRegressiveDecoder):
+    """seq2seq解码器
     """
-    def predict(self, inputs, output_ids, step):
+    def predict(self, inputs, output_ids, step, rtype='logits'):
         token_ids, segment_ids = inputs
-        if step == 0:
-            token_ids, segment_ids = token_ids[:1], segment_ids[:1]
+        token_ids = np.concatenate([token_ids, output_ids], 1)
+        segment_ids = np.concatenate([segment_ids, np.ones_like(output_ids)], 1)
+        probas = model.predict([token_ids, segment_ids])[:, -1]
+        if rtype == 'probas':
+            return probas
         else:
-            token_ids = np.concatenate([token_ids, output_ids], 1)
-            segment_ids = np.concatenate([segment_ids, np.ones_like(output_ids)], 1)
-        return np.log(model.predict([token_ids, segment_ids])[:, -1])
+            return np.log(probas)
 
     def generate(self, text, topk=2):
         max_c_len = maxlen - self.maxlen
         token_ids, segment_ids = tokenizer.encode(text, max_length=max_c_len)
-        output_ids = self.decode([token_ids, segment_ids], topk)
+        output_ids = self.beam_search([token_ids, segment_ids], topk)  # 基于beam search
         return tokenizer.decode(output_ids)
 
 
