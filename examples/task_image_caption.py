@@ -149,15 +149,12 @@ model.compile(optimizer=Adam(1e-5))
 class AutoCaption(AutoRegressiveDecoder):
     """img2seq解码器
     """
-    def predict(self, inputs, output_ids, step, rtype='logits'):
+    @AutoRegressiveDecoder.set_rtype('probas')
+    def predict(self, inputs, output_ids, step):
         image = inputs[0]
         token_ids = output_ids
         segment_ids = np.zeros_like(token_ids)
-        probas = model.predict([token_ids, segment_ids, image])[:, -1]
-        if rtype == 'probas':
-            return probas
-        else:
-            return np.log(probas)
+        return model.predict([token_ids, segment_ids, image])[:, -1]
 
     def generate(self, image, topk=1):
         if is_string(image):
