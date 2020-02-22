@@ -9,12 +9,10 @@ from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
-from bert4keras.snippets import sequence_padding, DataGenerator
-from bert4keras.snippets import open
+from bert4keras.snippets import sequence_padding, open
+from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
 
 
-lm_config = 'lm_config.json'
-min_count = 8
 maxlen = 256
 batch_size = 16
 steps_per_epoch = 1000
@@ -42,37 +40,13 @@ for txt in glob.glob('/root/金庸/*/*.txt'):
     novels.append(sents)
 
 
-_token_dict = load_vocab(dict_path)  # 读取词典
-_tokenizer = Tokenizer(_token_dict, do_lower_case=True)  # 建立临时分词器
-
-if os.path.exists(lm_config):
-    tokens = json.load(open(lm_config))
-else:
-    tokens = {}
-    for novel in novels:
-        for s in novel:
-            for t in _tokenizer.tokenize(s):
-                tokens[t] = tokens.get(t, 0) + 1
-    tokens = [(i, j) for i, j in tokens.items() if j >= min_count]
-    tokens = sorted(tokens, key=lambda t: -t[1])
-    tokens = [t[0] for t in tokens]
-    json.dump(tokens,
-              open(lm_config, 'w', encoding='utf-8'),
-              indent=4,
-              ensure_ascii=False)
-
-token_dict, keep_tokens = {}, []  # keep_tokens是在bert中保留的字表
-
-for t in ['[PAD]', '[UNK]', '[CLS]', '[SEP]']:
-    token_dict[t] = len(token_dict)
-    keep_tokens.append(_token_dict[t])
-
-for t in tokens:
-    if t in _token_dict and t not in token_dict:
-        token_dict[t] = len(token_dict)
-        keep_tokens.append(_token_dict[t])
-
-tokenizer = Tokenizer(token_dict, do_lower_case=True)  # 建立分词器
+# 加载并精简词表，建立分词器
+token_dict, keep_tokens = load_vocab(
+    dict_path=dict_path,
+    simplified=True,
+    startwith=['[PAD]', '[UNK]', '[CLS]', '[SEP]'],
+)
+tokenizer = Tokenizer(token_dict, do_lower_case=True)
 
 
 data = []
@@ -138,34 +112,28 @@ model.add_loss(cross_entropy)
 model.compile(optimizer=Adam(1e-5))
 
 
-def random_generate(s, n=1, topk=5):
-    """随机采样生成
-    每次从最高概率的topk个token中随机采样一个
+class StoryCompletion(AutoRegressiveDecoder):
+    """基于随机采样的故事续写
     """
-    token_ids, segment_ids = tokenizer.encode(s)
-    token_ids, segment_ids = token_ids[:-1], segment_ids[:-1]
-    target_ids = [[] for _ in range(n)]
-    R = []
-    for i in range(maxlen):
-        _target_ids = [token_ids + t for t in target_ids]
-        _segment_ids = [segment_ids + [0] * len(t) for t in target_ids]
-        # 下面直接忽略[PAD], [UNK], [CLS]
-        _probas = model.predict([_target_ids, _segment_ids])[:, -1, 3:]
-        for i, p in enumerate(_probas):
-            p_arg_topk = p.argsort()[::-1][:topk]
-            p_topk = p[p_arg_topk]
-            p = p_topk / sum(p_topk)
-            idx = np.random.choice(len(p), p=p)
-            target_ids[i].append(p_arg_topk[idx] + 3)
-        for t in target_ids:
-            if t[-1] == 3:
-                R.append(tokenizer.decode(token_ids + t))
-        target_ids = [t for t in target_ids if t[-1] != 3]
-        if len(target_ids) == 0:
-            break
-    for t in target_ids:
-        R.append(tokenizer.decode(token_ids + t))
-    return R
+    def predict(self, inputs, output_ids, step, rtype='logits'):
+        token_ids = inputs[0]
+        token_ids = np.concatenate([token_ids, output_ids], 1)
+        segment_ids = np.zeros_like(token_ids)
+        probas = model.predict([token_ids, segment_ids])[:, -1]
+        if rtype == 'probas':
+            return probas
+        else:
+            return np.log(probas)
+
+    def generate(self, text, n=1, topk=5):
+        token_ids, _ = tokenizer.encode(text)
+        results = self.random_sample([token_ids[:-1]], n, topk)  # 基于随机采样
+        return [text + tokenizer.decode(ids) for ids in results]
+
+
+story_completion = StoryCompletion(start_id=None,
+                                   end_id=tokenizer._token_sep_id,
+                                   maxlen=maxlen)
 
 
 def just_show():
@@ -173,7 +141,7 @@ def just_show():
     s2 = u'虚竹飞身跃上松树的枝干，只见段延庆的钢杖深深嵌在树枝之中，全凭一股内力粘劲，挂住了下面四人，内力之深厚，实是非同小可。虚竹伸左手抓住钢杖，提将上来。'
     s3 = u'杨过居住在侠客岛，是令狐冲的弟子，武器是金蛇剑。'
     for s in [s1, s2, s3]:
-        t = random_generate(s)
+        t = story_completion.generate(s)
         print(u'输入: %s' % s)
         print(u'结果: %s\n' % ('\n'.join(t)))
 
