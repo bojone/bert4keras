@@ -97,15 +97,12 @@ model.compile(optimizer=Adam(1e-5))
 class AutoTitle(AutoRegressiveDecoder):
     """seq2seq解码器
     """
-    def predict(self, inputs, output_ids, step, rtype='logits'):
+    @AutoRegressiveDecoder.set_rtype('probas')
+    def predict(self, inputs, output_ids, step):
         token_ids, segment_ids = inputs
         token_ids = np.concatenate([token_ids, output_ids], 1)
         segment_ids = np.concatenate([segment_ids, np.ones_like(output_ids)], 1)
-        probas = model.predict([token_ids, segment_ids])[:, -1]
-        if rtype == 'probas':
-            return probas
-        else:
-            return np.log(probas)
+        return model.predict([token_ids, segment_ids])[:, -1]
 
     def generate(self, text, topk=1):
         max_c_len = maxlen - self.maxlen
