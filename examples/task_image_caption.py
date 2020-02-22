@@ -13,7 +13,7 @@ from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, is_string
-from bert4keras.snippets import DataGenerator, BeamSearch
+from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
 import cv2
 
 
@@ -146,22 +146,24 @@ model.add_loss(cross_entropy)
 model.compile(optimizer=Adam(1e-5))
 
 
-class AutoCaption(BeamSearch):
-    """基于beam search的解码器
+class AutoCaption(AutoRegressiveDecoder):
+    """img2seq解码器
     """
-    def predict(self, inputs, output_ids, step):
+    def predict(self, inputs, output_ids, step, rtype='logits'):
         image = inputs[0]
-        if step == 0:
-            image = image[:1]
         token_ids = output_ids
         segment_ids = np.zeros_like(token_ids)
-        return np.log(model.predict([token_ids, segment_ids, image])[:, -1])
+        probas = model.predict([token_ids, segment_ids, image])[:, -1]
+        if rtype == 'probas':
+            return probas
+        else:
+            return np.log(probas)
 
     def generate(self, image, topk=2):
         if is_string(image):
             image = read_image(image)
         image = preprocess_input(image)
-        output_ids = self.decode([image], topk)
+        output_ids = self.beam_search([image], topk)  # 基于beam search
         return tokenizer.decode(output_ids)
 
 
