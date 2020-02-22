@@ -117,14 +117,11 @@ model.compile(optimizer=Adam(1e-5))
 class RandomSentiment(AutoRegressiveDecoder):
     """根据情感标签（0:负，1:正）随机生成一批句子
     """
-    def predict(self, inputs, output_ids, step, rtype='logits'):
+    @AutoRegressiveDecoder.set_rtype('probas')
+    def predict(self, inputs, output_ids, step):
         token_ids = output_ids
         segment_ids = np.zeros_like(token_ids)
-        probas = model.predict([token_ids, segment_ids, inputs[0]])[:, -1]
-        if rtype == 'probas':
-            return probas
-        else:
-            return np.log(probas)
+        return model.predict([token_ids, segment_ids, inputs[0]])[:, -1]
 
     def generate(self, label, n=1, topk=5):
         results = self.random_sample([[label]], n, topk)  # 基于随机采样
