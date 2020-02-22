@@ -203,7 +203,7 @@ reader = ReadingComprehension(start_id=None,
                               mode='extractive')
 
 
-def predict_to_file(data, filename, topk=2):
+def predict_to_file(data, filename, topk=1):
     """将预测结果输出到文件，方便评估
     """
     with open(filename, 'w', encoding='utf-8') as f:
