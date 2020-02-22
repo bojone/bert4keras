@@ -126,7 +126,7 @@ class RandomSentiment(AutoRegressiveDecoder):
         else:
             return np.log(probas)
 
-    def generate(self, label, n, topk=5):
+    def generate(self, label, n=1, topk=5):
         results = self.random_sample([[label]], n, topk)  # 基于随机采样
         return [tokenizer.decode(ids) for ids in results]
 
