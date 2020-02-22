@@ -186,7 +186,7 @@ class ReadingComprehension(AutoRegressiveDecoder):
         else:
             return np.log(probas + 1e-6)
 
-    def answer(self, question, passages, topk=2):
+    def answer(self, question, passages, topk=1):
         token_ids = []
         for passage in passages:
             passage = re.sub(u' |、|；|，', ',', passage)
