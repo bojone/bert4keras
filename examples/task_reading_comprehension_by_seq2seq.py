@@ -138,7 +138,8 @@ class ReadingComprehension(AutoRegressiveDecoder):
         for token_ids in inputs:  # inputs里每个元素都代表一个篇章
             token_ids = np.concatenate([token_ids, output_ids], 1)
             segment_ids = np.zeros_like(token_ids)
-            segment_ids[:, -output_ids.shape[1]:] = 1
+            if step > 0:
+                segment_ids[:, -output_ids.shape[1]:] = 1
             all_token_ids.extend(token_ids)
             all_segment_ids.extend(segment_ids)
         padded_all_token_ids = sequence_padding(all_token_ids)
