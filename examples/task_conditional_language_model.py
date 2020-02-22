@@ -126,21 +126,21 @@ class RandomSentiment(AutoRegressiveDecoder):
         else:
             return np.log(probas)
 
-    def sample(self, label, n, topk=5):
+    def generate(self, label, n, topk=5):
         results = self.random_sample([[label]], n, topk)  # 基于随机采样
         return [tokenizer.decode(ids) for ids in results]
 
 
-text_generator = RandomSentiment(start_id=tokenizer._token_cls_id,
-                                 end_id=tokenizer._token_sep_id,
-                                 maxlen=maxlen)
+random_sentiment = RandomSentiment(start_id=tokenizer._token_cls_id,
+                                   end_id=tokenizer._token_sep_id,
+                                   maxlen=maxlen)
 
 
 def just_show():
     print(u'正面采样:')
-    print(text_generator.sample(1, 5, 5), '\n')
+    print(random_sentiment.generate(1, 5, 5), '\n')
     print(u'负面采样:')
-    print(text_generator.sample(0, 5, 5), '\n')
+    print(random_sentiment.generate(0, 5, 5), '\n')
 
 
 class Evaluate(keras.callbacks.Callback):
