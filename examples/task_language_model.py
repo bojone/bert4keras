@@ -115,15 +115,12 @@ model.compile(optimizer=Adam(1e-5))
 class StoryCompletion(AutoRegressiveDecoder):
     """基于随机采样的故事续写
     """
-    def predict(self, inputs, output_ids, step, rtype='logits'):
+    @AutoRegressiveDecoder.set_rtype('probas')
+    def predict(self, inputs, output_ids, step):
         token_ids = inputs[0]
         token_ids = np.concatenate([token_ids, output_ids], 1)
         segment_ids = np.zeros_like(token_ids)
-        probas = model.predict([token_ids, segment_ids])[:, -1]
-        if rtype == 'probas':
-            return probas
-        else:
-            return np.log(probas)
+        return model.predict([token_ids, segment_ids])[:, -1]
 
     def generate(self, text, n=1, topk=5):
         token_ids, _ = tokenizer.encode(text)
