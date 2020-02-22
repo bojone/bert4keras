@@ -131,7 +131,7 @@ class ReadingComprehension(AutoRegressiveDecoder):
             result[k[:-1]].add(k[-1])
         return result
 
-    def predict(self, inputs, output_ids, step):
+    def predict(self, inputs, output_ids, step, rtype='logits'):
         inputs = [i for i in inputs if i[0, 0] > -1]  # 过滤掉无答案篇章
         topk = len(inputs[0])
         all_token_ids, all_segment_ids = [], []
@@ -180,7 +180,10 @@ class ReadingComprehension(AutoRegressiveDecoder):
                 new_probas[:, i, available_idxs] = probas[:, i, available_idxs]
             probas = new_probas
         probas = (probas**2).sum(0) / (probas.sum(0) + 1)  # 某种平均投票方式
-        return np.log(probas + 1e-6)
+        if rtype == 'probas':
+            return probas
+        else:
+            return np.log(probas + 1e-6)
 
     def answer(self, question, passages, topk=2):
         token_ids = []
