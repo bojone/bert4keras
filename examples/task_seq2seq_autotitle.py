@@ -84,7 +84,7 @@ model.compile(optimizer=Adam(1e-5))
 
 
 class AutoTitle(AutoRegressiveDecoder):
-    """基于beam search的解码器
+    """seq2seq解码器
     """
     def predict(self, inputs, output_ids, step, rtype='logits'):
         token_ids, segment_ids = inputs
@@ -99,7 +99,7 @@ class AutoTitle(AutoRegressiveDecoder):
     def generate(self, text, topk=2):
         max_c_len = maxlen - self.maxlen
         token_ids, segment_ids = tokenizer.encode(text, max_length=max_c_len)
-        output_ids = self.beam_search([token_ids, segment_ids], topk)
+        output_ids = self.beam_search([token_ids, segment_ids], topk)  # 基于beam search
         return tokenizer.decode(output_ids)
 
 
