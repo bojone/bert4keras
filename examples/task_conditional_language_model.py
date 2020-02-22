@@ -11,9 +11,9 @@ from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
-from bert4keras.snippets import sequence_padding, DataGenerator
+from bert4keras.snippets import sequence_padding, open
+from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
 from bert4keras.snippets import uniout  # 打印中文
-from bert4keras.snippets import open
 from keras.layers import *
 
 
@@ -114,37 +114,33 @@ model.add_loss(cross_entropy)
 model.compile(optimizer=Adam(1e-5))
 
 
-def random_generate(c=0, n=1, topk=5):
-    """随机采样生成
-    每次从最高概率的topk个token中随机采样一个
+class RandomSentiment(AutoRegressiveDecoder):
+    """根据情感标签（0:负，1:正）随机生成一批句子
     """
-    label_ids = [[c] for _ in range(n)]
-    target_ids = [[tokenizer._token_cls_id] for _ in range(n)]
-    R = []
-    for i in range(maxlen):
-        segment_ids = [[0] * len(t) for t in target_ids]
-        # 下面直接忽略[PAD], [UNK], [CLS]
-        _probas = model.predict([target_ids, segment_ids, label_ids])[:, -1, 3:]
-        for i, p in enumerate(_probas):
-            p_arg_topk = p.argsort()[::-1][:topk]
-            p_topk = p[p_arg_topk]
-            p = p_topk / sum(p_topk)
-            idx = np.random.choice(len(p), p=p)
-            target_ids[i].append(p_arg_topk[idx] + 3)
-        for t in target_ids:
-            if t[-1] == 3:
-                R.append(tokenizer.decode(t))
-        target_ids = [t for t in target_ids if t[-1] != 3]
-        if len(target_ids) == 0:
-            break
-    return R
+    def predict(self, inputs, output_ids, step, rtype='logits'):
+        token_ids = output_ids
+        segment_ids = np.zeros_like(token_ids)
+        probas = model.predict([token_ids, segment_ids, inputs[0]])[:, -1]
+        if rtype == 'probas':
+            return probas
+        else:
+            return np.log(probas)
+
+    def sample(self, label, n, topk=5):
+        results = self.random_sample([[label]], n, topk)  # 基于随机采样
+        return [tokenizer.decode(ids) for ids in results]
+
+
+text_generator = RandomSentiment(start_id=tokenizer._token_cls_id,
+                                 end_id=tokenizer._token_sep_id,
+                                 maxlen=maxlen)
 
 
 def just_show():
     print(u'正面采样:')
-    print(random_generate(1, 5, 5), '\n')
+    print(text_generator.sample(1, 5, 5), '\n')
     print(u'负面采样:')
-    print(random_generate(0, 5, 5), '\n')
+    print(text_generator.sample(0, 5, 5), '\n')
 
 
 class Evaluate(keras.callbacks.Callback):
