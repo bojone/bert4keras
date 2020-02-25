@@ -44,7 +44,7 @@ data = load_data('/root/icwb2-data/training/pku_training.utf8')
 
 # 保存一个随机序（供划分valid用）
 if not os.path.exists('../random_order.json'):
-    random_order = range(len(data))
+    random_order = list(range(len(data)))
     np.random.shuffle(random_order)
     json.dump(random_order, open('../random_order.json', 'w'), indent=4)
 else:
