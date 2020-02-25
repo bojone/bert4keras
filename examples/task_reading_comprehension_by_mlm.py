@@ -34,7 +34,7 @@ sogou_data = json.load(open('/root/qa_datasets/SogouQA.json'))
 
 # 保存一个随机序（供划分valid用）
 if not os.path.exists('../random_order.json'):
-    random_order = range(len(sogou_data))
+    random_order = list(range(len(sogou_data)))
     np.random.shuffle(random_order)
     json.dump(random_order, open('../random_order.json', 'w'), indent=4)
 else:
