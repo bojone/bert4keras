@@ -62,7 +62,7 @@ test_data = load_data('/root/ner/china-people-daily-ner-corpus/example.test')
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
 # 类别映射
-classes = set(['PER', 'LOC', 'ORG'])
+classes = ['PER', 'LOC', 'ORG']
 id2class = dict(enumerate(classes))
 class2id = {j: i for i, j in id2class.items()}
 num_labels = len(classes) * 2 + 1
