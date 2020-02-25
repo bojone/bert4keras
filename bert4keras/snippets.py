@@ -310,7 +310,6 @@ class AutoRegressiveDecoder(object):
         """
         inputs = [np.array([i]) for i in inputs]
         output_ids, output_scores = self.first_output_ids, np.zeros(1)
-        quasi_output, quasi_score = [], -np.inf
         for step in range(self.maxlen):
             scores = self.predict(inputs, output_ids, step, 'logits')  # 计算当前得分
             if step == 0:  # 第1步预测后将输入重复topk次
@@ -321,23 +320,16 @@ class AutoRegressiveDecoder(object):
             indices_2 = (indices % scores.shape[1]).reshape((-1, 1))  # 列索引
             output_ids = np.concatenate([output_ids[indices_1], indices_2], 1)  # 更新输出
             output_scores = np.take_along_axis(scores, indices, axis=None)  # 更新得分
-            best_one = output_scores.argmax()  # 取最优
-            if indices_2[best_one, 0] == self.end_id:  # 判断是否可以输出
-                if output_scores[best_one] >= quasi_score:  # 跟缓存比较
-                    return output_ids[best_one]  # 返回当前最优
-                else:
-                    return quasi_output  # 返回缓存的准输出
-            else:
-                flag = (indices_2[:, 0] == self.end_id)  # 标记已完成序列
-                if flag.any():
-                    idx = output_scores[flag].argmax()  # 准最优序列
-                    quasi_output = output_ids[idx]  # 准最优序列
-                    quasi_score = output_scores[idx]  # 准最优得分
-                    flag = (flag == False)  # 标记未完成序列
-                    inputs = [i[flag] for i in inputs]  # 只保留未完成部分输入
-                    output_ids = output_ids[flag]  # 只保留未完成部分候选集
-                    output_scores = output_scores[flag]  # 只保留未完成部分候选得分
-                    topk = flag.sum()  # 更新topk的值
+            best_one = output_scores.argmax()  # 得分最大的那个
+            if indices_2[best_one, 0] == self.end_id:  # 如果已经终止
+                return output_ids[best_one]  # 直接输出
+            else:  # 否则，只保留未完成部分
+                flag = (indices_2[:, 0] != self.end_id)  # 标记未完成部分
+                if not flag.all():  # 如果有完成的
+                    inputs = [i[flag] for i in inputs]  # 扔掉已经完成的
+                    output_ids = output_ids[flag]  # 扔掉已经完成的
+                    output_scores = output_scores[flag]  # 扔掉已经完成的
+                    topk = flag.sum()  # topk相应减小
         # 达到长度直接输出
         return output_ids[output_scores.argmax()]
 
