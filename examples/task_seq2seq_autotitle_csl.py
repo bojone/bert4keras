@@ -132,13 +132,14 @@ class Evaluate(keras.callbacks.Callback):
             total += 1
             title = ' '.join(title)
             pred_title = ' '.join(autotitle.generate(content, topk))
-            scores = self.rouge.get_scores(hyps=pred_title, refs=title)
-            rouge_1 += scores[0]['rouge-1']['f']
-            rouge_2 += scores[0]['rouge-2']['f']
-            rouge_l += scores[0]['rouge-l']['f']
-            bleu += sentence_bleu(references=[title.split(' ')],
-                                  hypothesis=pred_title.split(' '),
-                                  smoothing_function=self.smooth)
+            if pred_title.strip():
+                scores = self.rouge.get_scores(hyps=pred_title, refs=title)
+                rouge_1 += scores[0]['rouge-1']['f']
+                rouge_2 += scores[0]['rouge-2']['f']
+                rouge_l += scores[0]['rouge-l']['f']
+                bleu += sentence_bleu(references=[title.split(' ')],
+                                      hypothesis=pred_title.split(' '),
+                                      smoothing_function=self.smooth)
         rouge_1 /= total
         rouge_2 /= total
         rouge_l /= total
