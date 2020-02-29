@@ -15,7 +15,7 @@ from bert4keras.bert import build_bert_model
 from bert4keras.optimizers import Adam, ExponentialMovingAverage
 from bert4keras.snippets import sequence_padding, DataGenerator
 from bert4keras.snippets import open
-from keras.layers import *
+from keras.layers import Input, Dense, Lambda, Reshape
 from keras.models import Model
 from tqdm import tqdm
 
