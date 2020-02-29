@@ -10,7 +10,7 @@ from bert4keras.tokenizer import Tokenizer
 from bert4keras.bert import build_bert_model
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, DataGenerator
-from keras.layers import *
+from keras.layers import Lambda, Dense
 from tqdm import tqdm
 
 
