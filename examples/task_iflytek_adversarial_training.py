@@ -99,6 +99,7 @@ def adversarial_training(model, embedding_name):
     if model.train_function is None:  # 如果还没有训练函数
         model._make_train_function()  # 手动make
     old_train_function = model.train_function  # 备份旧的训练函数
+
     # 查找Embedding层
     for output in model.outputs:
         embedding_layer = search_layer(output, embedding_name)
@@ -106,10 +107,12 @@ def adversarial_training(model, embedding_name):
             break
     if embedding_layer is None:
         raise Exception('Embedding layer not found')
+
     # 求Embedding梯度
     embeddings = embedding_layer.embeddings  # Embedding矩阵
     gradients = K.gradients(model.total_loss, [embeddings])  # Embedding梯度
     gradients = K.zeros_like(embeddings) + gradients[0]  # 转为dense tensor
+
     # 封装为函数
     inputs = (model._feed_inputs +
               model._feed_targets +
