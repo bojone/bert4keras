@@ -9,7 +9,7 @@ from bert4keras.bert import build_bert_model
 from bert4keras.optimizers import Adam, extend_with_piecewise_linear_lr
 from bert4keras.snippets import sequence_padding, DataGenerator
 from bert4keras.snippets import open
-from keras.layers import *
+from keras.layers import Lambda, Dense
 
 set_gelu('tanh')  # 切换gelu版本
 
