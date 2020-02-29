@@ -91,7 +91,7 @@ model.compile(
 )
 
 
-def adversarial_training(model, embedding_name):
+def adversarial_training(model, embedding_name, epsilon=1):
     """给模型添加对抗训练
     其中model是需要添加对抗训练的keras模型，embedding_name
     则是model里边Embedding层的名字。要在模型compile之后使用。
@@ -125,7 +125,7 @@ def adversarial_training(model, embedding_name):
 
     def train_function(inputs):  # 重新定义训练函数
         grads = embedding_gradients(inputs)[0]  # Embedding梯度
-        delta = 0.5 * grads / (np.sqrt((grads**2).sum()) + 1e-8)  # 计算扰动
+        delta = epsilon * grads / (np.sqrt((grads**2).sum()) + 1e-8)  # 计算扰动
         K.set_value(embeddings, K.eval(embeddings) + delta)  # 注入扰动
         outputs = old_train_function(inputs)  # 梯度下降
         K.set_value(embeddings, K.eval(embeddings) - delta)  # 删除扰动
@@ -135,7 +135,7 @@ def adversarial_training(model, embedding_name):
 
 
 # 写好函数后，启用对抗训练只需要一行代码
-adversarial_training(model, 'Embedding-Token')
+adversarial_training(model, 'Embedding-Token', 0.5)
 
 
 def evaluate(data):
