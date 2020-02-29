@@ -595,9 +595,9 @@ class ConditionalRandomField(Layer):
     def sparse_loss(self, y_true, y_pred):
         """y_true需要是整数形式（非one hot）
         """
-        # y_true需要重新明确一下dtype和shape
+        # y_true需要重新明确一下shape和dtype
+        y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
         y_true = K.cast(y_true, 'int32')
-        y_true = K.reshape(y_true, [K.shape(y_true)[0], -1])
         # 转为one hot
         y_true = K.one_hot(y_true, K.shape(self.trans)[0])
         return self.dense_loss(y_true, y_pred)
@@ -614,9 +614,9 @@ class ConditionalRandomField(Layer):
         此处y_true需要是整数形式（非one hot）
         """
         mask = self.output_mask
-        # y_true需要重新明确一下dtype和shape
+        # y_true需要重新明确一下shape和dtype
+        y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
         y_true = K.cast(y_true, 'int32')
-        y_true = K.reshape(y_true, [K.shape(y_true)[0], -1])
         # 逐标签取最大来粗略评测训练效果
         y_pred = K.cast(K.argmax(y_pred, 2), 'int32')
         isequal = K.cast(K.equal(y_true, y_pred), K.floatx())
@@ -699,9 +699,9 @@ class MaximumEntropyMarkovModel(Layer):
         """y_true需要是整数形式（非one hot）
         """
         mask = self.output_mask
-        # y_true需要重新明确一下dtype和shape
+        # y_true需要重新明确一下shape和dtype
+        y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
         y_true = K.cast(y_true, 'int32')
-        y_true = K.reshape(y_true, [K.shape(y_true)[0], -1])
         # 反转相关
         if self.hidden_dim is None:
             if go_backwards:  # 是否反转序列
@@ -745,9 +745,9 @@ class MaximumEntropyMarkovModel(Layer):
         此处y_true需要是整数形式（非one hot）
         """
         mask = self.output_mask
-        # y_true需要重新明确一下dtype和shape
+        # y_true需要重新明确一下shape和dtype
+        y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
         y_true = K.cast(y_true, 'int32')
-        y_true = K.reshape(y_true, [K.shape(y_true)[0], -1])
         # 反转相关
         if self.hidden_dim is None:
             if go_backwards:  # 是否反转序列
