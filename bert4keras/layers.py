@@ -121,6 +121,7 @@ class MultiHeadAttention(Layer):
                 不同的attention mask对应不同的应用。
         """
         q, k, v = inputs[:3]
+        q_mask, v_mask = None, None
         if mask is not None:
             if mask[0] is not None:
                 q_mask = K.cast(mask[0], K.floatx())
