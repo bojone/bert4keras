@@ -85,6 +85,7 @@ def build_bert_model_with_mlm():
         """
         y_true, y_pred, is_masked = inputs
         seq_mask = search_layer(y_pred, 'Embedding-Token').output_mask
+        seq_mask = K.cast(seq_mask, K.floatx())
         loss = K.sparse_categorical_crossentropy(y_true,
                                                  y_pred,
                                                  from_logits=True)
@@ -132,6 +133,7 @@ def build_bert_model_with_lm():
         """
         y_true, y_pred = inputs
         mask = search_layer(y_pred, 'Embedding-Token').output_mask
+        mask = K.cast(mask, K.floatx())
         y_true, y_pred, mask = y_true[:, 1:], y_pred[:, :-1], mask[:, 1:]
         loss = K.sparse_categorical_crossentropy(y_true,
                                                  y_pred,
