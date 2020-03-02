@@ -120,10 +120,15 @@ class Evaluate(keras.callbacks.Callback):
     def __init__(self):
         self.rouge = Rouge()
         self.smooth = SmoothingFunction().method1
+        self.best_bleu = 0.
 
     def on_epoch_end(self, epoch, logs=None):
-        model.save_weights('./best_model.weights')  # 保存模型
-        print('valid_data:', self.evaluate(valid_data))  # 评测模型
+        metrics = self.evaluate(valid_data)  # 评测模型
+        if metrics['bleu'] > self.best_bleu:
+            self.best_bleu = metrics['metrics']
+            model.save_weights('./best_model.weights')  # 保存模型
+        metrics['best_bleu'] = self.best_bleu
+        print('valid_data:', metrics)
 
     def evaluate(self, data, topk=1):
         total = 0
