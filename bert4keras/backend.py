@@ -73,14 +73,14 @@ def piecewise_linear(t, schedule):
     return x
 
 
-def search_layer(inputs, name, exclude=None):
+def search_layer(inputs, name, exclusion=None):
     """根据inputs和name来搜索层
     说明：inputs为某个层或某个层的输出；name为目标层的名字。
     实现：根据inputs一直往上递归搜索，直到发现名字为name的层为止；
          如果找不到，那就返回None。
     """
-    if exclude is None:
-        exclude = set()
+    if exclusion is None:
+        exclusion = set()
 
     if isinstance(inputs, keras.layers.Layer):
         layer = inputs
@@ -89,10 +89,10 @@ def search_layer(inputs, name, exclude=None):
 
     if layer.name == name:
         return layer
-    elif layer in exclude:
+    elif layer in exclusion:
         return None
     else:
-        exclude.add(layer)
+        exclusion.add(layer)
         if isinstance(layer, keras.models.Model):
             model = layer
             for layer in model.layers:
@@ -103,7 +103,7 @@ def search_layer(inputs, name, exclude=None):
             inbound_layers = [inbound_layers]
         if len(inbound_layers) > 0:
             for layer in inbound_layers:
-                layer = search_layer(layer, name, exclude)
+                layer = search_layer(layer, name, exclusion)
                 if layer is not None:
                     return layer
 
