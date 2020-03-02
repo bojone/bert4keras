@@ -560,7 +560,11 @@ class ConditionalRandomField(Layer):
     def dense_loss(self, y_true, y_pred):
         """y_true需要是one hot形式
         """
-        mask = K.cast(self.input_mask, K.floatx())
+        # 导出mask并转换数据类型
+        if self.input_mask is None:
+            mask = None
+        else:
+            mask = K.cast(self.input_mask, K.floatx())
         # 计算目标分数
         target_score = self.target_score(y_true, y_pred, mask)
         # 递归计算log Z
@@ -598,7 +602,11 @@ class ConditionalRandomField(Layer):
         """训练过程中显示逐帧准确率的函数，排除了mask的影响
         此处y_true需要是整数形式（非one hot）
         """
-        mask = K.cast(self.input_mask, K.floatx())
+        # 导出mask并转换数据类型
+        if self.input_mask is None:
+            mask = None
+        else:
+            mask = K.cast(self.input_mask, K.floatx())
         # y_true需要重新明确一下shape和dtype
         y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
         y_true = K.cast(y_true, 'int32')
@@ -672,7 +680,11 @@ class MaximumEntropyMarkovModel(Layer):
     def basic_loss(self, y_true, y_pred, go_backwards=False):
         """y_true需要是整数形式（非one hot）
         """
-        mask = K.cast(self.input_mask, K.floatx())
+        # 导出mask并转换数据类型
+        if self.input_mask is None:
+            mask = None
+        else:
+            mask = K.cast(self.input_mask, K.floatx())
         # y_true需要重新明确一下shape和dtype
         y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
         y_true = K.cast(y_true, 'int32')
@@ -718,7 +730,11 @@ class MaximumEntropyMarkovModel(Layer):
         """训练过程中显示逐帧准确率的函数，排除了mask的影响
         此处y_true需要是整数形式（非one hot）
         """
-        mask = K.cast(self.input_mask, K.floatx())
+        # 导出mask并转换数据类型
+        if self.input_mask is None:
+            mask = None
+        else:
+            mask = K.cast(self.input_mask, K.floatx())
         # y_true需要重新明确一下shape和dtype
         y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
         y_true = K.cast(y_true, 'int32')
