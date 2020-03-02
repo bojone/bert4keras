@@ -88,7 +88,7 @@ model.summary()
 
 def sparse_categorical_crossentropy(y_true, y_pred):
     """自定义稀疏交叉熵
-    这主要是因为tf自带的sparse_categorical_crossentropy不支持求二阶梯度。
+    这主要是因为keras自带的sparse_categorical_crossentropy不支持求二阶梯度。
     """
     y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
     y_true = K.cast(y_true, 'int32')
