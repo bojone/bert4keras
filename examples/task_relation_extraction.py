@@ -170,8 +170,8 @@ output = LayerNormalization(conditional=True)([output, subject])
 output = Dense(units=len(predicate2id) * 2,
                activation='sigmoid',
                kernel_initializer=bert.initializer)(output)
-output = Reshape((-1, len(predicate2id), 2))(output)
-object_preds = Lambda(lambda x: x**4)(output)
+output = Lambda(lambda x: x**4)(output)
+object_preds = Reshape((-1, len(predicate2id), 2))(output)
 
 object_model = Model(bert.model.inputs + [subject_ids], object_preds)
 
@@ -179,7 +179,8 @@ object_model = Model(bert.model.inputs + [subject_ids], object_preds)
 train_model = Model(bert.model.inputs + [subject_labels, subject_ids, object_labels],
                     [subject_preds, object_preds])
 
-mask = bert.model.get_layer('Sequence-Mask').output_mask
+mask = bert.model.get_layer('Embedding-Token').output_mask
+mask = K.cast(mask, K.floatx())
 
 subject_loss = K.binary_crossentropy(subject_labels, subject_preds)
 subject_loss = K.mean(subject_loss, 2)
