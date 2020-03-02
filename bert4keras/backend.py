@@ -98,15 +98,14 @@ def search_layer(inputs, name, exclude=None):
             for layer in model.layers:
                 if layer.name == name:
                     return layer
-        else:
-            inbound_layers = layer._inbound_nodes[0].inbound_layers
-            if not isinstance(inbound_layers, list):
-                inbound_layers = [inbound_layers]
-            if len(inbound_layers) > 0:
-                for layer in inbound_layers:
-                    layer = search_layer(layer, name, exclude)
-                    if layer is not None:
-                        return layer
+        inbound_layers = layer._inbound_nodes[0].inbound_layers
+        if not isinstance(inbound_layers, list):
+            inbound_layers = [inbound_layers]
+        if len(inbound_layers) > 0:
+            for layer in inbound_layers:
+                layer = search_layer(layer, name, exclude)
+                if layer is not None:
+                    return layer
 
 
 def sequence_masking(x, mask, mode=0, axis=None):
