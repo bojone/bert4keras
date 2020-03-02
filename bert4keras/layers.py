@@ -531,6 +531,9 @@ class ConditionalRandomField(Layer):
             K.set_value(self.trans, K.eval(self.trans) / self.lr_multiplier)
             self.trans = self.lr_multiplier * self.trans
 
+    def compute_mask(self, inputs, mask=None):
+        return None
+
     def target_score(self, y_true, y_pred, mask=None):
         """计算目标路径的相对概率（还没有归一化）
         要点：逐标签得分，加上转移概率得分。
@@ -556,7 +559,7 @@ class ConditionalRandomField(Layer):
     def dense_loss(self, y_true, y_pred):
         """y_true需要是one hot形式
         """
-        mask = self.output_mask
+        mask = K.cast(self.input_mask, K.floatx())
         # 计算目标分数
         target_score = self.target_score(y_true, y_pred, mask)
         # 递归计算log Z
@@ -594,7 +597,7 @@ class ConditionalRandomField(Layer):
         """训练过程中显示逐帧准确率的函数，排除了mask的影响
         此处y_true需要是整数形式（非one hot）
         """
-        mask = self.output_mask
+        mask = K.cast(self.input_mask, K.floatx())
         # y_true需要重新明确一下shape和dtype
         y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
         y_true = K.cast(y_true, 'int32')
@@ -652,6 +655,9 @@ class MaximumEntropyMarkovModel(Layer):
                 K.set_value(self.r_trans, K.eval(self.r_trans) / self.lr_multiplier)
                 self.r_trans = self.lr_multiplier * self.r_trans
 
+    def compute_mask(self, inputs, mask=None):
+        return None
+
     def reverse_sequence(self, inputs, mask=None):
         if mask is None:
             return [x[:, ::-1] for x in inputs]
@@ -665,7 +671,7 @@ class MaximumEntropyMarkovModel(Layer):
     def basic_loss(self, y_true, y_pred, go_backwards=False):
         """y_true需要是整数形式（非one hot）
         """
-        mask = self.output_mask
+        mask = K.cast(self.input_mask, K.floatx())
         # y_true需要重新明确一下shape和dtype
         y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
         y_true = K.cast(y_true, 'int32')
@@ -711,7 +717,7 @@ class MaximumEntropyMarkovModel(Layer):
         """训练过程中显示逐帧准确率的函数，排除了mask的影响
         此处y_true需要是整数形式（非one hot）
         """
-        mask = self.output_mask
+        mask = K.cast(self.input_mask, K.floatx())
         # y_true需要重新明确一下shape和dtype
         y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
         y_true = K.cast(y_true, 'int32')
