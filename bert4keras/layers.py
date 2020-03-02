@@ -121,15 +121,16 @@ class MultiHeadAttention(Layer):
                 不同的attention mask对应不同的应用。
         """
         q, k, v = inputs[:3]
+        if mask is not None:
+            if mask[0] is not None:
+                q_mask = K.cast(mask[0], K.floatx())
+            if mask[2] is not None:
+                v_mask = K.cast(mask[2], K.floatx())
         if a_mask:
             if len(inputs) == 3:
                 a_mask = 'history_only'
             else:
                 a_mask = inputs[3]
-        if mask[0] is not None:
-            q_mask = K.cast(mask[0], K.floatx())
-        if mask[2] is not None:
-            v_mask = K.cast(mask[2], K.floatx())
         # Pooling
         if self.pool_size > 1:
             is_self_attention = (q is k is v)
