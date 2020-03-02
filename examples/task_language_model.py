@@ -102,11 +102,11 @@ model = build_bert_model(
 model.summary()
 
 # 交叉熵作为loss，并mask掉输入部分的预测
-y_in = model.input[0][:, 1:]  # 目标tokens
+y_true = model.input[0][:, 1:]  # 目标tokens
 y_mask = model.get_layer('Embedding-Token').output_mask[:, 1:]  # 目标mask
 y_mask = K.cast(y_mask, K.floatx())  # 转为浮点型
-y = model.output[:, :-1]  # 预测tokens，预测与目标错开一位
-cross_entropy = K.sparse_categorical_crossentropy(y_in, y)
+y_pred = model.output[:, :-1]  # 预测tokens，预测与目标错开一位
+cross_entropy = K.sparse_categorical_crossentropy(y_true, y_pred)
 cross_entropy = K.sum(cross_entropy * y_mask) / K.sum(y_mask)
 
 model.add_loss(cross_entropy)
