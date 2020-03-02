@@ -50,16 +50,13 @@ if keras.__version__[-2:] != 'tf' and keras.__version__ < '2.3':
             return non_trainable_weights
 
 
-class ZeroMasking(Layer):
-    """啥都不做，就是加上mask
+class Layer(Layer):
+    """给层添加supports_masking=True
+    （本项目所有自定义层都支持masking）
     """
-    def call(self, inputs):
-        self._output_mask = K.cast(K.greater(inputs, 0), K.floatx())
-        return inputs
-
-    @property
-    def output_mask(self):
-        return self._output_mask
+    def __init__(self, **kwargs):
+        super(Layer, self).__init__(**kwargs)
+        self.supports_masking=True
 
 
 class MultiHeadAttention(Layer):
@@ -129,14 +126,10 @@ class MultiHeadAttention(Layer):
                 a_mask = 'history_only'
             else:
                 a_mask = inputs[3]
-        if q_mask is not None:
-            if not hasattr(self, 'q_mask_layer'):
-                self.q_mask_layer = search_layer(q, q_mask)
-            q_mask = self.q_mask_layer.output_mask
-        if v_mask is not None:
-            if not hasattr(self, 'v_mask_layer'):
-                self.v_mask_layer = search_layer(v, v_mask)
-            v_mask = self.v_mask_layer.output_mask
+        if mask[0] is not None:
+            q_mask = K.cast(mask[0], K.floatx())
+        if mask[2] is not None:
+            v_mask = K.cast(mask[2], K.floatx())
         # Pooling
         if self.pool_size > 1:
             is_self_attention = (q is k is v)
@@ -205,6 +198,9 @@ class MultiHeadAttention(Layer):
 
     def compute_output_shape(self, input_shape):
         return (input_shape[0][0], input_shape[0][1], self.out_dim)
+
+    def compute_mask(self, inputs, mask):
+        return mask[0]
 
     def get_config(self):
         config = {
@@ -451,9 +447,7 @@ class FeedForward(Layer):
         # Pooling
         if self.pool_size > 1:
             if mask is not None:
-                if not hasattr(self, 'mask_layer'):
-                    self.mask_layer = search_layer(x, mask)
-                mask = self.mask_layer.output_mask
+                mask = K.cast(mask, K.floatx())
             x_in_len = K.shape(x)[1]
             x = sequence_masking(x, mask, 0)
             x = divisible_temporal_padding(x, self.pool_size)
@@ -558,20 +552,6 @@ class ConditionalRandomField(Layer):
         outputs = mask * outputs + (1 - mask) * states[:, :, 0]
         return outputs, [outputs]
 
-    def call(self, inputs, mask=None):
-        """CRF本身不改变输出，它只是一个loss
-        """
-        if mask is not None:
-            if not hasattr(self, 'mask_layer'):
-                self.mask_layer = search_layer(inputs, mask)
-
-        return inputs
-
-    @property
-    def output_mask(self):
-        if hasattr(self, 'mask_layer'):
-            return self.mask_layer.output_mask
-
     def dense_loss(self, y_true, y_pred):
         """y_true需要是one hot形式
         """
@@ -670,20 +650,6 @@ class MaximumEntropyMarkovModel(Layer):
                 self.l_trans = self.lr_multiplier * self.l_trans
                 K.set_value(self.r_trans, K.eval(self.r_trans) / self.lr_multiplier)
                 self.r_trans = self.lr_multiplier * self.r_trans
-
-    def call(self, inputs, mask=None):
-        """MEMM本身不改变输出，它只是一个loss
-        """
-        if mask is not None:
-            if not hasattr(self, 'mask_layer'):
-                self.mask_layer = search_layer(inputs, mask)
-
-        return inputs
-
-    @property
-    def output_mask(self):
-        if hasattr(self, 'mask_layer'):
-            return self.mask_layer.output_mask
 
     def reverse_sequence(self, inputs, mask=None):
         if mask is None:
@@ -799,7 +765,6 @@ class MaximumEntropyMarkovModel(Layer):
 
 
 custom_objects = {
-    'ZeroMasking': ZeroMasking,
     'MultiHeadAttention': MultiHeadAttention,
     'LayerNormalization': LayerNormalization,
     'PositionEmbedding': PositionEmbedding,
