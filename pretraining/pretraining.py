@@ -38,7 +38,6 @@ num_warmup_steps = 3125
 num_train_steps = 125000
 steps_per_epoch = 10000
 grad_accum_steps = 16  # 大于1即表明使用梯度累积
-loss_weight_of_identity = 0.  # 除去mask后剩下部分(恒等映射)的loss权重
 epochs = num_train_steps * grad_accum_steps // steps_per_epoch
 exclude_from_weight_decay = ['Norm', 'bias']
 tpu_address = 'grpc://xxx.xxx.xxx.xxx:8470'  # 如果用多GPU跑，直接设为None
@@ -83,25 +82,20 @@ def build_bert_model_with_mlm():
     def mlm_loss(inputs):
         """计算loss的函数，需要封装为一个层
         """
-        y_true, y_pred, is_masked = inputs
-        seq_mask = search_layer(y_pred, 'Embedding-Token').output_mask
-        seq_mask = K.cast(seq_mask, floatx)
+        y_true, y_pred, mask = inputs
         loss = K.sparse_categorical_crossentropy(y_true,
                                                  y_pred,
                                                  from_logits=True)
-        mask1 = is_masked * seq_mask
-        loss1 = K.sum(loss * mask1) / (K.sum(mask1) + K.epsilon())
-        mask2 = (1. - is_masked) * seq_mask
-        loss2 = K.sum(loss * mask2) / (K.sum(mask2) + K.epsilon())
-        return loss1 + loss_weight_of_identity * loss2
+        loss = K.sum(loss * mask) / (K.sum(mask) + K.epsilon())
+        return loss
 
     def mlm_acc(inputs):
         """计算准确率的函数，需要封装为一个层
         """
-        y_true, y_pred, is_masked = inputs
+        y_true, y_pred, mask = inputs
         y_true = K.cast(y_true, floatx)
         acc = keras.metrics.sparse_categorical_accuracy(y_true, y_pred)
-        acc = K.sum(acc * is_masked) / (K.sum(is_masked) + K.epsilon())
+        acc = K.sum(acc * mask) / (K.sum(mask) + K.epsilon())
         return acc
 
     mlm_loss = Lambda(mlm_loss, name='mlm_loss')([token_ids, proba, is_masked])
@@ -132,9 +126,9 @@ def build_bert_model_with_lm():
         """计算loss的函数，需要封装为一个层
         """
         y_true, y_pred = inputs
+        y_true, y_pred = y_true[:, 1:], y_pred[:, :-1]
         mask = search_layer(y_pred, 'Embedding-Token').output_mask
-        mask = K.cast(mask, floatx)
-        y_true, y_pred, mask = y_true[:, 1:], y_pred[:, :-1], mask[:, 1:]
+        mask = K.cast(mask[:, 1:], floatx)
         loss = K.sparse_categorical_crossentropy(y_true,
                                                  y_pred,
                                                  from_logits=True)
@@ -145,10 +139,9 @@ def build_bert_model_with_lm():
         """计算准确率的函数，需要封装为一个层
         """
         y_true, y_pred = inputs
+        y_true, y_pred = K.cast(y_true[:, 1:], floatx), y_pred[:, :-1]
         mask = search_layer(y_pred, 'Embedding-Token').output_mask
-        mask = K.cast(mask, floatx)
-        y_true = K.cast(y_true, floatx)
-        y_true, y_pred, mask = y_true[:, 1:], y_pred[:, :-1], mask[:, 1:]
+        mask = K.cast(mask[:, 1:], floatx)
         acc = keras.metrics.sparse_categorical_accuracy(y_true, y_pred)
         acc = K.sum(acc * mask) / (K.sum(mask) + K.epsilon())
         return acc
