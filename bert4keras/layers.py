@@ -111,7 +111,7 @@ class MultiHeadAttention(Layer):
                                                        initializer=initializer,
                                                        trainable=False)
 
-    def call(self, inputs, q_mask=None, v_mask=None, a_mask=None):
+    def call(self, inputs, mask=None, a_mask=None):
         """实现多头注意力
         q_mask: 对输入的query序列的mask。
                 主要是将输出结果的padding部分置0。
