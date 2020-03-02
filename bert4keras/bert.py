@@ -67,7 +67,6 @@ class BertModel(object):
     def build(self,
               position_ids=None,
               layer_norm_cond=None,
-              layer_norm_cond_size=None,
               layer_norm_cond_hidden_size=None,
               layer_norm_cond_hidden_act=None,
               additional_input_layers=None):
@@ -81,13 +80,7 @@ class BertModel(object):
         x, s = input_layers = [x_in, s_in]
 
         # 条件输入
-        if layer_norm_cond is not None:
-            z = layer_norm_cond
-        elif layer_norm_cond_size is not None:
-            z = Input(shape=(layer_norm_cond_size, ), name='LayerNorm-Condition')
-            input_layers.append(z)
-        else:
-            z = None
+        z = layer_norm_cond
         layer_norm_cond_hidden_act = layer_norm_cond_hidden_act or 'linear'
 
         # 补充输入层
@@ -97,13 +90,11 @@ class BertModel(object):
             else:
                 input_layers.append(additional_input_layers)
 
-        # 补充mask
-        x = ZeroMasking(name='Sequence-Mask')(x)
-
         # Embedding部分
         x = Embedding(input_dim=self.vocab_size,
                       output_dim=self.embedding_size,
                       embeddings_initializer=self.initializer,
+                      mask_zero=True,
                       name='Embedding-Token')(x)
         s = Embedding(input_dim=2,
                       output_dim=self.embedding_size,
@@ -240,21 +231,20 @@ class BertModel(object):
         ]
         # Self Attention
         xi, x = x, [x, x, x]
-        mask = 'Sequence-Mask'
         if attention_mask is None:
-            x = layers[0](x, q_mask=mask, v_mask=mask)
+            x = layers[0](x)
         elif attention_mask is 'history_only':
-            x = layers[0](x, q_mask=mask, v_mask=mask, a_mask=True)
+            x = layers[0](x, a_mask=True)
         else:
             x.append(attention_mask)
-            x = layers[0](x, q_mask=mask, v_mask=mask, a_mask=True)
+            x = layers[0](x, a_mask=True)
         if self.dropout_rate > 0:
             x = layers[1](x)
         x = layers[2]([xi, x])
         x = layers[3](self.filter([x, z]))
         # Feed Forward
         xi = x
-        x = layers[4](x, mask=mask)
+        x = layers[4](x)
         if self.dropout_rate > 0:
             x = layers[5](x)
         x = layers[6]([xi, x])
