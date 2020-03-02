@@ -117,7 +117,7 @@ output_layer = 'Transformer-%s-FeedForward-Norm' % bert_layers
 output = model.get_layer(output_layer).output
 output = Dense(num_labels)(output)
 CRF = ConditionalRandomField(lr_multiplier=crf_lr_multiplier)
-output = CRF(output, mask='Sequence-Mask')
+output = CRF(output)
 
 model = Model(model.input, output)
 model.summary()
