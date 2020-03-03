@@ -2,7 +2,7 @@
 # bert做language model任务，小说生成
 
 from __future__ import print_function
-import glob, os, json, re
+import glob, re
 import numpy as np
 from tqdm import tqdm
 from bert4keras.backend import keras, K
