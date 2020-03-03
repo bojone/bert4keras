@@ -3,7 +3,6 @@
 # 数据集 http://s3.bmio.net/kashgari/china-people-daily-ner-corpus.tar.gz
 # 实测验证集的F1可以到96.18%，测试集的F1可以到95.35%
 
-import re, os, json
 import numpy as np
 from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
