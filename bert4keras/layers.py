@@ -422,7 +422,7 @@ class GroupDense(Layer):
         outputs = tf.einsum('...ig,ijg->...gj', inputs, self.kernel)
         outputs = K.reshape(outputs, shape[:-1] + [self.units])
         if self.use_bias:
-            outputs = outputs + self.bias
+            outputs = K.bias_add(outputs, self.bias)
         outputs = self.activation(outputs)
         return outputs
 
