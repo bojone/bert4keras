@@ -224,12 +224,16 @@ class LayerNormalization(Layer):
     hidden_*系列参数仅为有条件输入时(conditional=True)使用
     """
     def __init__(self,
+                 center=True,
+                 scale=True,
                  conditional=False,
                  hidden_units=None,
                  hidden_activation='linear',
                  hidden_initializer='glorot_uniform',
                  **kwargs):
         super(LayerNormalization, self).__init__(**kwargs)
+        self.center = center
+        self.scale = scale
         self.conditional = conditional
         self.hidden_units = hidden_units
         self.hidden_activation = activations.get(hidden_activation)
@@ -244,12 +248,14 @@ class LayerNormalization(Layer):
         else:
             shape = (input_shape[-1], )
 
-        self.gamma = self.add_weight(shape=shape,
-                                     initializer='ones',
-                                     name='gamma')
-        self.beta = self.add_weight(shape=shape,
-                                    initializer='zeros',
-                                    name='beta')
+        if self.center:
+            self.beta = self.add_weight(shape=shape,
+                                        initializer='zeros',
+                                        name='beta')
+        if self.scale:
+            self.gamma = self.add_weight(shape=shape,
+                                         initializer='ones',
+                                         name='gamma')
 
         if self.conditional:
 
@@ -260,12 +266,14 @@ class LayerNormalization(Layer):
                     use_bias=False,
                     kernel_initializer=self.hidden_initializer)
 
-            self.beta_dense = Dense(units=shape[0],
-                                    use_bias=False,
-                                    kernel_initializer='zeros')
-            self.gamma_dense = Dense(units=shape[0],
-                                     use_bias=False,
-                                     kernel_initializer='zeros')
+            if self.center:
+                self.beta_dense = Dense(units=shape[0],
+                                        use_bias=False,
+                                        kernel_initializer='zeros')
+            if self.scale:
+                self.gamma_dense = Dense(units=shape[0],
+                                         use_bias=False,
+                                         kernel_initializer='zeros')
 
     def call(self, inputs):
         """如果是条件Layer Norm，则默认以list为输入，第二个是condition
@@ -276,21 +284,34 @@ class LayerNormalization(Layer):
                 cond = self.hidden_dense(cond)
             for _ in range(K.ndim(inputs) - K.ndim(cond)):
                 cond = K.expand_dims(cond, 1)
-            beta = self.beta_dense(cond)
-            gamma = self.gamma_dense(cond)
-            beta, gamma = self.beta + beta, self.gamma + gamma
+            if self.center:
+                beta = self.beta_dense(cond) + self.beta
+            if self.scale:
+                gamma = self.gamma_dense(cond) + self.gamma
         else:
-            beta, gamma = self.beta, self.gamma
+            if self.center
+                beta = self.beta
+            if self.scale:
+                gamma = self.gamma
 
-        mean = K.mean(inputs, axis=-1, keepdims=True)
-        variance = K.mean(K.square(inputs - mean), axis=-1, keepdims=True)
-        std = K.sqrt(variance + self.epsilon)
-        outputs = (inputs - mean) / std
-        outputs = outputs * gamma + beta
+        outputs = inputs
+        if self.center:
+            mean = K.mean(inputs, axis=-1, keepdims=True)
+            outputs = outputs - mean
+        if self.scale:
+            variance = K.mean(K.square(inputs - mean), axis=-1, keepdims=True)
+            std = K.sqrt(variance + self.epsilon)
+            outputs = outputs / std
+            outputs = outputs * gamma
+        if self.center:
+            outputs = outputs + beta
+
         return outputs
 
     def get_config(self):
         config = {
+            'center': self.center,
+            'scale': self.scale,
             'conditional': self.conditional,
             'hidden_units': self.hidden_units,
             'hidden_activation': activations.serialize(self.hidden_activation),
