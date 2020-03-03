@@ -289,7 +289,7 @@ class LayerNormalization(Layer):
             if self.scale:
                 gamma = self.gamma_dense(cond) + self.gamma
         else:
-            if self.center
+            if self.center:
                 beta = self.beta
             if self.scale:
                 gamma = self.gamma
