@@ -294,7 +294,7 @@ class BertModel(object):
             ])
 
         if reference == 'albert':
-            block_weight_names = [
+            albert_block_weights = [
                 'bert/encoder/transformer/group_0/inner_group_0/attention_1/self/query/kernel',
                 'bert/encoder/transformer/group_0/inner_group_0/attention_1/self/query/bias',
                 'bert/encoder/transformer/group_0/inner_group_0/attention_1/self/key/kernel',
@@ -335,9 +335,9 @@ class BertModel(object):
                     'bert/encoder/%s/output/LayerNorm/beta' % block_name,
                 ])
         elif not self.block_sharing and reference == 'albert':
-            mapping.extend(block_weight_names * self.num_hidden_layers)
+            mapping.extend(albert_block_weights * self.num_hidden_layers)
         else:
-            mapping.extend(block_weight_names)
+            mapping.extend(albert_block_weights)
 
         if self.with_pool or self.with_nsp:
             mapping.extend([
