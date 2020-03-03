@@ -448,7 +448,7 @@ class FeedForward(Layer):
                  units,
                  groups=1,
                  activation='relu',
-                 use_bias=self.use_bias,
+                 use_bias=True,
                  kernel_initializer='glorot_uniform',
                  pool_size=None,
                  **kwargs):
@@ -519,11 +519,15 @@ class EmbeddingDense(Layer):
     """运算跟Dense一致，但kernel用Embedding层的embeddings矩阵。
     根据Embedding层的名字来搜索定位Embedding层。
     """
-    def __init__(self, embedding_name, activation='softmax', use_bias=True, **kwargs):
+    def __init__(self,
+                 embedding_name,
+                 activation='softmax',
+                 use_bias=True,
+                 **kwargs):
         super(EmbeddingDense, self).__init__(**kwargs)
         self.embedding_name = embedding_name
         self.activation = activations.get(activation)
-        self.use_bias = use_bias,
+        self.use_bias = use_bias
 
     def call(self, inputs):
         if not hasattr(self, 'kernel'):
