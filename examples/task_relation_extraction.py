@@ -7,7 +7,6 @@
 
 import json
 import numpy as np
-import tensorflow as tf
 from bert4keras.backend import keras, K, batch_gather
 from bert4keras.layers import LayerNormalization
 from bert4keras.tokenizer import Tokenizer
