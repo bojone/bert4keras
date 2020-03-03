@@ -19,6 +19,10 @@ if keras.__version__[-2:] != 'tf' and keras.__version__ < '2.3':
         """重新定义Layer，赋予“层中层”功能
         （仅keras 2.3以下版本需要）
         """
+        def __init__(self, **kwargs):
+            super(Layer, self).__init__(**kwargs)
+            self.supports_masking = True  # 本项目的自定义层均可mask
+
         def __setattr__(self, name, value):
             if isinstance(value, keras.layers.Layer):
                 if not hasattr(self, '_layers'):
@@ -49,14 +53,12 @@ if keras.__version__[-2:] != 'tf' and keras.__version__ < '2.3':
                     non_trainable_weights += l.weights
             return non_trainable_weights
 
+else:
 
-class Layer(Layer):
-    """给层添加supports_masking=True
-    （本项目所有自定义层都支持masking）
-    """
-    def __init__(self, **kwargs):
-        super(Layer, self).__init__(**kwargs)
-        self.supports_masking=True
+    class Layer(keras.layers.Layer):
+        def __init__(self, **kwargs):
+            super(Layer, self).__init__(**kwargs)
+            self.supports_masking = True  # 本项目的自定义层均可mask
 
 
 class MultiHeadAttention(Layer):
