@@ -3,7 +3,7 @@
 # 介绍链接：https://kexue.fm/archives/6933
 
 from __future__ import print_function
-import glob, os, json
+import glob
 import numpy as np
 from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
