@@ -4,9 +4,8 @@
 # 请参考：https://kexue.fm/archives/7124
 
 from __future__ import print_function
-import glob, os, json, re
+import re
 import numpy as np
-from tqdm import tqdm
 from bert4keras.backend import keras, K
 from bert4keras.bert import build_bert_model
 from bert4keras.tokenizer import Tokenizer, load_vocab
@@ -14,7 +13,7 @@ from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, open
 from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
 from bert4keras.snippets import uniout  # 打印中文
-from keras.layers import *
+from keras.layers import Input, Embedding, Reshape
 
 
 # 模型配置
