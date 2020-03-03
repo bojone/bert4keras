@@ -5,7 +5,7 @@
 # 补充了评测指标bleu、rouge-1、rouge-2、rouge-l
 
 from __future__ import print_function
-import glob, os, json
+import glob
 import numpy as np
 from tqdm import tqdm
 from bert4keras.backend import keras, K
