@@ -69,6 +69,7 @@ class MultiHeadAttention(Layer):
                  head_size,
                  key_size=None,
                  pool_size=None,
+                 use_bias=True,
                  kernel_initializer='glorot_uniform',
                  max_relative_position=None,
                  **kwargs):
@@ -78,18 +79,23 @@ class MultiHeadAttention(Layer):
         self.out_dim = heads * head_size
         self.key_size = key_size or head_size
         self.pool_size = pool_size or 1
+        self.use_bias = use_bias
         self.kernel_initializer = initializers.get(kernel_initializer)
         self.max_relative_position = max_relative_position
 
     def build(self, input_shape):
         super(MultiHeadAttention, self).build(input_shape)
         self.q_dense = Dense(units=self.key_size * self.heads,
+                             use_bias=self.use_bias,
                              kernel_initializer=self.kernel_initializer)
         self.k_dense = Dense(units=self.key_size * self.heads,
+                             use_bias=self.use_bias,
                              kernel_initializer=self.kernel_initializer)
         self.v_dense = Dense(units=self.out_dim,
+                             use_bias=self.use_bias,
                              kernel_initializer=self.kernel_initializer)
         self.o_dense = Dense(units=self.out_dim,
+                             use_bias=self.use_bias,
                              kernel_initializer=self.kernel_initializer)
 
         if self.max_relative_position is not None:
@@ -212,6 +218,7 @@ class MultiHeadAttention(Layer):
             'head_size': self.head_size,
             'key_size': self.key_size,
             'pool_size': self.pool_size,
+            'use_bias': self.use_bias,
             'kernel_initializer': initializers.serialize(self.kernel_initializer),
             'max_relative_position': self.max_relative_position,
         }
@@ -381,12 +388,14 @@ class GroupDense(Layer):
                  units,
                  groups=2,
                  activation='linear',
+                 use_bias=True,
                  kernel_initializer='glorot_uniform',
                  **kwargs):
         super(GroupDense, self).__init__(**kwargs)
         self.units = units
         self.groups = groups
         self.activation = activations.get(activation)
+        self.use_bias = use_bias
         self.kernel_initializer = initializers.get(kernel_initializer)
 
     def build(self, input_shape):
@@ -401,9 +410,10 @@ class GroupDense(Layer):
                                              self.units // self.groups,
                                              self.groups),
                                       initializer=self.kernel_initializer)
-        self.bias = self.add_weight(name='bias',
-                                    shape=(self.units, ),
-                                    initializer='zeros')
+        if self.use_bias:
+            self.bias = self.add_weight(name='bias',
+                                        shape=(self.units, ),
+                                        initializer='zeros')
 
     def call(self, inputs):
         ndim, shape = K.ndim(inputs), K.shape(inputs)
@@ -411,7 +421,8 @@ class GroupDense(Layer):
         inputs = K.reshape(inputs, shape[:-1] + [shape[-1] // self.groups, self.groups])
         outputs = tf.einsum('...ig,ijg->...gj', inputs, self.kernel)
         outputs = K.reshape(outputs, shape[:-1] + [self.units])
-        outputs = outputs + self.bias
+        if self.use_bias:
+            outputs = outputs + self.bias
         outputs = self.activation(outputs)
         return outputs
 
@@ -423,6 +434,7 @@ class GroupDense(Layer):
             'units': self.units,
             'groups': self.groups,
             'activation': activations.serialize(self.activation),
+            'use_bias': self.use_bias,
             'kernel_initializer': initializers.serialize(self.kernel_initializer),
         }
         base_config = super(GroupDense, self).get_config()
@@ -436,6 +448,7 @@ class FeedForward(Layer):
                  units,
                  groups=1,
                  activation='relu',
+                 use_bias=self.use_bias,
                  kernel_initializer='glorot_uniform',
                  pool_size=None,
                  **kwargs):
@@ -443,6 +456,7 @@ class FeedForward(Layer):
         self.units = units
         self.groups = groups
         self.activation = activations.get(activation)
+        self.use_bias = use_bias
         self.kernel_initializer = initializers.get(kernel_initializer)
         self.pool_size = pool_size or 1
 
@@ -455,16 +469,20 @@ class FeedForward(Layer):
         if self.groups is None or self.groups == 1:
             self.dense_1 = Dense(units=self.units,
                                  activation=self.activation,
+                                 use_bias=self.use_bias,
                                  kernel_initializer=self.kernel_initializer)
             self.dense_2 = Dense(units=output_dim,
+                                 use_bias=self.use_bias,
                                  kernel_initializer=self.kernel_initializer)
         else:
             self.dense_1 = GroupDense(units=self.units,
                                       groups=self.groups,
                                       activation=self.activation,
+                                      use_bias=self.use_bias,
                                       kernel_initializer=self.kernel_initializer)
             self.dense_2 = GroupDense(units=output_dim,
                                       groups=self.groups,
+                                      use_bias=self.use_bias,
                                       kernel_initializer=self.kernel_initializer)
 
     def call(self, inputs, mask=None):
@@ -501,10 +519,11 @@ class EmbeddingDense(Layer):
     """运算跟Dense一致，但kernel用Embedding层的embeddings矩阵。
     根据Embedding层的名字来搜索定位Embedding层。
     """
-    def __init__(self, embedding_name, activation='softmax', **kwargs):
+    def __init__(self, embedding_name, activation='softmax', use_bias=True, **kwargs):
         super(EmbeddingDense, self).__init__(**kwargs)
         self.embedding_name = embedding_name
         self.activation = activations.get(activation)
+        self.use_bias = use_bias,
 
     def call(self, inputs):
         if not hasattr(self, 'kernel'):
@@ -514,12 +533,14 @@ class EmbeddingDense(Layer):
 
             self.kernel = K.transpose(embedding_layer.embeddings)
             self.units = K.int_shape(self.kernel)[1]
-            self.bias = self.add_weight(name='bias',
-                                        shape=(self.units, ),
-                                        initializer='zeros')
+            if self.use_bias:
+                self.bias = self.add_weight(name='bias',
+                                            shape=(self.units, ),
+                                            initializer='zeros')
 
         outputs = K.dot(inputs, self.kernel)
-        outputs = K.bias_add(outputs, self.bias)
+        if self.use_bias:
+            outputs = K.bias_add(outputs, self.bias)
         outputs = self.activation(outputs)
         return outputs
 
@@ -530,6 +551,7 @@ class EmbeddingDense(Layer):
         config = {
             'embedding_name': self.embedding_name,
             'activation': activations.serialize(self.activation),
+            'use_bias': self.use_bias,
         }
         base_config = super(EmbeddingDense, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
