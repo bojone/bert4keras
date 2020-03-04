@@ -303,10 +303,10 @@ class LayerNormalization(Layer):
 
         outputs = inputs
         if self.center:
-            mean = K.mean(inputs, axis=-1, keepdims=True)
+            mean = K.mean(outputs, axis=-1, keepdims=True)
             outputs = outputs - mean
         if self.scale:
-            variance = K.mean(K.square(inputs - mean), axis=-1, keepdims=True)
+            variance = K.mean(K.square(outputs), axis=-1, keepdims=True)
             std = K.sqrt(variance + self.epsilon)
             outputs = outputs / std
             outputs = outputs * gamma
