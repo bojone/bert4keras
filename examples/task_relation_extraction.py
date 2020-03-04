@@ -10,7 +10,7 @@ import numpy as np
 from bert4keras.backend import keras, K, batch_gather
 from bert4keras.layers import LayerNormalization
 from bert4keras.tokenizer import Tokenizer
-from bert4keras.bert import build_bert_model
+from bert4keras.models import build_bert_model
 from bert4keras.optimizers import Adam, ExponentialMovingAverage
 from bert4keras.snippets import sequence_padding, DataGenerator
 from bert4keras.snippets import open
