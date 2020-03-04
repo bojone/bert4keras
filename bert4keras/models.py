@@ -283,8 +283,8 @@ class BertModel(object):
             mapping.extend(['bert/embeddings/position_embeddings'])
 
         mapping.extend([
-            'bert/embeddings/LayerNorm/gamma',
             'bert/embeddings/LayerNorm/beta',
+            'bert/embeddings/LayerNorm/gamma',
         ])
 
         if self.embedding_size != self.hidden_size:
@@ -303,14 +303,14 @@ class BertModel(object):
                 'bert/encoder/transformer/group_0/inner_group_0/attention_1/self/value/bias',
                 'bert/encoder/transformer/group_0/inner_group_0/attention_1/output/dense/kernel',
                 'bert/encoder/transformer/group_0/inner_group_0/attention_1/output/dense/bias',
-                'bert/encoder/transformer/group_0/inner_group_0/LayerNorm/gamma',
                 'bert/encoder/transformer/group_0/inner_group_0/LayerNorm/beta',
+                'bert/encoder/transformer/group_0/inner_group_0/LayerNorm/gamma',
                 'bert/encoder/transformer/group_0/inner_group_0/ffn_1/intermediate/dense/kernel',
                 'bert/encoder/transformer/group_0/inner_group_0/ffn_1/intermediate/dense/bias',
                 'bert/encoder/transformer/group_0/inner_group_0/ffn_1/intermediate/output/dense/kernel',
                 'bert/encoder/transformer/group_0/inner_group_0/ffn_1/intermediate/output/dense/bias',
-                'bert/encoder/transformer/group_0/inner_group_0/LayerNorm_1/gamma',
                 'bert/encoder/transformer/group_0/inner_group_0/LayerNorm_1/beta',
+                'bert/encoder/transformer/group_0/inner_group_0/LayerNorm_1/gamma',
             ]
 
         if not self.block_sharing and reference != 'albert':
@@ -325,14 +325,14 @@ class BertModel(object):
                     'bert/encoder/%s/attention/self/value/bias' % block_name,
                     'bert/encoder/%s/attention/output/dense/kernel' % block_name,
                     'bert/encoder/%s/attention/output/dense/bias' % block_name,
-                    'bert/encoder/%s/attention/output/LayerNorm/gamma' % block_name,
                     'bert/encoder/%s/attention/output/LayerNorm/beta' % block_name,
+                    'bert/encoder/%s/attention/output/LayerNorm/gamma' % block_name,
                     'bert/encoder/%s/intermediate/dense/kernel' % block_name,
                     'bert/encoder/%s/intermediate/dense/bias' % block_name,
                     'bert/encoder/%s/output/dense/kernel' % block_name,
                     'bert/encoder/%s/output/dense/bias' % block_name,
-                    'bert/encoder/%s/output/LayerNorm/gamma' % block_name,
                     'bert/encoder/%s/output/LayerNorm/beta' % block_name,
+                    'bert/encoder/%s/output/LayerNorm/gamma' % block_name,
                 ])
         elif not self.block_sharing and reference == 'albert':
             mapping.extend(albert_block_weights * self.num_hidden_layers)
@@ -354,8 +354,8 @@ class BertModel(object):
             mapping.extend([
                 'cls/predictions/transform/dense/kernel',
                 'cls/predictions/transform/dense/bias',
-                'cls/predictions/transform/LayerNorm/gamma',
                 'cls/predictions/transform/LayerNorm/beta',
+                'cls/predictions/transform/LayerNorm/gamma',
                 'cls/predictions/output_bias',
             ])
 
