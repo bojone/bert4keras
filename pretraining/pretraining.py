@@ -6,7 +6,7 @@ os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
 
 import tensorflow as tf
 from data_utils import *
-from bert4keras.bert import build_bert_model
+from bert4keras.models import build_transformer_model
 from bert4keras.backend import keras, K, search_layer
 from bert4keras.optimizers import Adam
 from bert4keras.optimizers import extend_with_weight_decay
@@ -70,9 +70,9 @@ elif model == 'gpt':
 def build_bert_model_with_mlm():
     """带mlm的bert模型
     """
-    bert = build_bert_model(config_path,
-                            with_mlm='linear',
-                            return_keras_model=False)
+    bert = build_transformer_model(config_path,
+                                   with_mlm='linear',
+                                   return_keras_model=False)
     proba = bert.model.output
 
     # 辅助输入
@@ -115,10 +115,10 @@ def build_bert_model_with_mlm():
 def build_bert_model_with_lm():
     """带lm的bert模型
     """
-    bert = build_bert_model(config_path,
-                            with_mlm='linear',
-                            application='lm',
-                            return_keras_model=False)
+    bert = build_transformer_model(config_path,
+                                   with_mlm='linear',
+                                   application='lm',
+                                   return_keras_model=False)
     token_ids = bert.model.input[0]
     proba = bert.model.output
 
