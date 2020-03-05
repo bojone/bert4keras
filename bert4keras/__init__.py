@@ -4,7 +4,7 @@ import sys
 import warnings
 
 
-__version__ = '0.5.7'
+__version__ = '0.5.8'
 
 
 class Legacy1:
