@@ -19,9 +19,8 @@ class Legacy:
         """使得 from bert4keras.bert import xxx
         等价于from bert4keras.models import xxx
         """
-        warnings.warn(
-            'bert4keras.bert has been renamed as bert4keras.models,' +
-            ' and bert4keras.bert will be removed in future version.')
+        warnings.warn('bert4keras.bert has been renamed as bert4keras.models.')
+        warnings.warn('please use bert4keras.models.')
         return getattr(self.models, attr)
 
 
