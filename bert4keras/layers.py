@@ -893,6 +893,7 @@ custom_objects = {
     'MultiHeadAttention': MultiHeadAttention,
     'LayerNormalization': LayerNormalization,
     'PositionEmbedding': PositionEmbedding,
+    'RelativePositionEmbedding': RelativePositionEmbedding,
     'GroupDense': GroupDense,
     'FeedForward': FeedForward,
     'EmbeddingDense': EmbeddingDense,
