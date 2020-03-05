@@ -380,6 +380,58 @@ class PositionEmbedding(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
+class RelativePositionEmbedding(Layer):
+    """相对位置编码
+    来自论文：https://arxiv.org/abs/1803.02155
+    """
+    def __init__(self,
+                 input_dim,
+                 output_dim,
+                 embeddings_initializer='zeros',
+                 **kwargs):
+        super(RelativePositionEmbedding, self).__init__(**kwargs)
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.embeddings_initializer = initializers.get(embeddings_initializer)
+
+    def build(self, input_shape):
+        super(RelativePositionEmbedding, self).build(input_shape)
+        self.embeddings = self.add_weight(
+            name='embeddings',
+            shape=(self.input_dim, self.output_dim),
+            initializer=self.embeddings_initializer,
+        )
+
+    def call(self, inputs):
+        pos_ids = self.compute_position_ids(inputs)
+        pos_ids = K.expand_dims(pos_ids, 0)
+        return K.gather(self.embeddings, pos_ids)
+
+    def compute_position_ids(self, inputs):
+        q, v = inputs
+        max_position = (self.input_dim - 1) // 2
+        q_idxs = K.arange(0, K.shape(q)[1], dtype='int32')
+        q_idxs = K.expand_dims(q_idxs, 1)
+        v_idxs = K.arange(0, K.shape(v)[1], dtype='int32')
+        v_idxs = K.expand_dims(v_idxs, 0)
+        pos_ids = v_idxs - q_idxs
+        pos_ids = K.clip(pos_ids, -max_position, max_position)
+        pos_ids = pos_ids + max_position
+        return pos_ids
+
+    def compute_output_shape(self, input_shape):
+        return (None, None, None)
+
+    def get_config(self):
+        config = {
+            'input_dim': self.input_dim,
+            'output_dim': self.output_dim,
+            'embeddings_initializer': initializers.serialize(self.embeddings_initializer),
+        }
+        base_config = super(RelativePositionEmbedding, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+
 class GroupDense(Layer):
     """分组全连接
     输入输出跟普通Dense一样，但参数更少，速度更快。
