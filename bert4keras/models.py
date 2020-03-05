@@ -174,7 +174,7 @@ class BERT(Transformer):
         return [x_in, s_in]
 
     def prepare_embeddings(self, inputs):
-        """BERT是embedding是token、position、segment三者embedding之和
+        """BERT的embedding是token、position、segment三者embedding之和
         """
         x, s, layer_norm_conds = inputs
         z = layer_norm_conds[0]
@@ -575,7 +575,7 @@ class NEZHA(BERT):
     链接：https://arxiv.org/abs/1909.00204
     """
     def prepare_embeddings(self, inputs):
-        """NEZHA是embedding是token、segment两者embedding之和
+        """NEZHA的embedding是token、segment两者embedding之和
         """
         x, s, layer_norm_conds = inputs
         z = layer_norm_conds[0]
