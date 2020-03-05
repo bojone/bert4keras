@@ -52,6 +52,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 
 ## 更新
 - <strong>2020.03.05</strong>: `application='seq2seq'`改名为`application='unilm'`。
+- <strong>2020.03.05</strong>: `build_bert_model`更名为`build_transformer_model`。
 - <strong>2020.03.05</strong>: 重写`models.py`结构。
 - <strong>2020.03.04</strong>: 将`bert.py`更名为`models.py`。
 - <strong>2020.03.02</strong>: 重构mask机制（用回Keras自带的mask机制），以便更好地编写更复杂的应用。
