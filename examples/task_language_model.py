@@ -6,8 +6,8 @@ import glob, re
 import numpy as np
 from tqdm import tqdm
 from bert4keras.backend import keras, K
-from bert4keras.models import build_bert_model
-from bert4keras.tokenizer import Tokenizer, load_vocab
+from bert4keras.models import build_transformer_model
+from bert4keras.tokenizers import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, open
 from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
@@ -92,7 +92,7 @@ class data_generator(DataGenerator):
                 batch_token_ids, batch_segment_ids = [], []
 
 
-model = build_bert_model(
+model = build_transformer_model(
     config_path,
     checkpoint_path,
     application='lm',

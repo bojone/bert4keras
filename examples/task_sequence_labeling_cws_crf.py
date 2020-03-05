@@ -6,8 +6,8 @@
 import re, os, json
 import numpy as np
 from bert4keras.backend import keras, K
-from bert4keras.models import build_bert_model
-from bert4keras.tokenizer import Tokenizer
+from bert4keras.models import build_transformer_model
+from bert4keras.tokenizers import Tokenizer
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, DataGenerator
 from bert4keras.snippets import open
@@ -98,7 +98,7 @@ class data_generator(DataGenerator):
 """
 后面的代码使用的是bert类型的模型，如果你用的是albert，那么前几行请改为：
 
-model = build_bert_model(
+model = build_transformer_model(
     config_path,
     checkpoint_path,
     model='albert',
@@ -108,7 +108,7 @@ output_layer = 'Transformer-1-FeedForward-Norm'
 output = model.get_layer(output_layer).get_output_at(bert_layers - 1)
 """
 
-model = build_bert_model(
+model = build_transformer_model(
     config_path,
     checkpoint_path,
 )

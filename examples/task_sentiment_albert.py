@@ -3,8 +3,8 @@
 
 import numpy as np
 from bert4keras.backend import keras, set_gelu
-from bert4keras.tokenizer import Tokenizer
-from bert4keras.models import build_bert_model
+from bert4keras.tokenizers import Tokenizer
+from bert4keras.models import build_transformer_model
 from bert4keras.optimizers import Adam, extend_with_piecewise_linear_lr
 from bert4keras.snippets import sequence_padding, DataGenerator
 from bert4keras.snippets import open
@@ -62,7 +62,7 @@ class data_generator(DataGenerator):
 
 
 # 加载预训练模型
-bert = build_bert_model(
+bert = build_transformer_model(
     config_path=config_path,
     checkpoint_path=checkpoint_path,
     model='albert',
