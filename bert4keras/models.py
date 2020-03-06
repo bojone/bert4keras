@@ -387,7 +387,7 @@ class BERT(Transformer):
         for i in range(self.num_hidden_layers):
             prefix = 'bert/encoder/layer_%d/' % i
             mapping.update({
-                'Transformer-%d-MultiHeadSelfAttention' % (i + 1): [
+                'Transformer-%d-MultiHeadSelfAttention' % i: [
                     prefix + 'attention/self/query/kernel',
                     prefix + 'attention/self/query/bias',
                     prefix + 'attention/self/key/kernel',
@@ -397,17 +397,17 @@ class BERT(Transformer):
                     prefix + 'attention/output/dense/kernel',
                     prefix + 'attention/output/dense/bias',
                 ],
-                'Transformer-%d-MultiHeadSelfAttention-Norm' % (i + 1): [
+                'Transformer-%d-MultiHeadSelfAttention-Norm' % i: [
                     prefix + 'attention/output/LayerNorm/beta',
                     prefix + 'attention/output/LayerNorm/gamma',
                 ],
-                'Transformer-%d-FeedForward' % (i + 1): [
+                'Transformer-%d-FeedForward' % i: [
                     prefix + 'intermediate/dense/kernel',
                     prefix + 'intermediate/dense/bias',
                     prefix + 'output/dense/kernel',
                     prefix + 'output/dense/bias',
                 ],
-                'Transformer-%d-FeedForward-Norm' % (i + 1): [
+                'Transformer-%d-FeedForward-Norm' % i: [
                     prefix + 'output/LayerNorm/beta',
                     prefix + 'output/LayerNorm/gamma',
                 ],
@@ -539,7 +539,7 @@ class ALBERT_Unshared(BERT):
         prefix = 'bert/encoder/transformer/group_0/inner_group_0/'
         for i in range(self.num_hidden_layers):
             mapping.update({
-                'Transformer-%d-MultiHeadSelfAttention' % (i + 1): [
+                'Transformer-%d-MultiHeadSelfAttention' % i: [
                     prefix + 'attention_1/self/query/kernel',
                     prefix + 'attention_1/self/query/bias',
                     prefix + 'attention_1/self/key/kernel',
@@ -549,17 +549,17 @@ class ALBERT_Unshared(BERT):
                     prefix + 'attention_1/output/dense/kernel',
                     prefix + 'attention_1/output/dense/bias',
                 ],
-                'Transformer-%d-MultiHeadSelfAttention-Norm' % (i + 1): [
+                'Transformer-%d-MultiHeadSelfAttention-Norm' % i: [
                     prefix + 'LayerNorm/beta',
                     prefix + 'LayerNorm/gamma',
                 ],
-                'Transformer-%d-FeedForward' % (i + 1): [
+                'Transformer-%d-FeedForward' % i: [
                     prefix + 'ffn_1/intermediate/dense/kernel',
                     prefix + 'ffn_1/intermediate/dense/bias',
                     prefix + 'ffn_1/intermediate/output/dense/kernel',
                     prefix + 'ffn_1/intermediate/output/dense/bias',
                 ],
-                'Transformer-%d-FeedForward-Norm' % (i + 1): [
+                'Transformer-%d-FeedForward-Norm' % i: [
                     prefix + 'LayerNorm_1/beta',
                     prefix + 'LayerNorm_1/gamma',
                 ],
