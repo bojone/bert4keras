@@ -689,7 +689,7 @@ class NEZHA(BERT):
         x = layers[6]([xi, x])
         x = layers[7](self.simplify([x, z]))
 
-        if self.main_count == self.num_hidden_layers:
+        if self.main_count + 1 == self.num_hidden_layers:
             return [x, layer_norm_conds]
         else:
             return [x, p, layer_norm_conds]
