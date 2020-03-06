@@ -349,7 +349,6 @@ class RelativePositionEmbedding(Layer):
 
     def call(self, inputs):
         pos_ids = self.compute_position_ids(inputs)
-        pos_ids = K.expand_dims(pos_ids, 0)
         return K.gather(self.embeddings, pos_ids)
 
     def compute_position_ids(self, inputs):
@@ -365,7 +364,7 @@ class RelativePositionEmbedding(Layer):
         return pos_ids
 
     def compute_output_shape(self, input_shape):
-        return (None, None, None)
+        return (None, None)
 
     def get_config(self):
         config = {
