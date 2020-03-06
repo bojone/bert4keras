@@ -575,7 +575,8 @@ class NEZHA(BERT):
     链接：https://arxiv.org/abs/1909.00204
     """
     def prepare_embeddings(self, inputs):
-        """NEZHA的embedding是token、segment两者embedding之和
+        """NEZHA的embedding是token、segment两者embedding之和，
+        并把relative position embedding准备好，待attention使用。
         """
         x, s, layer_norm_conds = inputs
         z = layer_norm_conds[0]
@@ -602,7 +603,25 @@ class NEZHA(BERT):
                       kernel_initializer=self.initializer,
                       name='Embedding-Mapping')(x)
 
-        return [x, layer_norm_conds]
+        def sinusoidal(shape, dtype=None):
+            """NEZHA直接使用Sin-Cos形式的位置向量
+            """
+            vocab_size, depth = shape
+            embeddings = np.zeros(shape)
+            for pos in range(vocab_size):
+                for i in range(depth // 2):
+                    theta = pos / np.power(10000, 2. * i / depth)
+                    embeddings[pos, 2 * i] = np.sin(theta)
+                    embeddings[pos, 2 * i + 1] = np.cos(theta)
+            return embeddings
+
+        p = RelativePositionEmbedding(input_dim=2 * 64 + 1,
+                                      output_dim=self.attention_head_size,
+                                      embeddings_initializer=sinusoidal,
+                                      name='Embedding-Relative-Position',
+                                      trainable=False)([x, x])
+
+        return [x, p, layer_norm_conds]
 
     def prepare_main_layers(self, inputs):
         """NEZHA的主体是基于Self-Attention的模块
@@ -612,7 +631,7 @@ class NEZHA(BERT):
             self.main_count = 0
         self.main_count += 1
 
-        x, layer_norm_conds = inputs
+        x, p, layer_norm_conds = inputs
         z = layer_norm_conds[0]
 
         attention_name = 'Transformer-%d-MultiHeadSelfAttention' % self.main_count
@@ -623,7 +642,6 @@ class NEZHA(BERT):
             MultiHeadAttention(heads=self.num_attention_heads,
                                head_size=self.attention_head_size,
                                kernel_initializer=self.initializer,
-                               max_relative_position=64,
                                name=attention_name),
             Dropout(rate=self.dropout_rate,
                     name='%s-Dropout' % attention_name),
@@ -648,14 +666,14 @@ class NEZHA(BERT):
         ]
 
         # Self Attention
-        xi, x = x, [x, x, x]
+        xi, x = x, [x, x, x, p]
         if attention_mask is None:
-            x = layers[0](x)
+            x = layers[0](x, p_bias='typical_relative')
         elif attention_mask is 'history_only':
-            x = layers[0](x, a_mask=True)
+            x = layers[0](x, a_mask=True, p_bias='typical_relative')
         else:
-            x.append(attention_mask)
-            x = layers[0](x, a_mask=True)
+            x.insert(3, attention_mask)
+            x = layers[0](x, a_mask=True, p_bias='typical_relative')
         if self.dropout_rate > 0:
             x = layers[1](x)
         x = layers[2]([xi, x])
@@ -669,7 +687,10 @@ class NEZHA(BERT):
         x = layers[6]([xi, x])
         x = layers[7](self.simplify([x, z]))
 
-        return [x, layer_norm_conds]
+        if self.main_count == self.num_hidden_layers:
+            return [x, layer_norm_conds]
+        else:
+            return [x, p, layer_norm_conds]
 
 
 def extend_with_language_model(BaseModel):
