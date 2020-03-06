@@ -376,80 +376,17 @@ class RelativePositionEmbedding(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
-class GroupDense(Layer):
-    """分组全连接
-    输入输出跟普通Dense一样，但参数更少，速度更快。
-    """
-    def __init__(self,
-                 units,
-                 groups=2,
-                 activation='linear',
-                 use_bias=True,
-                 kernel_initializer='glorot_uniform',
-                 **kwargs):
-        super(GroupDense, self).__init__(**kwargs)
-        self.units = units
-        self.groups = groups
-        self.activation = activations.get(activation)
-        self.use_bias = use_bias
-        self.kernel_initializer = initializers.get(kernel_initializer)
-
-    def build(self, input_shape):
-        super(GroupDense, self).build(input_shape)
-        input_dim = input_shape[-1]
-        if not isinstance(input_dim, int):
-            input_dim = input_dim.value
-        assert input_dim % self.groups == 0
-        assert self.units % self.groups == 0
-        self.kernel = self.add_weight(name='kernel',
-                                      shape=(input_dim // self.groups,
-                                             self.units // self.groups,
-                                             self.groups),
-                                      initializer=self.kernel_initializer)
-        if self.use_bias:
-            self.bias = self.add_weight(name='bias',
-                                        shape=(self.units, ),
-                                        initializer='zeros')
-
-    def call(self, inputs):
-        ndim, shape = K.ndim(inputs), K.shape(inputs)
-        shape = [shape[i] for i in range(ndim)]
-        inputs = K.reshape(inputs, shape[:-1] + [shape[-1] // self.groups, self.groups])
-        outputs = tf.einsum('...ig,ijg->...gj', inputs, self.kernel)
-        outputs = K.reshape(outputs, shape[:-1] + [self.units])
-        if self.use_bias:
-            outputs = K.bias_add(outputs, self.bias)
-        outputs = self.activation(outputs)
-        return outputs
-
-    def compute_output_shape(self, input_shape):
-        return input_shape[:-1] + (self.units, )
-
-    def get_config(self):
-        config = {
-            'units': self.units,
-            'groups': self.groups,
-            'activation': activations.serialize(self.activation),
-            'use_bias': self.use_bias,
-            'kernel_initializer': initializers.serialize(self.kernel_initializer),
-        }
-        base_config = super(GroupDense, self).get_config()
-        return dict(list(base_config.items()) + list(config.items()))
-
-
 class FeedForward(Layer):
     """FeedForward层，其实就是两个Dense层的叠加
     """
     def __init__(self,
                  units,
-                 groups=1,
                  activation='relu',
                  use_bias=True,
                  kernel_initializer='glorot_uniform',
                  **kwargs):
         super(FeedForward, self).__init__(**kwargs)
         self.units = units
-        self.groups = groups
         self.activation = activations.get(activation)
         self.use_bias = use_bias
         self.kernel_initializer = initializers.get(kernel_initializer)
@@ -460,24 +397,13 @@ class FeedForward(Layer):
         if not isinstance(output_dim, int):
             output_dim = output_dim.value
 
-        if self.groups is None or self.groups == 1:
-            self.dense_1 = Dense(units=self.units,
-                                 activation=self.activation,
-                                 use_bias=self.use_bias,
-                                 kernel_initializer=self.kernel_initializer)
-            self.dense_2 = Dense(units=output_dim,
-                                 use_bias=self.use_bias,
-                                 kernel_initializer=self.kernel_initializer)
-        else:
-            self.dense_1 = GroupDense(units=self.units,
-                                      groups=self.groups,
-                                      activation=self.activation,
-                                      use_bias=self.use_bias,
-                                      kernel_initializer=self.kernel_initializer)
-            self.dense_2 = GroupDense(units=output_dim,
-                                      groups=self.groups,
-                                      use_bias=self.use_bias,
-                                      kernel_initializer=self.kernel_initializer)
+        self.dense_1 = Dense(units=self.units,
+                             activation=self.activation,
+                             use_bias=self.use_bias,
+                             kernel_initializer=self.kernel_initializer)
+        self.dense_2 = Dense(units=output_dim,
+                             use_bias=self.use_bias,
+                             kernel_initializer=self.kernel_initializer)
 
     def call(self, inputs):
         x = inputs
