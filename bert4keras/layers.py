@@ -364,7 +364,7 @@ class RelativePositionEmbedding(Layer):
         return pos_ids
 
     def compute_output_shape(self, input_shape):
-        return (None, None)
+        return (None, None, self.output_dim)
 
     def compute_mask(self, inputs, mask):
         return mask[0]
