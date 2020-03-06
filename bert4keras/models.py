@@ -214,7 +214,8 @@ class BERT(Transformer):
         """
         if not hasattr(self, 'main_count'):
             self.main_count = 0
-        self.main_count += 1
+        else:
+            self.main_count += 1
 
         x, layer_norm_conds = inputs
         z = layer_norm_conds[0]
@@ -629,7 +630,8 @@ class NEZHA(BERT):
         """
         if not hasattr(self, 'main_count'):
             self.main_count = 0
-        self.main_count += 1
+        else:
+            self.main_count += 1
 
         x, p, layer_norm_conds = inputs
         z = layer_norm_conds[0]
