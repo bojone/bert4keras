@@ -104,7 +104,7 @@ model = build_transformer_model(
     model='albert',
 )
 
-output_layer = 'Transformer-1-FeedForward-Norm'
+output_layer = 'Transformer-FeedForward-Norm'
 output = model.get_layer(output_layer).get_output_at(bert_layers - 1)
 """
 
@@ -113,7 +113,7 @@ model = build_transformer_model(
     checkpoint_path,
 )
 
-output_layer = 'Transformer-%s-FeedForward-Norm' % bert_layers
+output_layer = 'Transformer-%s-FeedForward-Norm' % (bert_layers - 1)
 output = model.get_layer(output_layer).output
 output = Dense(num_labels)(output)
 CRF = ConditionalRandomField(lr_multiplier=crf_lr_multiplier)
