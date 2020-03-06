@@ -353,12 +353,14 @@ class RelativePositionEmbedding(Layer):
 
     def compute_position_ids(self, inputs):
         q, v = inputs
-        max_position = (self.input_dim - 1) // 2
+        # 计算位置差
         q_idxs = K.arange(0, K.shape(q)[1], dtype='int32')
         q_idxs = K.expand_dims(q_idxs, 1)
         v_idxs = K.arange(0, K.shape(v)[1], dtype='int32')
         v_idxs = K.expand_dims(v_idxs, 0)
         pos_ids = v_idxs - q_idxs
+        # 后处理操作
+        max_position = (self.input_dim - 1) // 2
         pos_ids = K.clip(pos_ids, -max_position, max_position)
         pos_ids = pos_ids + max_position
         return pos_ids
@@ -376,6 +378,63 @@ class RelativePositionEmbedding(Layer):
             'embeddings_initializer': initializers.serialize(self.embeddings_initializer),
         }
         base_config = super(RelativePositionEmbedding, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+
+class RelativePositionEmbeddingT5(RelativePositionEmbedding):
+    """Google T5的相对位置编码
+    来自论文：https://arxiv.org/abs/1910.10683
+    """
+    def __init__(self,
+                 input_dim,
+                 output_dim,
+                 max_distance=128,
+                 bidirectional=True,
+                 embeddings_initializer='zeros',
+                 **kwargs):
+        super(RelativePositionEmbeddingT5,
+              self).__init__(input_dim, output_dim, **kwargs)
+        self.max_distance = max_distance
+        self.bidirectional = bidirectional
+
+    def compute_position_ids(self, inputs):
+        """T5的相对位置分桶（直接翻译自官方T5源码）
+        """
+        q, v = inputs
+        # 计算位置差
+        q_idxs = K.arange(0, K.shape(q)[1], dtype='int32')
+        q_idxs = K.expand_dims(q_idxs, 1)
+        v_idxs = K.arange(0, K.shape(v)[1], dtype='int32')
+        v_idxs = K.expand_dims(v_idxs, 0)
+        pos_ids = v_idxs - q_idxs
+        # 后处理操作
+        num_buckets, max_distance = self.input_dim, self.max_distance
+        ret = 0
+        n = -pos_ids
+        if self.bidirectional:
+            num_buckets //= 2
+            ret += K.cast(K.less(n, 0), 'int32') * num_buckets
+            n = K.abs(n)
+        else:
+            n = K.maximum(n, 0)
+        # now n is in the range [0, inf)
+        max_exact = num_buckets // 2
+        is_small = K.less(n, max_exact)
+        val_if_large = max_exact + K.cast(
+            K.log(K.cast(n, K.floatx()) / max_exact) /
+            np.log(max_distance / max_exact) * (num_buckets - max_exact),
+            'int32',
+        )
+        val_if_large = K.minimum(val_if_large, num_buckets - 1)
+        ret += K.switch(is_small, n, val_if_large)
+        return ret
+
+    def get_config(self):
+        config = {
+            'max_distance': self.max_distance,
+            'bidirectional': self.bidirectional,
+        }
+        base_config = super(RelativePositionEmbeddingT5, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
 
