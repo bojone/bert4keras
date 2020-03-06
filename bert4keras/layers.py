@@ -366,6 +366,9 @@ class RelativePositionEmbedding(Layer):
     def compute_output_shape(self, input_shape):
         return (None, None)
 
+    def compute_mask(self, inputs, mask):
+        return mask[0]
+
     def get_config(self):
         config = {
             'input_dim': self.input_dim,
