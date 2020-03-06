@@ -132,8 +132,12 @@ class MultiHeadAttention(Layer):
         if p_bias == 'typical_relative':
             pos_embeddings = inputs[n]
             a = a + tf.einsum('bjhd,jkd->bhjk', qw, pos_embeddings)
+        elif p_bias == 't5_relative':
+            pos_embeddings = K.permute_dimensions(inputs[n], (2, 0, 1))
+            a = a + K.expand_dims(pos_embeddings, 0)
         # Attention（续）
-        a = a / self.key_size**0.5
+        if p_bias != 't5_relative':  # T5不用缩放
+            a = a / self.key_size**0.5
         a = sequence_masking(a, v_mask, 1, -1)
         if a_mask is not None:
             if is_string(a_mask):
