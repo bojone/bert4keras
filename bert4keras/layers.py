@@ -68,20 +68,16 @@ class MultiHeadAttention(Layer):
                  heads,
                  head_size,
                  key_size=None,
-                 pool_size=None,
                  use_bias=True,
                  kernel_initializer='glorot_uniform',
-                 max_relative_position=None,
                  **kwargs):
         super(MultiHeadAttention, self).__init__(**kwargs)
         self.heads = heads
         self.head_size = head_size
         self.out_dim = heads * head_size
         self.key_size = key_size or head_size
-        self.pool_size = pool_size or 1
         self.use_bias = use_bias
         self.kernel_initializer = initializers.get(kernel_initializer)
-        self.max_relative_position = max_relative_position
 
     def build(self, input_shape):
         super(MultiHeadAttention, self).build(input_shape)
@@ -98,28 +94,7 @@ class MultiHeadAttention(Layer):
                              use_bias=self.use_bias,
                              kernel_initializer=self.kernel_initializer)
 
-        if self.max_relative_position is not None:
-            if self.head_size != self.key_size:
-                raise ValueError('head_size must be equal to key_size ' +
-                                 'while use relative position embeddings.')
-
-            def initializer(shape, dtype=None):
-                vocab_size, depth = shape
-                embeddings = np.zeros(shape)
-                for pos in range(vocab_size):
-                    for i in range(depth // 2):
-                        theta = pos / np.power(10000, 2. * i / depth)
-                        embeddings[pos, 2 * i] = np.sin(theta)
-                        embeddings[pos, 2 * i + 1] = np.cos(theta)
-                return embeddings
-
-            shape = (2 * self.max_relative_position + 1, self.head_size)
-            self.relative_embeddings = self.add_weight(name='relative_embeddings',
-                                                       shape=shape,
-                                                       initializer=initializer,
-                                                       trainable=False)
-
-    def call(self, inputs, mask=None, a_mask=None):
+    def call(self, inputs, mask=None, a_mask=None, p_bias=None):
         """实现多头注意力
         q_mask: 对输入的query序列的mask。
                 主要是将输出结果的padding部分置0。
@@ -127,9 +102,11 @@ class MultiHeadAttention(Layer):
                 主要是防止attention读取到padding信息。
         a_mask: 对attention矩阵的mask。
                 不同的attention mask对应不同的应用。
+        p_bias: 在attention里的位置偏置。
+                一般用来指定相对位置编码的种类。
         """
         q, k, v = inputs[:3]
-        q_mask, v_mask = None, None
+        q_mask, v_mask, n = None, None, 3
         if mask is not None:
             if mask[0] is not None:
                 q_mask = K.cast(mask[0], K.floatx())
@@ -139,27 +116,8 @@ class MultiHeadAttention(Layer):
             if len(inputs) == 3:
                 a_mask = 'history_only'
             else:
-                a_mask = inputs[3]
-        # Pooling
-        if self.pool_size > 1:
-            is_self_attention = (q is k is v)
-            q_in_len = K.shape(q)[1]
-            q = sequence_masking(q, q_mask, 0)
-            q = divisible_temporal_padding(q, self.pool_size)
-            q = pool1d(q, self.pool_size, self.pool_size, pool_mode='avg')
-            if is_self_attention:
-                k = v = q
-            else:
-                k = sequence_masking(k, v_mask, 0)
-                k = divisible_temporal_padding(k, self.pool_size)
-                k = pool1d(k, self.pool_size, self.pool_size, pool_mode='avg')
-                v = sequence_masking(v, v_mask, 0)
-                v = divisible_temporal_padding(v, self.pool_size)
-                v = pool1d(v, self.pool_size, self.pool_size, pool_mode='avg')
-            if v_mask is not None:
-                v_mask = v_mask[:, ::self.pool_size]
-            if a_mask is not None and not is_string(a_mask):
-                a_mask = a_mask[..., ::self.pool_size, ::self.pool_size]
+                a_mask = inputs[n]
+                n += 1
         # 线性变换
         qw = self.q_dense(q)
         kw = self.k_dense(k)
@@ -170,17 +128,9 @@ class MultiHeadAttention(Layer):
         vw = K.reshape(vw, (-1, K.shape(v)[1], self.heads, self.head_size))
         # Attention
         a = tf.einsum('bjhd,bkhd->bhjk', qw, kw)
-        # 相对位置编码
-        if self.max_relative_position is not None:
-            q_idxs = K.arange(0, K.shape(q)[1], dtype='int32')
-            q_idxs = K.expand_dims(q_idxs, 1)
-            v_idxs = K.arange(0, K.shape(v)[1], dtype='int32')
-            v_idxs = K.expand_dims(v_idxs, 0)
-            pos_ids = v_idxs - q_idxs
-            pos_ids = K.clip(pos_ids, -self.max_relative_position,
-                             self.max_relative_position)
-            pos_ids = pos_ids + self.max_relative_position
-            pos_embeddings = K.gather(self.relative_embeddings, pos_ids)
+        # 处理位置编码
+        if p_bias == 'typical_relative':
+            pos_embeddings = inputs[n]
             a = a + tf.einsum('bjhd,jkd->bhjk', qw, pos_embeddings)
         # Attention（续）
         a = a / self.key_size**0.5
@@ -195,13 +145,10 @@ class MultiHeadAttention(Layer):
         a = K.softmax(a)
         # 完成输出
         o = tf.einsum('bhjk,bkhd->bjhd', a, vw)
-        if self.max_relative_position is not None:
+        if p_bias == 'typical_relative':
             o = o + tf.einsum('bhjk,jkd->bjhd', a, pos_embeddings)
         o = K.reshape(o, (-1, K.shape(o)[1], self.out_dim))
         o = self.o_dense(o)
-        # 恢复长度
-        if self.pool_size > 1:
-            o = K.repeat_elements(o, self.pool_size, 1)[:, :q_in_len]
         # 返回结果
         o = sequence_masking(o, q_mask, 0)
         return o
@@ -217,10 +164,8 @@ class MultiHeadAttention(Layer):
             'heads': self.heads,
             'head_size': self.head_size,
             'key_size': self.key_size,
-            'pool_size': self.pool_size,
             'use_bias': self.use_bias,
             'kernel_initializer': initializers.serialize(self.kernel_initializer),
-            'max_relative_position': self.max_relative_position,
         }
         base_config = super(MultiHeadAttention, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
@@ -502,7 +447,6 @@ class FeedForward(Layer):
                  activation='relu',
                  use_bias=True,
                  kernel_initializer='glorot_uniform',
-                 pool_size=None,
                  **kwargs):
         super(FeedForward, self).__init__(**kwargs)
         self.units = units
@@ -510,7 +454,6 @@ class FeedForward(Layer):
         self.activation = activations.get(activation)
         self.use_bias = use_bias
         self.kernel_initializer = initializers.get(kernel_initializer)
-        self.pool_size = pool_size or 1
 
     def build(self, input_shape):
         super(FeedForward, self).build(input_shape)
@@ -537,23 +480,10 @@ class FeedForward(Layer):
                                       use_bias=self.use_bias,
                                       kernel_initializer=self.kernel_initializer)
 
-    def call(self, inputs, mask=None):
+    def call(self, inputs):
         x = inputs
-        # Pooling
-        if self.pool_size > 1:
-            if mask is not None:
-                mask = K.cast(mask, K.floatx())
-            x_in_len = K.shape(x)[1]
-            x = sequence_masking(x, mask, 0)
-            x = divisible_temporal_padding(x, self.pool_size)
-            x = pool1d(x, self.pool_size, self.pool_size, pool_mode='avg')
-        # 执行FFN
         x = self.dense_1(x)
         x = self.dense_2(x)
-        # 恢复长度
-        if self.pool_size > 1:
-            x = K.repeat_elements(x, self.pool_size, 1)[:, :x_in_len]
-        # 返回结果
         return x
 
     def get_config(self):
@@ -561,7 +491,6 @@ class FeedForward(Layer):
             'units': self.units,
             'activation': activations.serialize(self.activation),
             'kernel_initializer': initializers.serialize(self.kernel_initializer),
-            'pool_size': self.pool_size,
         }
         base_config = super(FeedForward, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
