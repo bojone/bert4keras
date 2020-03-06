@@ -815,6 +815,7 @@ custom_objects = {
     'LayerNormalization': LayerNormalization,
     'PositionEmbedding': PositionEmbedding,
     'RelativePositionEmbedding': RelativePositionEmbedding,
+    'RelativePositionEmbeddingT5': RelativePositionEmbeddingT5,
     'FeedForward': FeedForward,
     'EmbeddingDense': EmbeddingDense,
     'ConditionalRandomField': ConditionalRandomField,
