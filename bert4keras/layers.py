@@ -415,6 +415,7 @@ class FeedForward(Layer):
         config = {
             'units': self.units,
             'activation': activations.serialize(self.activation),
+            'use_bias': self.use_bias,
             'kernel_initializer': initializers.serialize(self.kernel_initializer),
         }
         base_config = super(FeedForward, self).get_config()
