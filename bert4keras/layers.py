@@ -749,7 +749,6 @@ custom_objects = {
     'LayerNormalization': LayerNormalization,
     'PositionEmbedding': PositionEmbedding,
     'RelativePositionEmbedding': RelativePositionEmbedding,
-    'GroupDense': GroupDense,
     'FeedForward': FeedForward,
     'EmbeddingDense': EmbeddingDense,
     'ConditionalRandomField': ConditionalRandomField,
