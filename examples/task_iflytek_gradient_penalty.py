@@ -96,13 +96,13 @@ def sparse_categorical_crossentropy(y_true, y_pred):
     return K.categorical_crossentropy(y_true, y_pred)
 
 
-def loss_with_gradient_penalty(y_true, y_pred):
+def loss_with_gradient_penalty(y_true, y_pred, epsilon=1):
     """带梯度惩罚的loss
     """
     loss = K.mean(sparse_categorical_crossentropy(y_true, y_pred))
     embeddings = search_layer(y_pred, 'Embedding-Token').embeddings
     gp = K.sum(K.gradients(loss, [embeddings])[0].values**2)
-    return loss + 0.5 * gp
+    return loss + 0.5 * epsilon * gp
 
 
 model.compile(
