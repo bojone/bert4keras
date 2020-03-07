@@ -794,8 +794,10 @@ def extend_with_unified_language_model(BaseModel):
                     a_mask = (1 - s_ex13) * (1 - s_ex12) + s_ex13 * a_mask
                     return a_mask
 
-                self.attention_mask = Lambda(
-                    unilm_mask, name='Attention-Mask')(self.inputs[1])
+                self.attention_mask = self.call(inputs=self.inputs[1],
+                                                layer=Lambda,
+                                                function=unilm_mask,
+                                                name='Attention-Mask')
 
             return self.attention_mask
 
