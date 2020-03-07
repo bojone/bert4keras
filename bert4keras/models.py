@@ -38,6 +38,7 @@ class Transformer(object):
         self.layers = {}
 
     def build(self,
+              inputs=None,
               layer_norm_cond=None,
               layer_norm_cond_hidden_size=None,
               layer_norm_cond_hidden_act=None,
@@ -47,7 +48,7 @@ class Transformer(object):
         用来实现以“固定长度向量”为条件的条件Bert。
         """
         # Input
-        self.inputs = self.prepare_inputs()
+        self.inputs = inputs or self.prepare_inputs()
         outputs = self.inputs[:]
         if additional_input_layers is not None:
             if not isinstance(additional_input_layers, list):
@@ -102,7 +103,7 @@ class Transformer(object):
     def prepare_final_layers(self, inputs):
         raise NotImplementedError
 
-    def compute_attention_mask(self, idx):
+    def compute_attention_mask(self, index):
         """定义每一层的Attention Mask
         """
         return None
