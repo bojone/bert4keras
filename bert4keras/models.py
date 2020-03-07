@@ -21,6 +21,7 @@ class Transformer(object):
             dropout_rate,  # Dropout比例
             embedding_size=None,  # 是否指定embedding_size
             keep_tokens=None,  # 要保留的词ID列表
+            layers=None,  # 外部传入的Keras层
     ):
         if keep_tokens is None:
             self.vocab_size = vocab_size
@@ -35,10 +36,9 @@ class Transformer(object):
         self.hidden_act = hidden_act
         self.embedding_size = embedding_size or hidden_size
         self.keep_tokens = keep_tokens
-        self.layers = {}
+        self.layers = layers or {}
 
     def build(self,
-              inputs=None,
               layer_norm_cond=None,
               layer_norm_cond_hidden_size=None,
               layer_norm_cond_hidden_act=None,
@@ -48,7 +48,7 @@ class Transformer(object):
         用来实现以“固定长度向量”为条件的条件Bert。
         """
         # Input
-        self.inputs = inputs or self.prepare_inputs()
+        self.inputs = self.prepare_inputs()
         outputs = self.inputs[:]
         if additional_input_layers is not None:
             if not isinstance(additional_input_layers, list):
