@@ -35,6 +35,7 @@ class Transformer(object):
         self.hidden_act = hidden_act
         self.embedding_size = embedding_size or hidden_size
         self.keep_tokens = keep_tokens
+        self.layers = {}
 
     def build(self,
               layer_norm_cond=None,
@@ -63,12 +64,31 @@ class Transformer(object):
         outputs = self.prepare_embeddings(outputs)
         # Main
         for i in range(self.num_hidden_layers):
-            outputs = self.prepare_main_layers(outputs)
+            outputs = self.prepare_main_layers(outputs, i)
         # Final
         outputs = self.prepare_final_layers(outputs)
         self.outputs = outputs
         # Model
         self.model = keras.models.Model(self.inputs, self.outputs)
+
+    def call(self, inputs, layer=None, arguments=None, **kwargs):
+        """通过call调用层会自动重用同名层
+        inputs: 上一层的输出；
+        layer: 要调用的层类名；
+        arguments: 传递给layer.call的参数；
+        kwargs: 传递给层初始化的参数。
+        """
+        if layer is Dropout and self.dropout_rate == 0:
+            return inputs
+
+        arguments = arguments or {}
+        name = kwargs.get('name')
+        if name not in self.layers:
+            layer = layer(**kwargs)
+            name = layer.name
+            self.layers[name] = layer
+
+        return self.layers[name](inputs, **arguments)
 
     def prepare_inputs(self):
         raise NotImplementedError
@@ -76,7 +96,7 @@ class Transformer(object):
     def prepare_embeddings(self, inputs):
         raise NotImplementedError
 
-    def prepare_main_layers(self, inputs):
+    def prepare_main_layers(self, inputs, index):
         raise NotImplementedError
 
     def prepare_final_layers(self, inputs):
@@ -179,99 +199,109 @@ class BERT(Transformer):
         x, s, layer_norm_conds = inputs
         z = layer_norm_conds[0]
 
-        x = Embedding(input_dim=self.vocab_size,
+        x = self.call(inputs=x,
+                      layer=Embedding,
+                      input_dim=self.vocab_size,
                       output_dim=self.embedding_size,
                       embeddings_initializer=self.initializer,
                       mask_zero=True,
-                      name='Embedding-Token')(x)
-        s = Embedding(input_dim=2,
+                      name='Embedding-Token')
+        s = self.call(inputs=s,
+                      layer=Embedding,
+                      input_dim=2,
                       output_dim=self.embedding_size,
                       embeddings_initializer=self.initializer,
-                      name='Embedding-Segment')(s)
-        x = Add(name='Embedding-Token-Segment')([x, s])
-        x = PositionEmbedding(input_dim=self.max_position,
-                              output_dim=self.embedding_size,
-                              merge_mode='add',
-                              embeddings_initializer=self.initializer,
-                              name='Embedding-Position')(x)
-        x = LayerNormalization(conditional=(z is not None),
-                               hidden_units=layer_norm_conds[1],
-                               hidden_activation=layer_norm_conds[2],
-                               hidden_initializer=self.initializer,
-                               name='Embedding-Norm')(self.simplify([x, z]))
-        if self.dropout_rate > 0:
-            x = Dropout(rate=self.dropout_rate, name='Embedding-Dropout')(x)
+                      name='Embedding-Segment')
+        x = self.call(inputs=[x, s], layer=Add, name='Embedding-Token-Segment')
+        x = self.call(inputs=x,
+                      layer=PositionEmbedding,
+                      input_dim=self.max_position,
+                      output_dim=self.embedding_size,
+                      merge_mode='add',
+                      embeddings_initializer=self.initializer,
+                      name='Embedding-Position')
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='Embedding-Norm')
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='Embedding-Dropout')
         if self.embedding_size != self.hidden_size:
-            x = Dense(units=self.hidden_size,
-                      kernel_initializer=self.initializer,
-                      name='Embedding-Mapping')(x)
+            x = self.call(inputs=x,
+                          layer=Dense,
+                          units=self.hidden_size,
+                          kernel_initializer=self.initializer,
+                          name='Embedding-Mapping')
 
         return [x, layer_norm_conds]
 
-    def prepare_main_layers(self, inputs):
+    def prepare_main_layers(self, inputs, index):
         """BERT的主体是基于Self-Attention的模块
         顺序：Att --> Add --> LN --> FFN --> Add --> LN
         """
-        if not hasattr(self, 'main_count'):
-            self.main_count = 0
-        else:
-            self.main_count += 1
-
         x, layer_norm_conds = inputs
         z = layer_norm_conds[0]
 
-        attention_name = 'Transformer-%d-MultiHeadSelfAttention' % self.main_count
-        feed_forward_name = 'Transformer-%d-FeedForward' % self.main_count
-        attention_mask = self.compute_attention_mask(self.main_count)
-
-        layers = [
-            MultiHeadAttention(heads=self.num_attention_heads,
-                               head_size=self.attention_head_size,
-                               kernel_initializer=self.initializer,
-                               name=attention_name),
-            Dropout(rate=self.dropout_rate,
-                    name='%s-Dropout' % attention_name),
-            Add(name='%s-Add' % attention_name),
-            LayerNormalization(conditional=(z is not None),
-                               hidden_units=layer_norm_conds[1],
-                               hidden_activation=layer_norm_conds[2],
-                               hidden_initializer=self.initializer,
-                               name='%s-Norm' % attention_name),
-            FeedForward(units=self.intermediate_size,
-                        activation=self.hidden_act,
-                        kernel_initializer=self.initializer,
-                        name=feed_forward_name),
-            Dropout(rate=self.dropout_rate,
-                    name='%s-Dropout' % feed_forward_name),
-            Add(name='%s-Add' % feed_forward_name),
-            LayerNormalization(conditional=(z is not None),
-                               hidden_units=layer_norm_conds[1],
-                               hidden_activation=layer_norm_conds[2],
-                               hidden_initializer=self.initializer,
-                               name='%s-Norm' % feed_forward_name),
-        ]
+        attention_name = 'Transformer-%d-MultiHeadSelfAttention' % index
+        feed_forward_name = 'Transformer-%d-FeedForward' % index
+        attention_mask = self.compute_attention_mask(index)
 
         # Self Attention
-        xi, x = x, [x, x, x]
-        if attention_mask is None:
-            x = layers[0](x)
-        elif attention_mask is 'history_only':
-            x = layers[0](x, a_mask=True)
-        else:
-            x.append(attention_mask)
-            x = layers[0](x, a_mask=True)
-        if self.dropout_rate > 0:
-            x = layers[1](x)
-        x = layers[2]([xi, x])
-        x = layers[3](self.simplify([x, z]))
+        xi, x, arguments = x, [x, x, x], {'a_mask': None}
+        if attention_mask is not None:
+            arguments['a_mask'] = True
+            if attention_mask is not 'history_only':
+                x.append(attention_mask)
+
+        x = self.call(inputs=x,
+                      layer=MultiHeadAttention,
+                      arguments=arguments,
+                      heads=self.num_attention_heads,
+                      head_size=self.attention_head_size,
+                      kernel_initializer=self.initializer,
+                      name=attention_name)
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='%s-Dropout' % attention_name)
+        x = self.call(inputs=[xi, x],
+                      layer=Add,
+                      name='%s-Add' % attention_name)
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='%s-Norm' % attention_name)
 
         # Feed Forward
         xi = x
-        x = layers[4](x)
-        if self.dropout_rate > 0:
-            x = layers[5](x)
-        x = layers[6]([xi, x])
-        x = layers[7](self.simplify([x, z]))
+        x = self.call(inputs=x,
+                      layer=FeedForward,
+                      units=self.intermediate_size,
+                      activation=self.hidden_act,
+                      kernel_initializer=self.initializer,
+                      name=feed_forward_name)
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='%s-Dropout' % feed_forward_name)
+        x = self.call(inputs=[xi, x],
+                      layer=Add,
+                      name='%s-Add' % feed_forward_name)
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='%s-Norm' % feed_forward_name)
 
         return [x, layer_norm_conds]
 
@@ -285,36 +315,49 @@ class BERT(Transformer):
         if self.with_pool or self.with_nsp:
             # Pooler部分（提取CLS向量）
             x = outputs[0]
-            x = Lambda(lambda x: x[:, 0], name='Pooler')(x)
+            x = self.call(inputs=x,
+                          layer=Lambda,
+                          function=lambda x: x[:, 0],
+                          name='Pooler')
             pool_activation = 'tanh' if self.with_pool is True else self.with_pool
-            x = Dense(units=self.hidden_size,
-                      activation=pool_activation,
-                      kernel_initializer=self.initializer,
-                      name='Pooler-Dense')(x)
+            x = self.call(inputs=x,
+                          layer=Dense,
+                          units=self.hidden_size,
+                          activation=pool_activation,
+                          kernel_initializer=self.initializer,
+                          name='Pooler-Dense')
             if self.with_nsp:
                 # Next Sentence Prediction部分
-                x = Dense(units=2,
-                          activation='softmax',
-                          kernel_initializer=self.initializer,
-                          name='NSP-Proba')(x)
+                x = self.call(inputs=x,
+                              layer=Dense,
+                              units=2,
+                              activation='softmax',
+                              kernel_initializer=self.initializer,
+                              name='NSP-Proba')
             outputs.append(x)
 
         if self.with_mlm:
             # Masked Language Model部分
             x = outputs[0]
-            x = Dense(units=self.embedding_size,
-                      activation=self.hidden_act,
-                      kernel_initializer=self.initializer,
-                      name='MLM-Dense')(x)
-            x = LayerNormalization(conditional=(z is not None),
-                                   hidden_units=layer_norm_conds[1],
-                                   hidden_activation=layer_norm_conds[2],
-                                   hidden_initializer=self.initializer,
-                                   name='MLM-Norm')(self.simplify([x, z]))
+            x = self.call(inputs=x,
+                          layer=Dense,
+                          units=self.embedding_size,
+                          activation=self.hidden_act,
+                          kernel_initializer=self.initializer,
+                          name='MLM-Dense')
+            x = self.call(inputs=self.simplify([x, z]),
+                          layer=LayerNormalization,
+                          conditional=(z is not None),
+                          hidden_units=layer_norm_conds[1],
+                          hidden_activation=layer_norm_conds[2],
+                          hidden_initializer=self.initializer,
+                          name='MLM-Norm')
             mlm_activation = 'softmax' if self.with_mlm is True else self.with_mlm
-            x = EmbeddingDense(embedding_name='Embedding-Token',
-                               activation=mlm_activation,
-                               name='MLM-Proba')(x)
+            x = self.call(inputs=x,
+                          layer=EmbeddingDense,
+                          embedding_name='Embedding-Token',
+                          activation=mlm_activation,
+                          name='MLM-Proba')
             outputs.append(x)
 
         if len(outputs) == 1:
@@ -422,70 +465,68 @@ class BERT(Transformer):
 class ALBERT(BERT):
     """构建ALBERT模型
     """
-    def prepare_main_layers(self, inputs):
+    def prepare_main_layers(self, inputs, index):
         """ALBERT的主体是基于Self-Attention的模块
         顺序：Att --> Add --> LN --> FFN --> Add --> LN
         """
         x, layer_norm_conds = inputs
         z = layer_norm_conds[0]
 
-        if not hasattr(self, 'main_layers'):
-
-            attention_name = 'Transformer-MultiHeadSelfAttention'
-            feed_forward_name = 'Transformer-FeedForward'
-
-            self.main_layers = [
-                MultiHeadAttention(heads=self.num_attention_heads,
-                                   head_size=self.attention_head_size,
-                                   kernel_initializer=self.initializer,
-                                   name=attention_name),
-                Dropout(rate=self.dropout_rate,
-                        name='%s-Dropout' % attention_name),
-                Add(name='%s-Add' % attention_name),
-                LayerNormalization(conditional=(z is not None),
-                                   hidden_units=layer_norm_conds[1],
-                                   hidden_activation=layer_norm_conds[2],
-                                   hidden_initializer=self.initializer,
-                                   name='%s-Norm' % attention_name),
-                FeedForward(units=self.intermediate_size,
-                            activation=self.hidden_act,
-                            kernel_initializer=self.initializer,
-                            name=feed_forward_name),
-                Dropout(rate=self.dropout_rate,
-                        name='%s-Dropout' % feed_forward_name),
-                Add(name='%s-Add' % feed_forward_name),
-                LayerNormalization(conditional=(z is not None),
-                                   hidden_units=layer_norm_conds[1],
-                                   hidden_activation=layer_norm_conds[2],
-                                   hidden_initializer=self.initializer,
-                                   name='%s-Norm' % feed_forward_name),
-            ]
-
-        # 重用层
-        layers = self.main_layers
-        attention_mask = self.compute_attention_mask(1)
+        attention_name = 'Transformer-MultiHeadSelfAttention'
+        feed_forward_name = 'Transformer-FeedForward'
+        attention_mask = self.compute_attention_mask(0)
 
         # Self Attention
-        xi, x = x, [x, x, x]
-        if attention_mask is None:
-            x = layers[0](x)
-        elif attention_mask is 'history_only':
-            x = layers[0](x, a_mask=True)
-        else:
-            x.append(attention_mask)
-            x = layers[0](x, a_mask=True)
-        if self.dropout_rate > 0:
-            x = layers[1](x)
-        x = layers[2]([xi, x])
-        x = layers[3](self.simplify([x, z]))
+        xi, x, arguments = x, [x, x, x], {'a_mask': None}
+        if attention_mask is not None:
+            arguments['a_mask'] = True
+            if attention_mask is not 'history_only':
+                x.append(attention_mask)
+
+        x = self.call(inputs=x,
+                      layer=MultiHeadAttention,
+                      arguments=arguments,
+                      heads=self.num_attention_heads,
+                      head_size=self.attention_head_size,
+                      kernel_initializer=self.initializer,
+                      name=attention_name)
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='%s-Dropout' % attention_name)
+        x = self.call(inputs=[xi, x],
+                      layer=Add,
+                      name='%s-Add' % attention_name)
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='%s-Norm' % attention_name)
 
         # Feed Forward
         xi = x
-        x = layers[4](x)
-        if self.dropout_rate > 0:
-            x = layers[5](x)
-        x = layers[6]([xi, x])
-        x = layers[7](self.simplify([x, z]))
+        x = self.call(inputs=x,
+                      layer=FeedForward,
+                      units=self.intermediate_size,
+                      activation=self.hidden_act,
+                      kernel_initializer=self.initializer,
+                      name=feed_forward_name)
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='%s-Dropout' % feed_forward_name)
+        x = self.call(inputs=[xi, x],
+                      layer=Add,
+                      name='%s-Add' % feed_forward_name)
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='%s-Norm' % feed_forward_name)
 
         return [x, layer_norm_conds]
 
@@ -582,27 +623,37 @@ class NEZHA(BERT):
         x, s, layer_norm_conds = inputs
         z = layer_norm_conds[0]
 
-        x = Embedding(input_dim=self.vocab_size,
+        x = self.call(inputs=x,
+                      layer=Embedding,
+                      input_dim=self.vocab_size,
                       output_dim=self.embedding_size,
                       embeddings_initializer=self.initializer,
                       mask_zero=True,
-                      name='Embedding-Token')(x)
-        s = Embedding(input_dim=2,
+                      name='Embedding-Token')
+        s = self.call(inputs=s,
+                      layer=Embedding,
+                      input_dim=2,
                       output_dim=self.embedding_size,
                       embeddings_initializer=self.initializer,
-                      name='Embedding-Segment')(s)
-        x = Add(name='Embedding-Token-Segment')([x, s])
-        x = LayerNormalization(conditional=(z is not None),
-                               hidden_units=layer_norm_conds[1],
-                               hidden_activation=layer_norm_conds[2],
-                               hidden_initializer=self.initializer,
-                               name='Embedding-Norm')(self.simplify([x, z]))
-        if self.dropout_rate > 0:
-            x = Dropout(rate=self.dropout_rate, name='Embedding-Dropout')(x)
+                      name='Embedding-Segment')
+        x = self.call(inputs=[x, s], layer=Add, name='Embedding-Token-Segment')
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='Embedding-Norm')
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='Embedding-Dropout')
         if self.embedding_size != self.hidden_size:
-            x = Dense(units=self.hidden_size,
-                      kernel_initializer=self.initializer,
-                      name='Embedding-Mapping')(x)
+            x = self.call(inputs=x,
+                          layer=Dense,
+                          units=self.hidden_size,
+                          kernel_initializer=self.initializer,
+                          name='Embedding-Mapping')
 
         def sinusoidal(shape, dtype=None):
             """NEZHA直接使用Sin-Cos形式的位置向量
@@ -616,80 +667,81 @@ class NEZHA(BERT):
                     embeddings[pos, 2 * i + 1] = np.cos(theta)
             return embeddings
 
-        p = RelativePositionEmbedding(input_dim=2 * 64 + 1,
-                                      output_dim=self.attention_head_size,
-                                      embeddings_initializer=sinusoidal,
-                                      name='Embedding-Relative-Position',
-                                      trainable=False)([x, x])
+        p = self.call(inputs=[x, x],
+                      layer=RelativePositionEmbedding,
+                      input_dim=2 * 64 + 1,
+                      output_dim=self.attention_head_size,
+                      embeddings_initializer=sinusoidal,
+                      name='Embedding-Relative-Position',
+                      trainable=False)
 
         return [x, p, layer_norm_conds]
 
-    def prepare_main_layers(self, inputs):
+    def prepare_main_layers(self, inputs, index):
         """NEZHA的主体是基于Self-Attention的模块
         顺序：Att --> Add --> LN --> FFN --> Add --> LN
         """
-        if not hasattr(self, 'main_count'):
-            self.main_count = 0
-        else:
-            self.main_count += 1
-
         x, p, layer_norm_conds = inputs
         z = layer_norm_conds[0]
 
-        attention_name = 'Transformer-%d-MultiHeadSelfAttention' % self.main_count
-        feed_forward_name = 'Transformer-%d-FeedForward' % self.main_count
-        attention_mask = self.compute_attention_mask(self.main_count)
-
-        layers = [
-            MultiHeadAttention(heads=self.num_attention_heads,
-                               head_size=self.attention_head_size,
-                               kernel_initializer=self.initializer,
-                               name=attention_name),
-            Dropout(rate=self.dropout_rate,
-                    name='%s-Dropout' % attention_name),
-            Add(name='%s-Add' % attention_name),
-            LayerNormalization(conditional=(z is not None),
-                               hidden_units=layer_norm_conds[1],
-                               hidden_activation=layer_norm_conds[2],
-                               hidden_initializer=self.initializer,
-                               name='%s-Norm' % attention_name),
-            FeedForward(units=self.intermediate_size,
-                        activation=self.hidden_act,
-                        kernel_initializer=self.initializer,
-                        name=feed_forward_name),
-            Dropout(rate=self.dropout_rate,
-                    name='%s-Dropout' % feed_forward_name),
-            Add(name='%s-Add' % feed_forward_name),
-            LayerNormalization(conditional=(z is not None),
-                               hidden_units=layer_norm_conds[1],
-                               hidden_activation=layer_norm_conds[2],
-                               hidden_initializer=self.initializer,
-                               name='%s-Norm' % feed_forward_name),
-        ]
+        attention_name = 'Transformer-%d-MultiHeadSelfAttention' % index
+        feed_forward_name = 'Transformer-%d-FeedForward' % index
+        attention_mask = self.compute_attention_mask(index)
 
         # Self Attention
         xi, x = x, [x, x, x, p]
-        if attention_mask is None:
-            x = layers[0](x, p_bias='typical_relative')
-        elif attention_mask is 'history_only':
-            x = layers[0](x, a_mask=True, p_bias='typical_relative')
-        else:
-            x.insert(3, attention_mask)
-            x = layers[0](x, a_mask=True, p_bias='typical_relative')
-        if self.dropout_rate > 0:
-            x = layers[1](x)
-        x = layers[2]([xi, x])
-        x = layers[3](self.simplify([x, z]))
+        arguments = {'a_mask': None, 'p_bias': 'typical_relative'}
+        if attention_mask is not None:
+            arguments['a_mask'] = True
+            if attention_mask is not 'history_only':
+                x.insert(3, attention_mask)
+
+        x = self.call(inputs=x,
+                      layer=MultiHeadAttention,
+                      arguments=arguments,
+                      heads=self.num_attention_heads,
+                      head_size=self.attention_head_size,
+                      kernel_initializer=self.initializer,
+                      name=attention_name)
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='%s-Dropout' % attention_name)
+        x = self.call(inputs=[xi, x],
+                      layer=Add,
+                      name='%s-Add' % attention_name)
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='%s-Norm' % attention_name)
 
         # Feed Forward
         xi = x
-        x = layers[4](x)
-        if self.dropout_rate > 0:
-            x = layers[5](x)
-        x = layers[6]([xi, x])
-        x = layers[7](self.simplify([x, z]))
+        x = self.call(inputs=x,
+                      layer=FeedForward,
+                      units=self.intermediate_size,
+                      activation=self.hidden_act,
+                      kernel_initializer=self.initializer,
+                      name=feed_forward_name)
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='%s-Dropout' % feed_forward_name)
+        x = self.call(inputs=[xi, x],
+                      layer=Add,
+                      name='%s-Add' % feed_forward_name)
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='%s-Norm' % feed_forward_name)
 
-        if self.main_count + 1 == self.num_hidden_layers:
+        if index + 1 == self.num_hidden_layers:
             return [x, layer_norm_conds]
         else:
             return [x, p, layer_norm_conds]
@@ -810,10 +862,13 @@ def build_transformer_model(config_path,
 
 
 def build_bert_model(*args, **kwargs):
-    warnings.warn('build_bert_model has been renamed as build_transformer_model.')
+    warnings.warn(
+        'build_bert_model has been renamed as build_transformer_model.')
     warnings.warn('please use build_transformer_model.')
     if kwargs.get('application') == 'seq2seq':
-        warnings.warn('application=\'seq2seq\' has been renamed as application=\'unilm\'')
+        warnings.warn(
+            'application=\'seq2seq\' has been renamed as application=\'unilm\''
+        )
         warnings.warn('please use application=\'unilm\'')
         kwargs['application'] = 'unilm'
     return build_transformer_model(*args, **kwargs)
