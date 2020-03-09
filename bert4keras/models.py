@@ -256,8 +256,7 @@ class BERT(Transformer):
         xi, x, arguments = x, [x, x, x], {'a_mask': None}
         if attention_mask is not None:
             arguments['a_mask'] = True
-            if attention_mask is not 'history_only':
-                x.append(attention_mask)
+            x.append(attention_mask)                
 
         x = self.call(inputs=x,
                       layer=MultiHeadAttention,
@@ -481,8 +480,7 @@ class ALBERT(BERT):
         xi, x, arguments = x, [x, x, x], {'a_mask': None}
         if attention_mask is not None:
             arguments['a_mask'] = True
-            if attention_mask is not 'history_only':
-                x.append(attention_mask)
+            x.append(attention_mask)
 
         x = self.call(inputs=x,
                       layer=MultiHeadAttention,
@@ -694,8 +692,7 @@ class NEZHA(BERT):
         arguments = {'a_mask': None, 'p_bias': 'typical_relative'}
         if attention_mask is not None:
             arguments['a_mask'] = True
-            if attention_mask is not 'history_only':
-                x.insert(3, attention_mask)
+            x.insert(3, attention_mask)
 
         x = self.call(inputs=x,
                       layer=MultiHeadAttention,
@@ -757,11 +754,26 @@ def extend_with_language_model(BaseModel):
         def __init__(self, *args, **kwargs):
             super(LanguageModel, self).__init__(*args, **kwargs)
             self.with_mlm = self.with_mlm or True
-            self.attention_mask = 'history_only'
+            self.attention_mask = None
 
         def compute_attention_mask(self, idx):
             """重载此函数即可
             """
+            if self.attention_mask is None:
+
+                def lm_mask(s):
+                    import tensorflow as tf
+                    seq_len = K.shape(s)[1]
+                    with K.name_scope('attention_mask'):
+                        ones = K.ones((1, 1, seq_len, seq_len))
+                    a_mask = tf.linalg.band_part(ones, -1, 0)
+                    return a_mask
+
+                self.attention_mask = self.call(inputs=self.inputs[1],
+                                                layer=Lambda,
+                                                function=lm_mask,
+                                                name='Attention-LM-Mask')
+
             return self.attention_mask
 
     return LanguageModel
@@ -798,7 +810,7 @@ def extend_with_unified_language_model(BaseModel):
                 self.attention_mask = self.call(inputs=self.inputs[1],
                                                 layer=Lambda,
                                                 function=unilm_mask,
-                                                name='Attention-Mask')
+                                                name='Attention-UniLM-Mask')
 
             return self.attention_mask
 
