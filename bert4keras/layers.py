@@ -113,11 +113,8 @@ class MultiHeadAttention(Layer):
             if mask[2] is not None:
                 v_mask = K.cast(mask[2], K.floatx())
         if a_mask:
-            if len(inputs) == 3:
-                a_mask = 'history_only'
-            else:
-                a_mask = inputs[n]
-                n += 1
+            a_mask = inputs[n]
+            n += 1
         # 线性变换
         qw = self.q_dense(q)
         kw = self.k_dense(k)
@@ -140,12 +137,7 @@ class MultiHeadAttention(Layer):
             a = a / self.key_size**0.5
         a = sequence_masking(a, v_mask, 1, -1)
         if a_mask is not None:
-            if is_string(a_mask):
-                ones = K.ones_like(a[:1, :1])
-                a_mask = (ones - tf.linalg.band_part(ones, -1, 0)) * 1e12
-                a = a - a_mask
-            else:
-                a = a - (1 - a_mask) * 1e12
+            a = a - (1 - a_mask) * 1e12
         a = K.softmax(a)
         # 完成输出
         o = tf.einsum('bhjk,bkhd->bjhd', a, vw)
