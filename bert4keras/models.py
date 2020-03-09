@@ -146,7 +146,7 @@ class Transformer(object):
 
         weight_value_pairs = []
         for layer, variables in mapping.items():
-            layer = self.model.get_layer(layer)
+            layer = self.layers[layer]
             weights = layer.trainable_weights
             values = [self.load_variable(checkpoint, v) for v in variables]
             weight_value_pairs.extend(zip(weights, values))
@@ -160,7 +160,7 @@ class Transformer(object):
 
         with tf.Graph().as_default():
             for layer, variables in mapping.items():
-                layer = self.model.get_layer(layer)
+                layer = self.layers[layer]
                 values = K.batch_get_value(layer.trainable_weights)
                 for name, value in zip(variables, values):
                     self.create_variable(name, value)
@@ -457,8 +457,7 @@ class BERT(Transformer):
                 ],
             })
 
-        layer_names = set([layer.name for layer in self.model.layers])
-        mapping = {k: v for k, v in mapping.items() if k in layer_names}
+        mapping = {k: v for k, v in mapping.items() if k in self.layers}
 
         return mapping
 
@@ -563,8 +562,7 @@ class ALBERT(BERT):
             ],
         })
 
-        layer_names = set([layer.name for layer in self.model.layers])
-        mapping = {k: v for k, v in mapping.items() if k in layer_names}
+        mapping = {k: v for k, v in mapping.items() if k in self.layers}
 
         return mapping
 
@@ -606,8 +604,7 @@ class ALBERT_Unshared(BERT):
                 ],
             })
 
-        layer_names = set([layer.name for layer in self.model.layers])
-        mapping = {k: v for k, v in mapping.items() if k in layer_names}
+        mapping = {k: v for k, v in mapping.items() if k in self.layers}
 
         return mapping
 
