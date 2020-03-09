@@ -37,7 +37,7 @@ class Transformer(object):
         self.embedding_size = embedding_size or hidden_size
         self.keep_tokens = keep_tokens
         self.attention_mask = None
-        self.layers = layers or {}
+        self.layers = {} if layers is None else layers
 
     def build(self,
               layer_norm_cond=None,
