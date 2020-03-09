@@ -36,6 +36,7 @@ class Transformer(object):
         self.hidden_act = hidden_act
         self.embedding_size = embedding_size or hidden_size
         self.keep_tokens = keep_tokens
+        self.attention_mask = None
         self.layers = layers or {}
 
     def build(self,
@@ -106,7 +107,7 @@ class Transformer(object):
     def compute_attention_mask(self, index):
         """定义每一层的Attention Mask
         """
-        return None
+        return self.attention_mask
 
     @property
     def initializer(self):
@@ -754,7 +755,6 @@ def extend_with_language_model(BaseModel):
         def __init__(self, *args, **kwargs):
             super(LanguageModel, self).__init__(*args, **kwargs)
             self.with_mlm = self.with_mlm or True
-            self.attention_mask = None
 
         def compute_attention_mask(self, idx):
             """重载此函数即可
@@ -789,7 +789,6 @@ def extend_with_unified_language_model(BaseModel):
         def __init__(self, *args, **kwargs):
             super(UnifiedLanguageModel, self).__init__(*args, **kwargs)
             self.with_mlm = self.with_mlm or True
-            self.attention_mask = None
 
         def compute_attention_mask(self, idx):
             """重载此函数即可
