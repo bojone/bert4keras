@@ -3,6 +3,7 @@
 
 import numpy as np
 from bert4keras.layers import *
+from keras.models import Model
 import json
 import warnings
 
@@ -37,6 +38,7 @@ class Transformer(object):
         self.embedding_size = embedding_size or hidden_size
         self.keep_tokens = keep_tokens
         self.attention_mask = None
+        self.position_bias = None
         self.layers = {} if layers is None else layers
 
     def build(self,
@@ -104,10 +106,15 @@ class Transformer(object):
     def prepare_final_layers(self, inputs):
         raise NotImplementedError
 
-    def compute_attention_mask(self, index):
+    def compute_attention_mask(self, inputs=None):
         """定义每一层的Attention Mask
         """
         return self.attention_mask
+
+    def compute_position_bias(self, inputs=None):
+        """定义每一层的Position Bias（一般相对位置编码用）
+        """
+        return self.position_bias
 
     @property
     def initializer(self):
@@ -251,7 +258,7 @@ class BERT(Transformer):
 
         attention_name = 'Transformer-%d-MultiHeadSelfAttention' % index
         feed_forward_name = 'Transformer-%d-FeedForward' % index
-        attention_mask = self.compute_attention_mask(index)
+        attention_mask = self.compute_attention_mask()
 
         # Self Attention
         xi, x, arguments = x, [x, x, x], {'a_mask': None}
@@ -614,8 +621,7 @@ class NEZHA(BERT):
     链接：https://arxiv.org/abs/1909.00204
     """
     def prepare_embeddings(self, inputs):
-        """NEZHA的embedding是token、segment两者embedding之和，
-        并把relative position embedding准备好，待attention使用。
+        """NEZHA的embedding是token、segment两者embedding之和
         """
         x, s, layer_norm_conds = inputs
         z = layer_norm_conds[0]
@@ -652,41 +658,49 @@ class NEZHA(BERT):
                           kernel_initializer=self.initializer,
                           name='Embedding-Mapping')
 
-        def sinusoidal(shape, dtype=None):
-            """NEZHA直接使用Sin-Cos形式的位置向量
-            """
-            vocab_size, depth = shape
-            embeddings = np.zeros(shape)
-            for pos in range(vocab_size):
-                for i in range(depth // 2):
-                    theta = pos / np.power(10000, 2. * i / depth)
-                    embeddings[pos, 2 * i] = np.sin(theta)
-                    embeddings[pos, 2 * i + 1] = np.cos(theta)
-            return embeddings
+        return [x, layer_norm_conds]
 
-        p = self.call(inputs=[x, x],
-                      layer=RelativePositionEmbedding,
-                      input_dim=2 * 64 + 1,
-                      output_dim=self.attention_head_size,
-                      embeddings_initializer=sinusoidal,
-                      name='Embedding-Relative-Position',
-                      trainable=False)
+    def compute_position_bias(self, inputs=None):
+        """经典相对位置编码
+        """
+        if self.position_bias is None:
 
-        return [x, p, layer_norm_conds]
+            def sinusoidal(shape, dtype=None):
+                """NEZHA直接使用Sin-Cos形式的位置向量
+                """
+                vocab_size, depth = shape
+                embeddings = np.zeros(shape)
+                for pos in range(vocab_size):
+                    for i in range(depth // 2):
+                        theta = pos / np.power(10000, 2. * i / depth)
+                        embeddings[pos, 2 * i] = np.sin(theta)
+                        embeddings[pos, 2 * i + 1] = np.cos(theta)
+                return embeddings
+
+            self.position_bias = self.call(inputs=inputs,
+                                           layer=RelativePositionEmbedding,
+                                           input_dim=2 * 64 + 1,
+                                           output_dim=self.attention_head_size,
+                                           embeddings_initializer=sinusoidal,
+                                           name='Embedding-Relative-Position',
+                                           trainable=False)
+
+        return self.position_bias
 
     def prepare_main_layers(self, inputs, index):
         """NEZHA的主体是基于Self-Attention的模块
         顺序：Att --> Add --> LN --> FFN --> Add --> LN
         """
-        x, p, layer_norm_conds = inputs
+        x, layer_norm_conds = inputs
         z = layer_norm_conds[0]
 
         attention_name = 'Transformer-%d-MultiHeadSelfAttention' % index
         feed_forward_name = 'Transformer-%d-FeedForward' % index
-        attention_mask = self.compute_attention_mask(index)
+        attention_mask = self.compute_attention_mask()
+        position_bias = self.compute_position_bias([x, x])
 
         # Self Attention
-        xi, x = x, [x, x, x, p]
+        xi, x = x, [x, x, x, position_bias]
         arguments = {'a_mask': None, 'p_bias': 'typical_relative'}
         if attention_mask is not None:
             arguments['a_mask'] = True
@@ -737,10 +751,7 @@ class NEZHA(BERT):
                       hidden_initializer=self.initializer,
                       name='%s-Norm' % feed_forward_name)
 
-        if index + 1 == self.num_hidden_layers:
-            return [x, layer_norm_conds]
-        else:
-            return [x, p, layer_norm_conds]
+        return [x, layer_norm_conds]
 
 
 def extend_with_language_model(BaseModel):
@@ -753,7 +764,7 @@ def extend_with_language_model(BaseModel):
             super(LanguageModel, self).__init__(*args, **kwargs)
             self.with_mlm = self.with_mlm or True
 
-        def compute_attention_mask(self, idx):
+        def compute_attention_mask(self, inputs=None):
             """重载此函数即可
             """
             if self.attention_mask is None:
@@ -787,7 +798,7 @@ def extend_with_unified_language_model(BaseModel):
             super(UnifiedLanguageModel, self).__init__(*args, **kwargs)
             self.with_mlm = self.with_mlm or True
 
-        def compute_attention_mask(self, idx):
+        def compute_attention_mask(self, inputs=None):
             """重载此函数即可
             """
             if self.attention_mask is None:
