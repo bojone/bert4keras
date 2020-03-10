@@ -130,7 +130,7 @@ class StoryCompletion(AutoRegressiveDecoder):
 
 
 story_completion = StoryCompletion(start_id=None,
-                                   end_id=tokenizer._token_sep_id,
+                                   end_id=tokenizer._token_end_id,
                                    maxlen=maxlen)
 
 
