@@ -816,6 +816,7 @@ class MaximumEntropyMarkovModel(Layer):
 
 
 custom_objects = {
+    'Embedding': Embedding,
     'MultiHeadAttention': MultiHeadAttention,
     'LayerNormalization': LayerNormalization,
     'PositionEmbedding': PositionEmbedding,
