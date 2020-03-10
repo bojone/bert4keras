@@ -23,7 +23,7 @@ class Transformer(object):
             embedding_size=None,  # 是否指定embedding_size
             keep_tokens=None,  # 要保留的词ID列表
             layers=None,  # 外部传入的Keras层
-    ):
+            **kwargs):
         if keep_tokens is None:
             self.vocab_size = vocab_size
         else:
@@ -45,7 +45,8 @@ class Transformer(object):
               layer_norm_cond=None,
               layer_norm_cond_hidden_size=None,
               layer_norm_cond_hidden_act=None,
-              additional_input_layers=None):
+              additional_input_layers=None,
+              **kwargs):
         """模型构建函数
         layer_norm_*系列参数为实现Conditional Layer Normalization时使用，
         用来实现以“固定长度向量”为条件的条件Bert。
@@ -993,6 +994,13 @@ class T5_Encoder(T5_Base):
 class T5_Decoder(Transformer):
     """Google的T5模型（Decoder）
     """
+    def __init__(self, with_lm=False, **kwargs):
+        super(T5_Decoder, self).__init__(**kwargs)
+        if with_lm is True:
+            self.with_lm = 'softmax'
+        else:
+            self.with_lm = with_lm
+
     def prepare_inputs(self):
         """T5的Decoder的输入为context序列和token_ids
         """
@@ -1141,18 +1149,21 @@ class T5_Decoder(Transformer):
                       layer=Lambda,
                       function=lambda x: x / np.sqrt(self.hidden_size),
                       name='Decoder-Output-Scale')
-        if self.embedding_size != self.hidden_size:
+        
+        if self.with_lm:
+            # 预测token概率部分
+            if self.embedding_size != self.hidden_size:
+                x = self.call(inputs=x,
+                              layer=Dense,
+                              units=self.embedding_size,
+                              kernel_initializer=self.initializer,
+                              name='Decoder-Output-Mapping')
             x = self.call(inputs=x,
-                          layer=Dense,
-                          units=self.embedding_size,
-                          kernel_initializer=self.initializer,
-                          name='Decoder-Output-Mapping')
-        x = self.call(inputs=x,
-                      layer=EmbeddingDense,
-                      embedding_name='Embedding-Token',
-                      activation='linear',
-                      use_bias=False,
-                      name='Dencoder-Output-LM-Proba')
+                          layer=EmbeddingDense,
+                          embedding_name='Embedding-Token',
+                          activation=self.with_lm,
+                          use_bias=False,
+                          name='Dencoder-Output-LM-Proba')
 
         return x
 
@@ -1292,22 +1303,22 @@ def extend_with_unified_language_model(BaseModel):
     return UnifiedLanguageModel
 
 
-def build_transformer_model(config_path,
+def build_transformer_model(config_path=None,
                             checkpoint_path=None,
-                            with_pool=False,
-                            with_nsp=False,
-                            with_mlm=False,
                             model='bert',
                             application='encoder',
-                            keep_tokens=None,
-                            layer_norm_cond=None,
-                            layer_norm_cond_hidden_size=None,
-                            layer_norm_cond_hidden_act=None,
-                            additional_input_layers=None,
-                            return_keras_model=True):
+                            return_keras_model=True,
+                            **kwargs):
     """根据配置文件构建模型，可选加载checkpoint权重
     """
-    config = json.load(open(config_path))
+    config = kwargs
+    if config_path is not None:
+        config.update(json.load(open(config_path)))
+    if 'max_position' not in config:
+        config['max_position'] = config.get('max_position_embeddings')
+    if 'dropout_rate' not in config:
+        config['dropout_rate'] = config.get('hidden_dropout_prob')
+
     model, application = model.lower(), application.lower()
 
     models = {
@@ -1315,32 +1326,18 @@ def build_transformer_model(config_path,
         'albert': ALBERT,
         'albert_unshared': ALBERT_Unshared,
         'nezha': NEZHA,
+        't5': T5,
     }
     MODEL = models[model]
 
-    if application == 'lm':
-        MODEL = extend_with_language_model(MODEL)
-    elif application == 'unilm':
-        MODEL = extend_with_unified_language_model(MODEL)
+    if model != 't5':
+        if application == 'lm':
+            MODEL = extend_with_language_model(MODEL)
+        elif application == 'unilm':
+            MODEL = extend_with_unified_language_model(MODEL)
 
-    transformer = MODEL(vocab_size=config['vocab_size'],
-                        max_position=config.get('max_position_embeddings'),
-                        hidden_size=config['hidden_size'],
-                        num_hidden_layers=config['num_hidden_layers'],
-                        num_attention_heads=config['num_attention_heads'],
-                        intermediate_size=config['intermediate_size'],
-                        hidden_act=config['hidden_act'],
-                        dropout_rate=config['hidden_dropout_prob'],
-                        embedding_size=config.get('embedding_size'),
-                        with_pool=with_pool,
-                        with_nsp=with_nsp,
-                        with_mlm=with_mlm,
-                        keep_tokens=keep_tokens)
-
-    transformer.build(layer_norm_cond=layer_norm_cond,
-                      layer_norm_cond_hidden_size=layer_norm_cond_hidden_size,
-                      layer_norm_cond_hidden_act=layer_norm_cond_hidden_act,
-                      additional_input_layers=additional_input_layers)
+    transformer = MODEL(**kwargs)
+    transformer.build(**kwargs)
 
     if checkpoint_path is not None:
         transformer.load_weights_from_checkpoint(checkpoint_path)
