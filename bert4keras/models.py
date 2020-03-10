@@ -3,7 +3,6 @@
 
 import numpy as np
 from bert4keras.layers import *
-from keras.models import Model
 import json
 import warnings
 
@@ -660,33 +659,6 @@ class NEZHA(BERT):
 
         return [x, layer_norm_conds]
 
-    def compute_position_bias(self, inputs=None):
-        """经典相对位置编码
-        """
-        if self.position_bias is None:
-
-            def sinusoidal(shape, dtype=None):
-                """NEZHA直接使用Sin-Cos形式的位置向量
-                """
-                vocab_size, depth = shape
-                embeddings = np.zeros(shape)
-                for pos in range(vocab_size):
-                    for i in range(depth // 2):
-                        theta = pos / np.power(10000, 2. * i / depth)
-                        embeddings[pos, 2 * i] = np.sin(theta)
-                        embeddings[pos, 2 * i + 1] = np.cos(theta)
-                return embeddings
-
-            self.position_bias = self.call(inputs=inputs,
-                                           layer=RelativePositionEmbedding,
-                                           input_dim=2 * 64 + 1,
-                                           output_dim=self.attention_head_size,
-                                           embeddings_initializer=sinusoidal,
-                                           name='Embedding-Relative-Position',
-                                           trainable=False)
-
-        return self.position_bias
-
     def prepare_main_layers(self, inputs, index):
         """NEZHA的主体是基于Self-Attention的模块
         顺序：Att --> Add --> LN --> FFN --> Add --> LN
@@ -752,6 +724,33 @@ class NEZHA(BERT):
                       name='%s-Norm' % feed_forward_name)
 
         return [x, layer_norm_conds]
+
+    def compute_position_bias(self, inputs=None):
+        """经典相对位置编码
+        """
+        if self.position_bias is None:
+
+            def sinusoidal(shape, dtype=None):
+                """NEZHA直接使用Sin-Cos形式的位置向量
+                """
+                vocab_size, depth = shape
+                embeddings = np.zeros(shape)
+                for pos in range(vocab_size):
+                    for i in range(depth // 2):
+                        theta = pos / np.power(10000, 2. * i / depth)
+                        embeddings[pos, 2 * i] = np.sin(theta)
+                        embeddings[pos, 2 * i + 1] = np.cos(theta)
+                return embeddings
+
+            self.position_bias = self.call(inputs=inputs,
+                                           layer=RelativePositionEmbedding,
+                                           input_dim=2 * 64 + 1,
+                                           output_dim=self.attention_head_size,
+                                           embeddings_initializer=sinusoidal,
+                                           name='Embedding-Relative-Position',
+                                           trainable=False)
+
+        return self.position_bias
 
 
 def extend_with_language_model(BaseModel):
