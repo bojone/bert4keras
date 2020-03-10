@@ -3,6 +3,7 @@
 
 import numpy as np
 from bert4keras.layers import *
+from keras.models import Model
 import json
 import warnings
 
@@ -752,6 +753,473 @@ class NEZHA(BERT):
                                            trainable=False)
 
         return self.position_bias
+
+
+class T5_Base(Transformer):
+    """Google的T5模型（基类）
+    """
+    def load_variable(self, checkpoint, name):
+        """加载单个变量的函数
+        """
+        variable = super(T5_Base, self).load_variable(checkpoint, name)
+        if name == 'shared/embedding':
+            if self.keep_tokens is None:
+                return variable
+            else:
+                return variable[self.keep_tokens]
+        elif 'relative_attention_bias' in name:
+            return variable.T
+        else:
+            return variable
+
+    def create_variable(self, name, value):
+        """在tensorflow中创建一个变量
+        """
+        if 'relative_attention_bias' in name:
+            value = value.T
+        return super(T5_Base, self).create_variable(name, value)
+
+    def variable_mapping(self):
+        """映射到官方T5权重格式
+        """
+        mapping = {
+            'Embedding-Token': ['shared/embedding'],
+            'Encoder-Embedding-Relative-Position': [
+                'encoder/block_000/layer_000/SelfAttention/relative_attention_bias'
+            ],
+            'Encoder-Output-Norm': ['encoder/final_layer_norm/scale'],
+            'Decoder-Embedding-Relative-Position': [
+                'decoder/block_000/layer_000/SelfAttention/relative_attention_bias',
+            ],
+            'Decoder-Output-Norm': ['decoder/final_layer_norm/scale'],
+        }
+
+        for i in range(self.num_hidden_layers):
+            # Encoder主体
+            prefix = 'encoder/block_%03d/' % i
+            mapping.update({
+                'Encoder-Transformer-%d-MultiHeadSelfAttention' % i: [
+                    prefix + 'layer_000/SelfAttention/q',
+                    prefix + 'layer_000/SelfAttention/k',
+                    prefix + 'layer_000/SelfAttention/v',
+                    prefix + 'layer_000/SelfAttention/o',
+                ],
+                'Encoder-Transformer-%d-MultiHeadSelfAttention-Norm' % i: [
+                    prefix + 'layer_000/layer_norm/scale',
+                ],
+                'Encoder-Transformer-%d-FeedForward' % i: [
+                    prefix + 'layer_001/DenseReluDense/wi/kernel',
+                    prefix + 'layer_001/DenseReluDense/wo/kernel',
+                ],
+                'Encoder-Transformer-%d-FeedForward-Norm' % i: [
+                    prefix + 'layer_001/layer_norm/scale',
+                ],
+            })
+            # Decoder主体
+            prefix = 'decoder/block_%03d/' % i
+            mapping.update({
+                'Decoder-Transformer-%d-MultiHeadSelfAttention' % i: [
+                    prefix + 'layer_000/SelfAttention/q',
+                    prefix + 'layer_000/SelfAttention/k',
+                    prefix + 'layer_000/SelfAttention/v',
+                    prefix + 'layer_000/SelfAttention/o',
+                ],
+                'Decoder-Transformer-%d-MultiHeadSelfAttention-Norm' % i: [
+                    prefix + 'layer_000/layer_norm/scale',
+                ],
+                'Decoder-Transformer-%d-MultiHeadCrossAttention' % i: [
+                    prefix + 'layer_001/EncDecAttention/q',
+                    prefix + 'layer_001/EncDecAttention/k',
+                    prefix + 'layer_001/EncDecAttention/v',
+                    prefix + 'layer_001/EncDecAttention/o',
+                ],
+                'Decoder-Transformer-%d-MultiHeadCrossAttention-Norm' % i: [
+                    prefix + 'layer_001/layer_norm/scale',
+                ],
+                'Decoder-Transformer-%d-FeedForward' % i: [
+                    prefix + 'layer_002/DenseReluDense/wi/kernel',
+                    prefix + 'layer_002/DenseReluDense/wo/kernel',
+                ],
+                'Decoder-Transformer-%d-FeedForward-Norm' % i: [
+                    prefix + 'layer_002/layer_norm/scale',
+                ],
+            })
+
+        mapping = {k: v for k, v in mapping.items() if k in self.layers}
+
+        return mapping
+
+
+class T5_Encoder(T5_Base):
+    """Google的T5模型（Encoder）
+    """
+    def prepare_inputs(self):
+        """T5的Encoder的输入只有token_ids
+        """
+        x_in = Input(shape=(None, ), name='Encoder-Input-Token')
+        return [x_in]
+
+    def prepare_embeddings(self, inputs):
+        """T5的embedding只有token embedding，
+        并把relative position embedding准备好，待attention使用。
+        """
+        x, layer_norm_conds = inputs
+
+        x = self.call(inputs=x,
+                      layer=Embedding,
+                      input_dim=self.vocab_size,
+                      output_dim=self.embedding_size,
+                      embeddings_initializer=self.initializer,
+                      mask_zero=True,
+                      name='Embedding-Token')
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='Encoder-Embedding-Dropout')
+        if self.embedding_size != self.hidden_size:
+            x = self.call(inputs=x,
+                          layer=Dense,
+                          units=self.hidden_size,
+                          kernel_initializer=self.initializer,
+                          name='Encoder-Embedding-Mapping')
+
+        return [x, layer_norm_conds]
+
+    def prepare_main_layers(self, inputs, index):
+        """T5的Encoder的主体是基于Self-Attention的模块
+        顺序：LN --> Att --> Add --> LN --> FFN --> Add
+        """
+
+        x, layer_norm_conds = inputs
+        z = layer_norm_conds[0]
+
+        attention_name = 'Encoder-Transformer-%d-MultiHeadSelfAttention' % index
+        feed_forward_name = 'Encoder-Transformer-%d-FeedForward' % index
+        attention_mask = self.compute_attention_mask()
+        position_bias = self.compute_position_bias(x)
+
+        # Self Attention
+        xi = x
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      center=False,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='%s-Norm' % attention_name)
+        x = self.call(inputs=[x, x, x, position_bias],
+                      layer=MultiHeadAttention,
+                      arguments={'p_bias': 't5_relative'},
+                      heads=self.num_attention_heads,
+                      head_size=self.attention_head_size,
+                      use_bias=False,
+                      kernel_initializer=self.initializer,
+                      name=attention_name)
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='%s-Dropout' % attention_name)
+        x = self.call(inputs=[xi, x],
+                      layer=Add,
+                      name='%s-Add' % attention_name)
+
+        # Feed Forward
+        xi = x
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      center=False,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='%s-Norm' % feed_forward_name)
+        x = self.call(inputs=x,
+                      layer=FeedForward,
+                      units=self.intermediate_size,
+                      activation=self.hidden_act,
+                      use_bias=False,
+                      kernel_initializer=self.initializer,
+                      name=feed_forward_name)
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='%s-Dropout' % feed_forward_name)
+        x = self.call(inputs=[xi, x],
+                      layer=Add,
+                      name='%s-Add' % feed_forward_name)
+
+        return [x, layer_norm_conds]
+
+    def prepare_final_layers(self, inputs):
+        """剩余部分
+        """
+        x, layer_norm_conds = inputs
+        z = layer_norm_conds[0]
+
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      center=False,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='Encoder-Output-Norm')
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='Encoder-Output-Dropout')
+
+        return x
+
+    def compute_position_bias(self, inputs=None):
+        """T5相对位置编码
+        """
+        if self.position_bias is None:
+
+            x = inputs
+            p = self.call(inputs=[x, x],
+                          layer=RelativePositionEmbeddingT5,
+                          input_dim=32,
+                          output_dim=self.num_attention_heads,
+                          bidirectional=True,
+                          embeddings_initializer=self.initializer,
+                          name='Encoder-Embedding-Relative-Position')
+            self.position_bias = p
+
+        return self.position_bias
+
+
+class T5_Decoder(Transformer):
+    """Google的T5模型（Decoder）
+    """
+    def prepare_inputs(self):
+        """T5的Decoder的输入为context序列和token_ids
+        """
+        c_in = Input(shape=(None, self.hidden_size), name='Input-Context')
+        x_in = Input(shape=(None, ), name='Decoder-Input-Token')
+        return [c_in, x_in]
+
+    def prepare_embeddings(self, inputs):
+        """T5的embedding只有token embedding，
+        并把relative position embedding准备好，待attention使用。
+        """
+        c, x, layer_norm_conds = inputs
+
+        x = self.call(inputs=x,
+                      layer=Embedding,
+                      input_dim=self.vocab_size,
+                      output_dim=self.embedding_size,
+                      embeddings_initializer=self.initializer,
+                      mask_zero=True,
+                      name='Embedding-Token')
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='Decoder-Embedding-Dropout')
+        if self.embedding_size != self.hidden_size:
+            x = self.call(inputs=x,
+                          layer=Dense,
+                          units=self.hidden_size,
+                          kernel_initializer=self.initializer,
+                          name='Decoder-Embedding-Mapping')
+
+        return [c, x, layer_norm_conds]
+
+    def prepare_main_layers(self, inputs, index):
+        """T5的Dencoder主体是基于Self-Attention、Cross-Attention的模块
+        顺序：LN --> Att1 --> Add --> LN --> Att2 --> Add -->  LN --> FFN --> Add
+        """
+
+        c, x, layer_norm_conds = inputs
+        z = layer_norm_conds[0]
+
+        self_attention_name = 'Decoder-Transformer-%d-MultiHeadSelfAttention' % index
+        cross_attention_name = 'Decoder-Transformer-%d-MultiHeadCrossAttention' % index
+        feed_forward_name = 'Decoder-Transformer-%d-FeedForward' % index
+        attention_mask = self.compute_attention_mask()
+        position_bias = self.compute_position_bias([x, c])
+
+        # Self Attention
+        xi = x
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      center=False,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='%s-Norm' % self_attention_name)
+        x = self.call(inputs=[x, x, x, attention_mask, position_bias[0]],
+                      layer=MultiHeadAttention,
+                      arguments={'a_mask': True, 'p_bias': 't5_relative'},
+                      heads=self.num_attention_heads,
+                      head_size=self.attention_head_size,
+                      use_bias=False,
+                      kernel_initializer=self.initializer,
+                      name=self_attention_name)
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='%s-Dropout' % self_attention_name)
+        x = self.call(inputs=[xi, x],
+                      layer=Add,
+                      name='%s-Add' % self_attention_name)
+
+        # Cross Attention
+        xi = x
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      center=False,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='%s-Norm' % cross_attention_name)
+        x = self.call(inputs=[x, c, c, position_bias[1]],
+                      layer=MultiHeadAttention,
+                      arguments={'a_mask': None, 'p_bias': 't5_relative'},
+                      heads=self.num_attention_heads,
+                      head_size=self.attention_head_size,
+                      use_bias=False,
+                      kernel_initializer=self.initializer,
+                      name=cross_attention_name)
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='%s-Dropout' % cross_attention_name)
+        x = self.call(inputs=[xi, x],
+                      layer=Add,
+                      name='%s-Add' % cross_attention_name)
+
+        # Feed Forward
+        xi = x
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      center=False,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='%s-Norm' % feed_forward_name)
+        x = self.call(inputs=x,
+                      layer=FeedForward,
+                      units=self.intermediate_size,
+                      activation=self.hidden_act,
+                      use_bias=False,
+                      kernel_initializer=self.initializer,
+                      name=feed_forward_name)
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='%s-Dropout' % feed_forward_name)
+        x = self.call(inputs=[xi, x],
+                      layer=Add,
+                      name='%s-Add' % feed_forward_name)
+
+        return [c, x, layer_norm_conds]
+
+    def prepare_final_layers(self, inputs):
+        """剩余部分
+        """
+        c, x, layer_norm_conds = inputs
+        z = layer_norm_conds[0]
+
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      center=False,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='Decoder-Output-Norm')
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='Decoder-Output-Dropout')
+        x = self.call(inputs=x,
+                      layer=Lambda,
+                      function=lambda x: x / np.sqrt(self.hidden_size),
+                      name='Decoder-Output-Scale')
+        if self.embedding_size != self.hidden_size:
+            x = self.call(inputs=x,
+                          layer=Dense,
+                          units=self.embedding_size,
+                          kernel_initializer=self.initializer,
+                          name='Decoder-Output-Mapping')
+        x = self.call(inputs=x,
+                      layer=EmbeddingDense,
+                      embedding_name='Embedding-Token',
+                      activation='linear',
+                      use_bias=False,
+                      name='Dencoder-Output-LM-Proba')
+
+        return x
+
+    def compute_attention_mask(self, inputs=None):
+        """添加下三角形式的attention mask
+        """
+        if self.attention_mask is None:
+
+            def lm_mask(s):
+                import tensorflow as tf
+                seq_len = K.shape(s)[1]
+                with K.name_scope('attention_mask'):
+                    ones = K.ones((1, 1, seq_len, seq_len))
+                a_mask = tf.linalg.band_part(ones, -1, 0)
+                return a_mask
+
+            self.attention_mask = self.call(inputs=self.inputs[1],
+                                            layer=Lambda,
+                                            function=lm_mask,
+                                            name='Attention-LM-Mask')
+
+        return self.attention_mask
+
+    def compute_position_bias(self, inputs=None):
+        """T5相对位置编码
+        """
+        if self.position_bias is None:
+
+            x, c = inputs
+            p1 = self.call(inputs=[x, x],
+                           layer=RelativePositionEmbeddingT5,
+                           input_dim=32,
+                           output_dim=self.num_attention_heads,
+                           bidirectional=False,
+                           embeddings_initializer=self.initializer,
+                           name='Decoder-Embedding-Relative-Position')
+            p2 = self.call(inputs=[x, c],
+                           layer=RelativePositionEmbeddingT5,
+                           input_dim=32,
+                           output_dim=self.num_attention_heads,
+                           bidirectional=False,
+                           embeddings_initializer=self.initializer,
+                           name='Decoder-Embedding-Relative-Position')
+            self.position_bias = (p1, p2)
+
+        return self.position_bias
+
+
+class T5(T5_Base):
+    """Google的T5模型（Encoder-Decoder）
+    """
+    def __init__(self, **kwargs):
+        super(T5, self).__init__(**kwargs)
+        kwargs['layers'] = self.layers
+        self._encoder = T5_Encoder(**kwargs)
+        self._decoder = T5_Decoder(**kwargs)
+
+    def build(self, **kwargs):
+        """同时构建Encoder和Decoder
+        """
+        self._encoder.build(**kwargs)
+        self._decoder.build(**kwargs)
+        self.encoder = self._encoder.model
+        self.decoder = self._decoder.model
+        self.inputs = self.encoder.inputs + self.decoder.inputs[1:]
+        self.outputs = self.decoder(self.encoder.outputs + self.decoder.inputs[1:])
+        self.model = Model(self.inputs, self.outputs)
 
 
 def extend_with_language_model(BaseModel):
