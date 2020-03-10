@@ -20,8 +20,8 @@ class TrainingDataset(object):
         self.tokenizer = tokenizer
         self.sequence_length = sequence_length
         self.token_pad_id = tokenizer._token_pad_id
-        self.token_cls_id = tokenizer._token_cls_id
-        self.token_sep_id = tokenizer._token_sep_id
+        self.token_cls_id = tokenizer._token_start_id
+        self.token_sep_id = tokenizer._token_end_id
         self.token_mask_id = tokenizer._token_mask_id
         self.vocab_size = tokenizer._vocab_size
 
