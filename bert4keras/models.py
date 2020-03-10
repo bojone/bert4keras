@@ -669,7 +669,7 @@ class NEZHA(BERT):
         attention_name = 'Transformer-%d-MultiHeadSelfAttention' % index
         feed_forward_name = 'Transformer-%d-FeedForward' % index
         attention_mask = self.compute_attention_mask()
-        position_bias = self.compute_position_bias([x, x])
+        position_bias = self.compute_position_bias(x)
 
         # Self Attention
         xi, x = x, [x, x, x, position_bias]
@@ -742,7 +742,8 @@ class NEZHA(BERT):
                         embeddings[pos, 2 * i + 1] = np.cos(theta)
                 return embeddings
 
-            self.position_bias = self.call(inputs=inputs,
+            x = inputs
+            self.position_bias = self.call(inputs=[x, x],
                                            layer=RelativePositionEmbedding,
                                            input_dim=2 * 64 + 1,
                                            output_dim=self.attention_head_size,
