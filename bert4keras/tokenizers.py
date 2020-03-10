@@ -43,7 +43,10 @@ def load_vocab(dict_path, encoding='utf-8', simplified=False, startwith=None):
 class BasicTokenizer(object):
     """分词器基类
     """
-    def __init__(self, token_start='[CLS]', token_end='[SEP]', do_lower_case=False):
+    def __init__(self,
+                 token_start='[CLS]',
+                 token_end='[SEP]',
+                 do_lower_case=False):
         """初始化
         """
         self._token_pad = '[PAD]'
