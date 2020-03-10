@@ -195,7 +195,7 @@ class ReadingComprehension(AutoRegressiveDecoder):
 
 
 reader = ReadingComprehension(start_id=None,
-                              end_id=tokenizer._token_sep_id,
+                              end_id=tokenizer._token_end_id,
                               maxlen=max_a_len,
                               mode='extractive')
 
