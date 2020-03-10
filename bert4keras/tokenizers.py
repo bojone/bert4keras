@@ -43,17 +43,17 @@ def load_vocab(dict_path, encoding='utf-8', simplified=False, startwith=None):
 class BasicTokenizer(object):
     """分词器基类
     """
-    def __init__(self, do_lower_case=False):
+    def __init__(self, token_start='[CLS]', token_end='[SEP]', do_lower_case=False):
         """初始化
         """
         self._token_pad = '[PAD]'
-        self._token_cls = '[CLS]'
-        self._token_sep = '[SEP]'
         self._token_unk = '[UNK]'
         self._token_mask = '[MASK]'
+        self._token_start = token_start
+        self._token_end = token_end
         self._do_lower_case = do_lower_case
 
-    def tokenize(self, text, add_cls=True, add_sep=True, max_length=None):
+    def tokenize(self, text, max_length=None):
         """分词函数
         """
         if self._do_lower_case:
@@ -65,10 +65,10 @@ class BasicTokenizer(object):
             text = text.lower()
 
         tokens = self._tokenize(text)
-        if add_cls:
-            tokens.insert(0, self._token_cls)
-        if add_sep:
-            tokens.append(self._token_sep)
+        if self._token_start is not None:
+            tokens.insert(0, self._token_start)
+        if self._token_end is not None:
+            tokens.append(self._token_end)
 
         if max_length is not None:
             self.truncate_sequence(max_length, tokens, None, -2)
@@ -122,7 +122,8 @@ class BasicTokenizer(object):
         if second_text is None:
             second_tokens = None
         elif is_string(second_text):
-            second_tokens = self.tokenize(second_text, add_cls=False)
+            idx = int(bool(self._token_start))
+            second_tokens = self.tokenize(second_text)[idx:]
         else:
             second_tokens = second_text
 
@@ -175,22 +176,23 @@ class Tokenizer(BasicTokenizer):
     """Bert原生分词器
     纯Python实现，代码修改自keras_bert的tokenizer实现
     """
-    def __init__(self, token_dict, do_lower_case=False):
+    def __init__(self, token_dict, *args, **kwargs):
         """初始化
         """
-        super(Tokenizer, self).__init__(do_lower_case)
+        super(Tokenizer, self).__init__(*args, **kwargs)
         if is_string(token_dict):
             token_dict = load_vocab(token_dict)
 
         self._token_dict = token_dict
         self._token_dict_inv = {v: k for k, v in token_dict.items()}
-        for token in ['pad', 'cls', 'sep', 'unk', 'mask']:
+        self._vocab_size = len(token_dict)
+
+        for token in ['pad', 'unk', 'mask', 'start', 'end']:
             try:
                 _token_id = token_dict[getattr(self, '_token_%s' % token)]
                 setattr(self, '_token_%s_id' % token, _token_id)
             except:
                 pass
-        self._vocab_size = len(token_dict)
 
     def token_to_id(self, token):
         """token转换为对应的id
@@ -330,19 +332,22 @@ class Tokenizer(BasicTokenizer):
 class SpTokenizer(BasicTokenizer):
     """基于SentencePiece模型的封装，使用上跟Tokenizer基本一致。
     """
-    def __init__(self, sp_model_path, do_lower_case=False):
-        super(SpTokenizer, self).__init__(do_lower_case)
+    def __init__(self, sp_model_path, *args, **kwargs):
+        super(SpTokenizer, self).__init__(*args, **kwargs)
         import sentencepiece as spm
         self.sp_model = spm.SentencePieceProcessor()
         self.sp_model.Load(sp_model_path)
         self._token_pad = self.sp_model.id_to_piece(self.sp_model.pad_id())
         self._token_unk = self.sp_model.id_to_piece(self.sp_model.unk_id())
-        self._token_pad_id = self.sp_model.piece_to_id(self._token_pad)
-        self._token_cls_id = self.sp_model.piece_to_id(self._token_cls)
-        self._token_sep_id = self.sp_model.piece_to_id(self._token_sep)
-        self._token_unk_id = self.sp_model.piece_to_id(self._token_unk)
-        self._token_mask_id = self.sp_model.piece_to_id(self._token_mask)
         self._vocab_size = self.sp_model.get_piece_size()
+
+        for token in ['pad', 'unk', 'mask', 'start', 'end']:
+            try:
+                _token = getattr(self, '_token_%s' % token)
+                _token_id = self.sp_model.piece_to_id(_token)
+                setattr(self, '_token_%s_id' % token, _token_id)
+            except:
+                pass
 
     def token_to_id(self, token):
         """token转换为对应的id
