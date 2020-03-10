@@ -163,8 +163,8 @@ class AutoCaption(AutoRegressiveDecoder):
         return tokenizer.decode(output_ids)
 
 
-autocaption = AutoCaption(start_id=tokenizer._token_cls_id,
-                          end_id=tokenizer._token_sep_id,
+autocaption = AutoCaption(start_id=tokenizer._token_start_id,
+                          end_id=tokenizer._token_end_id,
                           maxlen=maxlen)
 
 
