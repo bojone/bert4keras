@@ -297,7 +297,7 @@ class TrainingDatasetGPT(TrainingDataset):
 
 if __name__ == '__main__':
 
-    from bert4keras.tokenizer import Tokenizer
+    from bert4keras.tokenizers import Tokenizer
     import json, glob, re
     from tqdm import tqdm
 
