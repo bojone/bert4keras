@@ -994,7 +994,7 @@ class T5_Encoder(T5_Base):
 class T5_Decoder(Transformer):
     """Google的T5模型（Decoder）
     """
-    def __init__(self, with_lm=False, **kwargs):
+    def __init__(self, with_lm=True, **kwargs):
         super(T5_Decoder, self).__init__(**kwargs)
         if with_lm is True:
             self.with_lm = 'softmax'
