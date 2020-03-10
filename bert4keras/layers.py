@@ -61,6 +61,19 @@ else:
             self.supports_masking = True  # 本项目的自定义层均可mask
 
 
+class Embedding(keras.layers.Embedding):
+    """为了适配T5，对Embedding的Mask做特殊处理
+    """
+    def compute_mask(self, inputs, mask=None):
+        """保证第一个token不被mask
+        """
+        mask = super(Embedding, self).compute_mask(inputs, mask)
+        if mask is not None:
+            mask1 = K.ones_like(mask[:, :1], dtype='bool')
+            mask2 = mask[:, 1:]
+            return K.concatenate([mask1, mask2], 1)
+
+
 class MultiHeadAttention(Layer):
     """多头注意力机制
     """
