@@ -47,10 +47,12 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 - <strong>转换后的albert</strong>: https://github.com/bojone/albert_zh
 - <strong>华为的NEZHA</strong>: https://github.com/huawei-noah/Pretrained-Language-Model/tree/master/NEZHA
 - <strong>自研语言模型</strong>: https://github.com/ZhuiyiTechnology/pretrained-models
+- <strong>T5模型</strong>:https://github.com/google-research/text-to-text-transfer-transformer
 
 （注：brightmart版albert的开源时间早于Google版albert，这导致早期brightmart版albert的权重与Google版的不完全一致，换言之两者不能直接相互替换。为了减少代码冗余，bert4keras的0.2.4及后续版本均只支持加载<u>Google版</u>以brightmart版中<u>带Google字眼</u>的权重。如果要加载早期版本的权重，请用<a href="https://github.com/bojone/bert4keras/releases/tag/v0.2.3">0.2.3版本</a>，或者考虑作者转换过的<a href="https://github.com/bojone/albert_zh">albert_zh</a>。）
 
 ## 更新
+- <strong>2020.03.10</strong>: 支持Google的<a href="https://github.com/google-research/text-to-text-transfer-transformer">T5</a>模型。
 - <strong>2020.03.05</strong>: 将`tokenizer.py`更名为`tokenizers.py`。
 - <strong>2020.03.05</strong>: `application='seq2seq'`改名为`application='unilm'`。
 - <strong>2020.03.05</strong>: `build_bert_model`更名为`build_transformer_model`。
