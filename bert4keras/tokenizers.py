@@ -369,7 +369,8 @@ class SpTokenizer(BasicTokenizer):
         """转为可读文本
         """
         ids = [i for i in ids if self._is_decodable(i)]
-        return self.sp_model.decode_ids(ids)
+        text = self.sp_model.decode_ids(ids)
+        return text.decode('utf-8') if is_py2 else text
 
     def _tokenize(self, text):
         """基本分词函数
