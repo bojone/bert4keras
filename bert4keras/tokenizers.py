@@ -360,12 +360,15 @@ class SpTokenizer(BasicTokenizer):
     def id_to_token(self, i):
         """id转换为对应的token
         """
-        return self.sp_model.id_to_piece(i)
+        if i < self._vocab_size:
+            return self.sp_model.id_to_piece(i)
+        else:
+            return ''
 
     def decode(self, ids):
         """转为可读文本
         """
-        ids = [i for i in ids if not self._is_special(i)]
+        ids = [i for i in ids if self._is_decodable(i)]
         return self.sp_model.decode_ids(ids)
 
     def _tokenize(self, text):
@@ -380,3 +383,8 @@ class SpTokenizer(BasicTokenizer):
         return self.sp_model.is_control(i) or \
             self.sp_model.is_unknown(i) or \
             self.sp_model.is_unused(i)
+
+    def _is_decodable(self, i):
+        """判断是否应该被解码输出
+        """
+        return (i < self._vocab_size) and not self._is_special(i)
