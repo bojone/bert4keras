@@ -263,10 +263,11 @@ class AutoRegressiveDecoder(object):
     """通用自回归生成模型解码基类
     包含beam search和random sample两种策略
     """
-    def __init__(self, start_id, end_id, maxlen):
+    def __init__(self, start_id, end_id, maxlen, minlen=None):
         self.start_id = start_id
         self.end_id = end_id
         self.maxlen = maxlen
+        self.minlen = minlen or 1
         if start_id is None:
             self.first_output_ids = np.empty((1, 0), dtype=int)
         else:
@@ -320,16 +321,17 @@ class AutoRegressiveDecoder(object):
             indices_2 = (indices % scores.shape[1]).reshape((-1, 1))  # 列索引
             output_ids = np.concatenate([output_ids[indices_1], indices_2], 1)  # 更新输出
             output_scores = np.take_along_axis(scores, indices, axis=None)  # 更新得分
-            best_one = output_scores.argmax()  # 得分最大的那个
-            if indices_2[best_one, 0] == self.end_id:  # 如果已经终止
-                return output_ids[best_one]  # 直接输出
-            else:  # 否则，只保留未完成部分
-                flag = (indices_2[:, 0] != self.end_id)  # 标记未完成序列
-                if not flag.all():  # 如果有已完成的
-                    inputs = [i[flag] for i in inputs]  # 扔掉已完成序列
-                    output_ids = output_ids[flag]  # 扔掉已完成序列
-                    output_scores = output_scores[flag]  # 扔掉已完成序列
-                    topk = flag.sum()  # topk相应变化
+            if output_ids.shape[1] >= self.minlen:  # 最短长度判断
+                best_one = output_scores.argmax()  # 得分最大的那个
+                if indices_2[best_one, 0] == self.end_id:  # 如果已经终止
+                    return output_ids[best_one]  # 直接输出
+                else:  # 否则，只保留未完成部分
+                    flag = (indices_2[:, 0] != self.end_id)  # 标记未完成序列
+                    if not flag.all():  # 如果有已完成的
+                        inputs = [i[flag] for i in inputs]  # 扔掉已完成序列
+                        output_ids = output_ids[flag]  # 扔掉已完成序列
+                        output_scores = output_scores[flag]  # 扔掉已完成序列
+                        topk = flag.sum()  # topk相应变化
         # 达到长度直接输出
         return output_ids[output_scores.argmax()]
 
@@ -357,15 +359,16 @@ class AutoRegressiveDecoder(object):
             if topk is not None:
                 sample_ids = np.take_along_axis(indices, sample_ids, axis=1)  # 对齐原id
             output_ids = np.concatenate([output_ids, sample_ids], 1)  # 更新输出
-            flag = (sample_ids[:, 0] == self.end_id)  # 标记已完成序列
-            if flag.any():  # 如果有已完成的
-                for ids in output_ids[flag]:  # 存好已完成序列
-                    results.append(ids)
-                flag = (flag == False)  # 标记未完成序列
-                inputs = [i[flag] for i in inputs]  # 只保留未完成部分输入
-                output_ids = output_ids[flag]  # 只保留未完成部分候选集
-                if len(output_ids) == 0:
-                    break
+            if output_ids.shape[1] >= self.minlen:  # 最短长度判断
+                flag = (sample_ids[:, 0] == self.end_id)  # 标记已完成序列
+                if flag.any():  # 如果有已完成的
+                    for ids in output_ids[flag]:  # 存好已完成序列
+                        results.append(ids)
+                    flag = (flag == False)  # 标记未完成序列
+                    inputs = [i[flag] for i in inputs]  # 只保留未完成部分输入
+                    output_ids = output_ids[flag]  # 只保留未完成部分候选集
+                    if len(output_ids) == 0:
+                        break
         # 如果还有未完成序列，直接放入结果
         for ids in output_ids:
             results.append(ids)
