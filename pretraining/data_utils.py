@@ -183,9 +183,7 @@ class TrainingDatasetRoBERTa(TrainingDataset):
 
         token_ids, mask_ids = [], []
         for rand, word in zip(rands, words):
-            word_tokens = self.tokenizer.tokenize(text=word,
-                                                  add_cls=False,
-                                                  add_sep=False)
+            word_tokens = self.tokenizer.tokenize(text=word)[1:-1]
             word_token_ids = self.tokenizer.tokens_to_ids(word_tokens)
             token_ids.extend(word_token_ids)
 
@@ -251,9 +249,7 @@ class TrainingDatasetGPT(TrainingDataset):
         """单个文本的处理函数
         流程：分词，然后转id。
         """
-        tokens = self.tokenizer.tokenize(text=text,
-                                         add_cls=False,
-                                         add_sep=False)
+        tokens = self.tokenizer.tokenize(text=text)[1:-1]
         token_ids = self.tokenizer.tokens_to_ids(tokens)
         return [token_ids]
 
