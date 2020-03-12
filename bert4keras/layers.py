@@ -187,6 +187,7 @@ class LayerNormalization(Layer):
     def __init__(self,
                  center=True,
                  scale=True,
+                 epsilon=None,
                  conditional=False,
                  hidden_units=None,
                  hidden_activation='linear',
@@ -199,7 +200,7 @@ class LayerNormalization(Layer):
         self.hidden_units = hidden_units
         self.hidden_activation = activations.get(hidden_activation)
         self.hidden_initializer = initializers.get(hidden_initializer)
-        self.epsilon = K.epsilon() * K.epsilon()
+        self.epsilon = epsilon or 1e-12
 
     def build(self, input_shape):
         super(LayerNormalization, self).build(input_shape)
@@ -273,6 +274,7 @@ class LayerNormalization(Layer):
         config = {
             'center': self.center,
             'scale': self.scale,
+            'epsilon': self.epsilon,
             'conditional': self.conditional,
             'hidden_units': self.hidden_units,
             'hidden_activation': activations.serialize(self.hidden_activation),
