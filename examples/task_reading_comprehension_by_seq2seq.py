@@ -115,8 +115,8 @@ class ReadingComprehension(AutoRegressiveDecoder):
     如果没答案，则返回空字符串。
     mode是extractive时，按照抽取式执行，即答案必须是原篇章的一个片段。
     """
-    def __init__(self, start_id, end_id, maxlen, mode='extractive'):
-        super(ReadingComprehension, self).__init__(start_id, end_id, maxlen)
+    def __init__(self, mode='extractive', **kwargs):
+        super(ReadingComprehension, self).__init__(**kwargs)
         self.mode = mode
 
     def get_ngram_set(self, x, n):
