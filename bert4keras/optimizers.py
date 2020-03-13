@@ -21,8 +21,7 @@ class Adam(keras.optimizers.Optimizer):
                  bias_correction=True,
                  name='Adam',
                  **kwargs):
-        kwargs['name'] = name
-        super(Adam, self).__init__(**kwargs)
+        super(Adam, self).__init__(name=name, **kwargs)
         self._set_hyper('learning_rate', learning_rate)
         self._set_hyper('beta_1', beta_1)
         self._set_hyper('beta_2', beta_2)
