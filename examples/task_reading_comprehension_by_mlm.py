@@ -81,9 +81,9 @@ class data_generator(DataGenerator):
             a_token_ids, _ = tokenizer.encode(final_answer, max_length=max_a_len + 1)
             q_token_ids, _ = tokenizer.encode(question, max_length=max_q_len + 1)
             p_token_ids, _ = tokenizer.encode(passage, max_length=max_p_len + 1)
-            token_ids = [tokenizer._token_cls_id]
+            token_ids = [tokenizer._token_start_id]
             token_ids += ([tokenizer._token_mask_id] * max_a_len)
-            token_ids += [tokenizer._token_sep_id]
+            token_ids += [tokenizer._token_end_id]
             token_ids += (q_token_ids[1:] + p_token_ids[1:])
             segment_ids = [0] * len(token_ids)
             batch_token_ids.append(token_ids)
@@ -143,9 +143,9 @@ def gen_answer(question, passages):
         p_token_ids, _ = tokenizer.encode(passage, max_length=max_p_len + 1)
         q_token_ids, _ = tokenizer.encode(question, max_length=max_q_len + 1)
         all_p_token_ids.append(p_token_ids[1:])
-        token_ids.append([tokenizer._token_cls_id])
+        token_ids.append([tokenizer._token_start_id])
         token_ids[-1] += ([tokenizer._token_mask_id] * max_a_len)
-        token_ids[-1] += [tokenizer._token_sep_id]
+        token_ids[-1] += [tokenizer._token_end_id]
         token_ids[-1] += (q_token_ids[1:] + p_token_ids[1:])
         segment_ids.append([0] * len(token_ids[-1]))
     token_ids = sequence_padding(token_ids)
@@ -156,14 +156,14 @@ def gen_answer(question, passages):
         a, score = tuple(), 0.
         for i in range(max_a_len):
             idxs = list(get_ngram_set(t, i + 1)[a])
-            if tokenizer._token_sep_id not in idxs:
-                idxs.append(tokenizer._token_sep_id)
+            if tokenizer._token_end_id not in idxs:
+                idxs.append(tokenizer._token_end_id)
             # pi是将passage以外的token的概率置零
             pi = np.zeros_like(p[i])
             pi[idxs] = p[i, idxs]
             a = a + (pi.argmax(), )
             score += pi.max()
-            if a[-1] == tokenizer._token_sep_id:
+            if a[-1] == tokenizer._token_end_id:
                 break
         score = score / (i + 1)
         a = tokenizer.decode(a)
