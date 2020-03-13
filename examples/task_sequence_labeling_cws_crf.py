@@ -70,7 +70,7 @@ class data_generator(DataGenerator):
             np.random.shuffle(idxs)
         batch_token_ids, batch_segment_ids, batch_labels = [], [], []
         for i in idxs:
-            token_ids, labels = [tokenizer._token_cls_id], [0]
+            token_ids, labels = [tokenizer._token_start_id], [0]
             for w in self.data[i]:
                 w_token_ids = tokenizer.encode(w)[0][1:-1]
                 if len(token_ids) + len(w_token_ids) < maxlen:
@@ -81,7 +81,7 @@ class data_generator(DataGenerator):
                         labels += [1] + [2] * (len(w_token_ids) - 2) + [3]
                 else:
                     break
-            token_ids += [tokenizer._token_sep_id]
+            token_ids += [tokenizer._token_end_id]
             labels += [0]
             segment_ids = [0] * len(token_ids)
             batch_token_ids.append(token_ids)
