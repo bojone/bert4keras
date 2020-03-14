@@ -756,6 +756,219 @@ class NEZHA(BERT):
         return self.position_bias
 
 
+class GPT2_ML(Transformer):
+    """构建GPT2_ML模型
+    链接: https://github.com/imcaspar/gpt2-ml
+    """
+    def __init__(
+            self,
+            max_position,  # 序列最大长度
+            final_activation='softmax',  # 预测分布的激活函数
+            **kwargs  # 其余参数
+    ):
+        super(GPT2_ML, self).__init__(**kwargs)
+        self.max_position = max_position
+        self.final_activation = final_activation
+
+    def prepare_inputs(self):
+        """GPT2_ML的输入是token_ids和segment_ids
+        """
+        x_in = Input(shape=(None, ), name='Input-Token')
+        return [x_in]
+
+    def prepare_embeddings(self, inputs):
+        """GPT2_ML的embedding是token、position两者embedding之和
+        """
+        x, layer_norm_conds = inputs
+        z = layer_norm_conds[0]
+
+        x = self.call(inputs=x,
+                      layer=Embedding,
+                      input_dim=self.vocab_size,
+                      output_dim=self.embedding_size,
+                      embeddings_initializer=self.initializer,
+                      mask_zero=True,
+                      name='Embedding-Token')
+        x = self.call(inputs=x,
+                      layer=PositionEmbedding,
+                      input_dim=self.max_position,
+                      output_dim=self.embedding_size,
+                      merge_mode='add',
+                      embeddings_initializer=self.initializer,
+                      name='Embedding-Position')
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      epsilon=1e-5,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='Embedding-Norm')
+        if self.embedding_size != self.hidden_size:
+            x = self.call(inputs=x,
+                          layer=Dense,
+                          units=self.hidden_size,
+                          kernel_initializer=self.initializer,
+                          name='Embedding-Mapping')
+
+        return [x, layer_norm_conds]
+
+    def prepare_main_layers(self, inputs, index):
+        """GPT2_ML的主体是基于Self-Attention的模块
+        顺序：Att  --> LN --> FFN --> Add --> LN
+        """
+        x, layer_norm_conds = inputs
+        z = layer_norm_conds[0]
+
+        attention_name = 'Transformer-%d-MultiHeadSelfAttention' % index
+        feed_forward_name = 'Transformer-%d-FeedForward' % index
+        attention_mask = self.compute_attention_mask()
+
+        # Self Attention
+        xi, x, arguments = x, [x, x, x, attention_mask], {'a_mask': True}
+
+        x = self.call(inputs=x,
+                      layer=MultiHeadAttention,
+                      arguments=arguments,
+                      heads=self.num_attention_heads,
+                      head_size=self.attention_head_size,
+                      kernel_initializer=self.initializer,
+                      name=attention_name)
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='%s-Dropout' % attention_name)
+        x = self.call(inputs=[xi, x],
+                      layer=Add,
+                      name='%s-Add' % attention_name)
+
+        # Feed Forward
+        xi = x
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      epsilon=1e-5,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='%s-Norm-0' % feed_forward_name)
+        x = self.call(inputs=x,
+                      layer=FeedForward,
+                      units=self.intermediate_size,
+                      activation=self.hidden_act,
+                      kernel_initializer=self.initializer,
+                      name=feed_forward_name)
+        x = self.call(inputs=x,
+                      layer=Dropout,
+                      rate=self.dropout_rate,
+                      name='%s-Dropout' % feed_forward_name)
+        x = self.call(inputs=[xi, x],
+                      layer=Add,
+                      name='%s-Add' % feed_forward_name)
+        x = self.call(inputs=self.simplify([x, z]),
+                      layer=LayerNormalization,
+                      epsilon=1e-5,
+                      conditional=(z is not None),
+                      hidden_units=layer_norm_conds[1],
+                      hidden_activation=layer_norm_conds[2],
+                      hidden_initializer=self.initializer,
+                      name='%s-Norm-1' % feed_forward_name)
+
+        return [x, layer_norm_conds]
+
+    def prepare_final_layers(self, inputs):
+        """剩余部分
+        """
+        x, layer_norm_conds = inputs
+        z = layer_norm_conds[0]
+
+        # Language Model部分
+        x = self.call(inputs=x,
+                      layer=EmbeddingDense,
+                      embedding_name='Embedding-Token',
+                      activation=self.final_activation,
+                      name='LM-Proba')
+
+        return x
+
+    def load_variable(self, checkpoint, name):
+        """加载单个变量的函数
+        """
+        variable = super(GPT2_ML, self).load_variable(checkpoint, name)
+        if name == 'newslm/embeddings/word_embed':
+            if self.keep_tokens is None:
+                return variable
+            else:
+                return variable[self.keep_tokens]
+        else:
+            return variable
+
+    def compute_attention_mask(self, inputs=None):
+        """添加下三角形式的attention mask
+        """
+        if self.attention_mask is None:
+
+            def lm_mask(s):
+                import tensorflow as tf
+                seq_len = K.shape(s)[1]
+                with K.name_scope('attention_mask'):
+                    ones = K.ones((1, 1, seq_len, seq_len))
+                a_mask = tf.linalg.band_part(ones, -1, 0)
+                return a_mask
+
+            self.attention_mask = self.call(inputs=self.inputs[0],
+                                            layer=Lambda,
+                                            function=lm_mask,
+                                            name='Attention-LM-Mask')
+
+        return self.attention_mask
+
+    def variable_mapping(self):
+        """映射到官方GPT2_ML权重格式
+        """
+        mapping = {
+            'Embedding-Token': ['newslm/embeddings/word_embed'],
+            'Embedding-Position': ['newslm/embeddings/pos_embed'],
+            'Embedding-Norm': [
+                'newslm/embeddings/LayerNorm_embed_norm/beta',
+                'newslm/embeddings/LayerNorm_embed_norm/gamma',
+            ],
+        }
+
+        for i in range(self.num_hidden_layers):
+            prefix = 'newslm/layer%02d/' % i
+            mapping.update({
+                'Transformer-%d-MultiHeadSelfAttention' % i: [
+                    prefix + 'query_layer/kernel',
+                    prefix + 'query_layer/bias',
+                    prefix + 'key_layer/kernel',
+                    prefix + 'key_layer/bias',
+                    prefix + 'value_layer/kernel',
+                    prefix + 'value_layer/bias',
+                    prefix + 'context_projection_layer/kernel',
+                    prefix + 'context_projection_layer/bias',
+                ],
+                'Transformer-%d-FeedForward-Norm-0' % i: [
+                    prefix + 'LayerNorm_mlp_ln0/beta',
+                    prefix + 'LayerNorm_mlp_ln0/gamma',
+                ],
+                'Transformer-%d-FeedForward' % i: [
+                    prefix + 'intermediate/kernel',
+                    prefix + 'intermediate/bias',
+                    prefix + 'output/kernel',
+                    prefix + 'output/bias',
+                ],
+                'Transformer-%d-FeedForward-Norm-1' % i: [
+                    prefix + 'LayerNorm_mlp_ln1/beta',
+                    prefix + 'LayerNorm_mlp_ln1/gamma',
+                ],
+            })
+
+        mapping = {k: v for k, v in mapping.items() if k in self.layers}
+
+        return mapping
+
+
 class T5_Base(Transformer):
     """Google的T5模型（基类）
     """
