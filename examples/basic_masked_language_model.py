@@ -11,8 +11,9 @@ checkpoint_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
 dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
 tokenizer = Tokenizer(dict_path, do_lower_case=True) # 建立分词器
-model = build_transformer_model(config_path, checkpoint_path, with_mlm=True) # 建立模型，加载权重
-
+model = build_transformer_model(config_path=config_path,
+                                checkpoint_path=checkpoint_path,
+                                with_mlm=True)  # 建立模型，加载权重
 
 token_ids, segment_ids = tokenizer.encode(u'科学技术是第一生产力')
 
