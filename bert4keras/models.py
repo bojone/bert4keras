@@ -1546,6 +1546,7 @@ def build_transformer_model(config_path=None,
         'albert': ALBERT,
         'albert_unshared': ALBERT_Unshared,
         'nezha': NEZHA,
+        'gpt2_ml': GPT2_ML,
         't5': T5,
     }
     MODEL = models[model]
