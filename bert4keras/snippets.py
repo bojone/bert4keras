@@ -235,12 +235,37 @@ class DataGenerator(object):
     def __init__(self, data, batch_size=32):
         self.data = data
         self.batch_size = batch_size
-        self.steps = len(self.data) // self.batch_size
-        if len(self.data) % self.batch_size != 0:
-            self.steps += 1
+        if hasattr(self.data, '__len__'):
+            self.steps = len(self.data) // self.batch_size
+            if len(self.data) % self.batch_size != 0:
+                self.steps += 1
+        else:
+            self.steps = None
 
     def __len__(self):
         return self.steps
+
+    def sample(self, random=False):
+        """采样函数，每个样本同时返回一个is_end标记
+        """
+        if random and self.steps is not None:
+
+            def generator():
+                indices = list(range(len(self.data)))
+                np.random.shuffle(indices)
+                for i in indices:
+                    yield self.data[i]
+
+            data = generator()
+        else:
+            data = iter(self.data)
+
+        d_current = next(data)
+        for d_next in data:
+            yield False, d_current
+            d_current = d_next
+
+        yield True, d_current
 
     def __iter__(self, random=False):
         raise NotImplementedError
