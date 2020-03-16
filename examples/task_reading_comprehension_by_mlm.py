@@ -63,12 +63,8 @@ class data_generator(DataGenerator):
         输入：[CLS][MASK][MASK][SEP]问题[SEP]篇章[SEP]
         输出：答案
         """
-        idxs = list(range(len(self.data)))
-        if random:
-            np.random.shuffle(idxs)
         batch_token_ids, batch_segment_ids, batch_a_token_ids = [], [], []
-        for i in idxs:
-            D = self.data[i]
+        for is_end, D in self.sample(random):
             question = D['question']
             answers = [p['answer'] for p in D['passages'] if p['answer']]
             passage = np.random.choice(D['passages'])['passage']
@@ -89,7 +85,7 @@ class data_generator(DataGenerator):
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
             batch_a_token_ids.append(a_token_ids[1:])
-            if len(batch_token_ids) == self.batch_size or i == idxs[-1]:
+            if len(batch_token_ids) == self.batch_size or is_end:
                 batch_token_ids = sequence_padding(batch_token_ids)
                 batch_segment_ids = sequence_padding(batch_segment_ids)
                 batch_a_token_ids = sequence_padding(batch_a_token_ids, max_a_len)

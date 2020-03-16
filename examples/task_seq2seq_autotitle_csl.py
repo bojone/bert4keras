@@ -55,18 +55,14 @@ class data_generator(DataGenerator):
     """数据生成器
     """
     def __iter__(self, random=False):
-        idxs = list(range(len(self.data)))
-        if random:
-            np.random.shuffle(idxs)
         batch_token_ids, batch_segment_ids = [], []
-        for i in idxs:
-            title, content = self.data[i]
+        for is_end, (title, content) in self.sample(random):
             token_ids, segment_ids = tokenizer.encode(content,
                                                       title,
                                                       max_length=maxlen)
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
-            if len(batch_token_ids) == self.batch_size or i == idxs[-1]:
+            if len(batch_token_ids) == self.batch_size or is_end:
                 batch_token_ids = sequence_padding(batch_token_ids)
                 batch_segment_ids = sequence_padding(batch_segment_ids)
                 yield [batch_token_ids, batch_segment_ids], None

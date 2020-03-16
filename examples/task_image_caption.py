@@ -86,12 +86,8 @@ class data_generator(DataGenerator):
     """数据生成器
     """
     def __iter__(self, random=False):
-        idxs = list(range(len(self.data)))
-        if random:
-            np.random.shuffle(idxs)
         batch_images, batch_token_ids, batch_segment_ids = [], [], []
-        for i in idxs:
-            D = self.data[i]
+        for is_end, D in self.sample(random):
             img = '/root/caption/coco/train2014/%s' % D['image_id']
             caption = np.random.choice(D['caption'])
             token_ids, segment_ids = tokenizer.encode(caption,
@@ -99,7 +95,7 @@ class data_generator(DataGenerator):
             batch_images.append(read_image(img))
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
-            if len(batch_token_ids) == self.batch_size or i == idxs[-1]:
+            if len(batch_token_ids) == self.batch_size or is_end:
                 batch_images = np.array(batch_images)
                 batch_images = preprocess_input(batch_images)
                 batch_token_ids = sequence_padding(batch_token_ids)

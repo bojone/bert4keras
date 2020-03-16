@@ -71,13 +71,10 @@ class data_generator(DataGenerator):
     """数据生成器
     """
     def __iter__(self, random=False):
-        idxs = list(range(len(self.data)))
-        if random:
-            np.random.shuffle(idxs)
         batch_token_ids, batch_segment_ids, batch_labels = [], [], []
-        for i in idxs:
+        for is_end, item in self.sample(random):
             token_ids, labels = [tokenizer._token_start_id], [0]
-            for w, l in self.data[i]:
+            for w, l in item:
                 w_token_ids = tokenizer.encode(w)[0][1:-1]
                 if len(token_ids) + len(w_token_ids) < maxlen:
                     token_ids += w_token_ids
@@ -95,7 +92,7 @@ class data_generator(DataGenerator):
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
             batch_labels.append(labels)
-            if len(batch_token_ids) == self.batch_size or i == idxs[-1]:
+            if len(batch_token_ids) == self.batch_size or is_end:
                 batch_token_ids = sequence_padding(batch_token_ids)
                 batch_segment_ids = sequence_padding(batch_segment_ids)
                 batch_labels = sequence_padding(batch_labels)

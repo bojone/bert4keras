@@ -60,12 +60,8 @@ class data_generator(DataGenerator):
     def __iter__(self, random=False):
         """单条样本格式：[CLS]篇章[SEP]问题[SEP]答案[SEP]
         """
-        idxs = list(range(len(self.data)))
-        if random:
-            np.random.shuffle(idxs)
         batch_token_ids, batch_segment_ids = [], []
-        for i in idxs:
-            D = self.data[i]
+        for is_end, D in self.sample(random):
             question = D['question']
             answers = [p['answer'] for p in D['passages'] if p['answer']]
             passage = np.random.choice(D['passages'])['passage']
@@ -83,7 +79,7 @@ class data_generator(DataGenerator):
             segment_ids = p_segment_ids + qa_segment_ids[1:]
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
-            if len(batch_token_ids) == self.batch_size or i == idxs[-1]:
+            if len(batch_token_ids) == self.batch_size or is_end:
                 batch_token_ids = sequence_padding(batch_token_ids)
                 batch_segment_ids = sequence_padding(batch_segment_ids)
                 yield [batch_token_ids, batch_segment_ids], None

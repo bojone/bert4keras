@@ -72,13 +72,9 @@ class data_generator(DataGenerator):
     """数据生成器
     """
     def __iter__(self, random=False):
-        idxs = list(range(len(self.data)))
-        if random:
-            np.random.shuffle(idxs)
         batch_token_ids, batch_segment_ids = [], []
         batch_subject_labels, batch_subject_ids, batch_object_labels = [], [], []
-        for i in idxs:
-            d = self.data[i]
+        for is_end, d in self.sample(random):
             token_ids, segment_ids = tokenizer.encode(d['text'], max_length=maxlen)
             # 整理三元组 {s: [(o, p)]}
             spoes = {}
@@ -116,7 +112,7 @@ class data_generator(DataGenerator):
                 batch_subject_labels.append(subject_labels)
                 batch_subject_ids.append(subject_ids)
                 batch_object_labels.append(object_labels)
-                if len(batch_token_ids) == self.batch_size or i == idxs[-1]:
+                if len(batch_token_ids) == self.batch_size or is_end:
                     batch_token_ids = sequence_padding(batch_token_ids)
                     batch_segment_ids = sequence_padding(batch_segment_ids)
                     batch_subject_labels = sequence_padding(batch_subject_labels, padding=np.zeros(2))
