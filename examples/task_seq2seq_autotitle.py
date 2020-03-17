@@ -41,7 +41,7 @@ class data_generator(DataGenerator):
     """
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids = [], []
-        for i, txt in self.sample(random):
+        for is_end, txt in self.sample(random):
             text = open(txt, encoding='utf-8').read()
             text = text.split('\n')
             if len(text) > 1:
