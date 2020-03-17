@@ -1477,6 +1477,7 @@ class T5(T5_Base):
         if 'name' in kwargs:
             e_name = '%s_%s' % (kwargs['name'], e_name)
             d_name = '%s_%s' % (kwargs['name'], d_name)
+            del kwargs['name']  # 防止重复传参
         self._encoder = T5_Encoder(name=e_name, **kwargs)
         self._decoder = T5_Decoder(name=d_name, **kwargs)
 
