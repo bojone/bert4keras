@@ -56,17 +56,13 @@ class Transformer(object):
         # Input
         inputs = self.prepare_inputs()
         self.set_inputs(inputs, additional_input_layers)
-        if isinstance(inputs, list):
-            outputs = inputs[:]
-        else:
-            outputs = [inputs]
+        outputs = inputs
         # Other
-        layer_norm_conds = [
+        self.layer_norm_conds = [
             layer_norm_cond,
             layer_norm_cond_hidden_size,
             layer_norm_cond_hidden_act or 'linear',
         ]
-        outputs.append(layer_norm_conds)
         # Embedding
         outputs = self.prepare_embeddings(outputs)
         # Main
@@ -241,8 +237,8 @@ class BERT(Transformer):
     def prepare_embeddings(self, inputs):
         """BERT的embedding是token、position、segment三者embedding之和
         """
-        x, s, layer_norm_conds = inputs
-        z = layer_norm_conds[0]
+        x, s = inputs
+        z = self.layer_norm_conds[0]
 
         x = self.call(inputs=x,
                       layer=Embedding,
@@ -268,8 +264,8 @@ class BERT(Transformer):
         x = self.call(inputs=self.simplify([x, z]),
                       layer=LayerNormalization,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='Embedding-Norm')
         x = self.call(inputs=x,
@@ -283,14 +279,14 @@ class BERT(Transformer):
                           kernel_initializer=self.initializer,
                           name='Embedding-Mapping')
 
-        return [x, layer_norm_conds]
+        return x
 
     def prepare_main_layers(self, inputs, index):
         """BERT的主体是基于Self-Attention的模块
         顺序：Att --> Add --> LN --> FFN --> Add --> LN
         """
-        x, layer_norm_conds = inputs
-        z = layer_norm_conds[0]
+        x = inputs
+        z = self.layer_norm_conds[0]
 
         attention_name = 'Transformer-%d-MultiHeadSelfAttention' % index
         feed_forward_name = 'Transformer-%d-FeedForward' % index
@@ -319,8 +315,8 @@ class BERT(Transformer):
         x = self.call(inputs=self.simplify([x, z]),
                       layer=LayerNormalization,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='%s-Norm' % attention_name)
 
@@ -342,18 +338,18 @@ class BERT(Transformer):
         x = self.call(inputs=self.simplify([x, z]),
                       layer=LayerNormalization,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='%s-Norm' % feed_forward_name)
 
-        return [x, layer_norm_conds]
+        return x
 
     def prepare_final_layers(self, inputs):
         """根据剩余参数决定输出
         """
-        x, layer_norm_conds = inputs
-        z = layer_norm_conds[0]
+        x = inputs
+        z = self.layer_norm_conds[0]
         outputs = [x]
 
         if self.with_pool or self.with_nsp:
@@ -392,8 +388,8 @@ class BERT(Transformer):
             x = self.call(inputs=self.simplify([x, z]),
                           layer=LayerNormalization,
                           conditional=(z is not None),
-                          hidden_units=layer_norm_conds[1],
-                          hidden_activation=layer_norm_conds[2],
+                          hidden_units=self.layer_norm_conds[1],
+                          hidden_activation=self.layer_norm_conds[2],
                           hidden_initializer=self.initializer,
                           name='MLM-Norm')
             mlm_activation = 'softmax' if self.with_mlm is True else self.with_mlm
@@ -512,8 +508,8 @@ class ALBERT(BERT):
         """ALBERT的主体是基于Self-Attention的模块
         顺序：Att --> Add --> LN --> FFN --> Add --> LN
         """
-        x, layer_norm_conds = inputs
-        z = layer_norm_conds[0]
+        x = inputs
+        z = self.layer_norm_conds[0]
 
         attention_name = 'Transformer-MultiHeadSelfAttention'
         feed_forward_name = 'Transformer-FeedForward'
@@ -542,8 +538,8 @@ class ALBERT(BERT):
         x = self.call(inputs=self.simplify([x, z]),
                       layer=LayerNormalization,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='%s-Norm' % attention_name)
 
@@ -565,12 +561,12 @@ class ALBERT(BERT):
         x = self.call(inputs=self.simplify([x, z]),
                       layer=LayerNormalization,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='%s-Norm' % feed_forward_name)
 
-        return [x, layer_norm_conds]
+        return x
 
     def variable_mapping(self):
         """映射到官方ALBERT权重格式
@@ -659,8 +655,8 @@ class NEZHA(BERT):
     def prepare_embeddings(self, inputs):
         """NEZHA的embedding是token、segment两者embedding之和
         """
-        x, s, layer_norm_conds = inputs
-        z = layer_norm_conds[0]
+        x, s = inputs
+        z = self.layer_norm_conds[0]
 
         x = self.call(inputs=x,
                       layer=Embedding,
@@ -679,8 +675,8 @@ class NEZHA(BERT):
         x = self.call(inputs=self.simplify([x, z]),
                       layer=LayerNormalization,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='Embedding-Norm')
         x = self.call(inputs=x,
@@ -694,14 +690,14 @@ class NEZHA(BERT):
                           kernel_initializer=self.initializer,
                           name='Embedding-Mapping')
 
-        return [x, layer_norm_conds]
+        return x
 
     def prepare_main_layers(self, inputs, index):
         """NEZHA的主体是基于Self-Attention的模块
         顺序：Att --> Add --> LN --> FFN --> Add --> LN
         """
-        x, layer_norm_conds = inputs
-        z = layer_norm_conds[0]
+        x = inputs
+        z = self.layer_norm_conds[0]
 
         attention_name = 'Transformer-%d-MultiHeadSelfAttention' % index
         feed_forward_name = 'Transformer-%d-FeedForward' % index
@@ -732,8 +728,8 @@ class NEZHA(BERT):
         x = self.call(inputs=self.simplify([x, z]),
                       layer=LayerNormalization,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='%s-Norm' % attention_name)
 
@@ -755,12 +751,12 @@ class NEZHA(BERT):
         x = self.call(inputs=self.simplify([x, z]),
                       layer=LayerNormalization,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='%s-Norm' % feed_forward_name)
 
-        return [x, layer_norm_conds]
+        return x
 
     def compute_position_bias(self, inputs=None):
         """经典相对位置编码
@@ -809,13 +805,13 @@ class GPT2_ML(Transformer):
         """GPT2_ML的输入是token_ids和segment_ids
         """
         x_in = Input(shape=(None, ), name='Input-Token')
-        return [x_in]
+        return x_in
 
     def prepare_embeddings(self, inputs):
         """GPT2_ML的embedding是token、position两者embedding之和
         """
-        x, layer_norm_conds = inputs
-        z = layer_norm_conds[0]
+        x = inputs
+        z = self.layer_norm_conds[0]
 
         x = self.call(inputs=x,
                       layer=Embedding,
@@ -835,8 +831,8 @@ class GPT2_ML(Transformer):
                       layer=LayerNormalization,
                       epsilon=1e-5,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='Embedding-Norm')
         if self.embedding_size != self.hidden_size:
@@ -846,14 +842,14 @@ class GPT2_ML(Transformer):
                           kernel_initializer=self.initializer,
                           name='Embedding-Mapping')
 
-        return [x, layer_norm_conds]
+        return x
 
     def prepare_main_layers(self, inputs, index):
         """GPT2_ML的主体是基于Self-Attention的模块
         顺序：Att  --> LN --> FFN --> Add --> LN
         """
-        x, layer_norm_conds = inputs
-        z = layer_norm_conds[0]
+        x = inputs
+        z = self.layer_norm_conds[0]
 
         attention_name = 'Transformer-%d-MultiHeadSelfAttention' % index
         feed_forward_name = 'Transformer-%d-FeedForward' % index
@@ -883,8 +879,8 @@ class GPT2_ML(Transformer):
                       layer=LayerNormalization,
                       epsilon=1e-5,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='%s-Norm-0' % feed_forward_name)
         x = self.call(inputs=x,
@@ -904,18 +900,18 @@ class GPT2_ML(Transformer):
                       layer=LayerNormalization,
                       epsilon=1e-5,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='%s-Norm-1' % feed_forward_name)
 
-        return [x, layer_norm_conds]
+        return x
 
     def prepare_final_layers(self, inputs):
         """剩余部分
         """
-        x, layer_norm_conds = inputs
-        z = layer_norm_conds[0]
+        x = inputs
+        z = self.layer_norm_conds[0]
 
         # Language Model部分
         x = self.call(inputs=x,
@@ -1106,13 +1102,13 @@ class T5_Encoder(T5_Base):
         """T5的Encoder的输入只有token_ids
         """
         x_in = Input(shape=(None, ), name='Encoder-Input-Token')
-        return [x_in]
+        return x_in
 
     def prepare_embeddings(self, inputs):
         """T5的embedding只有token embedding，
         并把relative position embedding准备好，待attention使用。
         """
-        x, layer_norm_conds = inputs
+        x = inputs
 
         x = self.call(inputs=x,
                       layer=Embedding,
@@ -1132,15 +1128,15 @@ class T5_Encoder(T5_Base):
                           kernel_initializer=self.initializer,
                           name='Encoder-Embedding-Mapping')
 
-        return [x, layer_norm_conds]
+        return x
 
     def prepare_main_layers(self, inputs, index):
         """T5的Encoder的主体是基于Self-Attention的模块
         顺序：LN --> Att --> Add --> LN --> FFN --> Add
         """
 
-        x, layer_norm_conds = inputs
-        z = layer_norm_conds[0]
+        x = inputs
+        z = self.layer_norm_conds[0]
 
         attention_name = 'Encoder-Transformer-%d-MultiHeadSelfAttention' % index
         feed_forward_name = 'Encoder-Transformer-%d-FeedForward' % index
@@ -1154,8 +1150,8 @@ class T5_Encoder(T5_Base):
                       center=False,
                       epsilon=1e-6,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='%s-Norm' % attention_name)
         x = self.call(inputs=[x, x, x, position_bias],
@@ -1181,8 +1177,8 @@ class T5_Encoder(T5_Base):
                       center=False,
                       epsilon=1e-6,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='%s-Norm' % feed_forward_name)
         x = self.call(inputs=x,
@@ -1200,21 +1196,21 @@ class T5_Encoder(T5_Base):
                       layer=Add,
                       name='%s-Add' % feed_forward_name)
 
-        return [x, layer_norm_conds]
+        return x
 
     def prepare_final_layers(self, inputs):
         """剩余部分
         """
-        x, layer_norm_conds = inputs
-        z = layer_norm_conds[0]
+        x = inputs
+        z = self.layer_norm_conds[0]
 
         x = self.call(inputs=self.simplify([x, z]),
                       layer=LayerNormalization,
                       center=False,
                       epsilon=1e-6,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='Encoder-Output-Norm')
         x = self.call(inputs=x,
@@ -1263,7 +1259,7 @@ class T5_Decoder(Transformer):
         """T5的embedding只有token embedding，
         并把relative position embedding准备好，待attention使用。
         """
-        c, x, layer_norm_conds = inputs
+        c, x = inputs
 
         x = self.call(inputs=x,
                       layer=Embedding,
@@ -1283,15 +1279,15 @@ class T5_Decoder(Transformer):
                           kernel_initializer=self.initializer,
                           name='Decoder-Embedding-Mapping')
 
-        return [c, x, layer_norm_conds]
+        return [c, x]
 
     def prepare_main_layers(self, inputs, index):
         """T5的Dencoder主体是基于Self-Attention、Cross-Attention的模块
         顺序：LN --> Att1 --> Add --> LN --> Att2 --> Add -->  LN --> FFN --> Add
         """
 
-        c, x, layer_norm_conds = inputs
-        z = layer_norm_conds[0]
+        c, x = inputs
+        z = self.layer_norm_conds[0]
 
         self_attention_name = 'Decoder-Transformer-%d-MultiHeadSelfAttention' % index
         cross_attention_name = 'Decoder-Transformer-%d-MultiHeadCrossAttention' % index
@@ -1306,8 +1302,8 @@ class T5_Decoder(Transformer):
                       center=False,
                       epsilon=1e-6,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='%s-Norm' % self_attention_name)
         x = self.call(inputs=[x, x, x, attention_mask, position_bias[0]],
@@ -1333,8 +1329,8 @@ class T5_Decoder(Transformer):
                       center=False,
                       epsilon=1e-6,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='%s-Norm' % cross_attention_name)
         x = self.call(inputs=[x, c, c, position_bias[1]],
@@ -1360,8 +1356,8 @@ class T5_Decoder(Transformer):
                       center=False,
                       epsilon=1e-6,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='%s-Norm' % feed_forward_name)
         x = self.call(inputs=x,
@@ -1379,21 +1375,21 @@ class T5_Decoder(Transformer):
                       layer=Add,
                       name='%s-Add' % feed_forward_name)
 
-        return [c, x, layer_norm_conds]
+        return [c, x]
 
     def prepare_final_layers(self, inputs):
         """剩余部分
         """
-        c, x, layer_norm_conds = inputs
-        z = layer_norm_conds[0]
+        c, x = inputs
+        z = self.layer_norm_conds[0]
 
         x = self.call(inputs=self.simplify([x, z]),
                       layer=LayerNormalization,
                       center=False,
                       epsilon=1e-6,
                       conditional=(z is not None),
-                      hidden_units=layer_norm_conds[1],
-                      hidden_activation=layer_norm_conds[2],
+                      hidden_units=self.layer_norm_conds[1],
+                      hidden_activation=self.layer_norm_conds[2],
                       hidden_initializer=self.initializer,
                       name='Decoder-Output-Norm')
         x = self.call(inputs=x,
@@ -1610,13 +1606,10 @@ def build_transformer_model(config_path=None,
 
 
 def build_bert_model(*args, **kwargs):
-    warnings.warn(
-        'build_bert_model has been renamed as build_transformer_model.')
+    warnings.warn('build_bert_model has been renamed as build_transformer_model.')
     warnings.warn('please use build_transformer_model.')
     if kwargs.get('application') == 'seq2seq':
-        warnings.warn(
-            'application=\'seq2seq\' has been renamed as application=\'unilm\''
-        )
+        warnings.warn('application=\'seq2seq\' has been renamed as application=\'unilm\'')
         warnings.warn('please use application=\'unilm\'')
         kwargs['application'] = 'unilm'
     return build_transformer_model(*args, **kwargs)
