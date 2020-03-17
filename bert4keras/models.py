@@ -23,6 +23,7 @@ class Transformer(object):
             embedding_size=None,  # 是否指定embedding_size
             keep_tokens=None,  # 要保留的词ID列表
             layers=None,  # 外部传入的Keras层
+            name=None,  # 模型名称
             **kwargs):
         if keep_tokens is None:
             self.vocab_size = vocab_size
@@ -40,6 +41,7 @@ class Transformer(object):
         self.attention_mask = None
         self.position_bias = None
         self.layers = {} if layers is None else layers
+        self.name = name
 
     def build(self,
               layer_norm_cond=None,
@@ -52,12 +54,12 @@ class Transformer(object):
         用来实现以“固定长度向量”为条件的条件Bert。
         """
         # Input
-        self.inputs = self.prepare_inputs()
-        outputs = self.inputs[:]
-        if additional_input_layers is not None:
-            if not isinstance(additional_input_layers, list):
-                additional_input_layers = [additional_input_layers]
-            self.inputs.extend(additional_input_layers)
+        inputs = self.prepare_inputs()
+        self.set_inputs(inputs, additional_input_layers)
+        if isinstance(inputs, list):
+            outputs = inputs[:]
+        else:
+            outputs = [inputs]
         # Other
         layer_norm_conds = [
             layer_norm_cond,
@@ -72,9 +74,9 @@ class Transformer(object):
             outputs = self.prepare_main_layers(outputs, i)
         # Final
         outputs = self.prepare_final_layers(outputs)
-        self.outputs = outputs
+        self.set_outputs(outputs)
         # Model
-        self.model = keras.models.Model(self.inputs, self.outputs)
+        self.model = Model(self.inputs, self.outputs, name=self.name)
 
     def call(self, inputs, layer=None, arguments=None, **kwargs):
         """通过call调用层会自动重用同名层
@@ -116,6 +118,39 @@ class Transformer(object):
         """定义每一层的Position Bias（一般相对位置编码用）
         """
         return self.position_bias
+
+    def set_inputs(self, inputs, additional_input_layers=None):
+        """设置input和inputs属性
+        """
+        if inputs is None:
+            inputs = []
+        elif not isinstance(inputs, list):
+            inputs = [inputs]
+
+        inputs = inputs[:]
+        if additional_input_layers is not None:
+            if not isinstance(additional_input_layers, list):
+                additional_input_layers = [additional_input_layers]
+            inputs.extend(additional_input_layers)
+
+        self.inputs = inputs
+        if len(inputs) > 1:
+            self.input = inputs
+        else:
+            self.input = inputs[0]
+
+    def set_outputs(self, outputs):
+        """设置output和oututs属性
+        """
+        if not isinstance(outputs, list):
+            outputs = [outputs]
+
+        outputs = outputs[:]
+        self.outputs = outputs
+        if len(outputs) > 1:
+            self.output = outputs
+        else:
+            self.output = outputs[0]
 
     @property
     def initializer(self):
@@ -1438,8 +1473,12 @@ class T5(T5_Base):
     def __init__(self, **kwargs):
         super(T5, self).__init__(**kwargs)
         kwargs['layers'] = self.layers
-        self._encoder = T5_Encoder(**kwargs)
-        self._decoder = T5_Decoder(**kwargs)
+        e_name, d_name = 'Encoder', 'Decoder'
+        if 'name' in kwargs:
+            e_name = '%s_%s' % (kwargs['name'], e_name)
+            d_name = '%s_%s' % (kwargs['name'], d_name)
+        self._encoder = T5_Encoder(name=e_name, **kwargs)
+        self._decoder = T5_Decoder(name=d_name, **kwargs)
 
     def build(self, **kwargs):
         """同时构建Encoder和Decoder
