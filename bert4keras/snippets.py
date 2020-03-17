@@ -370,6 +370,7 @@ class AutoRegressiveDecoder(object):
         results = []
         for step in range(self.maxlen):
             probas = self.predict(inputs, output_ids, step, 'probas')  # 计算当前概率
+            probas /= probas.sum(axis=1, keepdims=True)  # 确保归一化
             if step == 0:  # 第1步预测后将结果重复n次
                 probas = np.repeat(probas, n, axis=0)
                 inputs = [np.repeat(i, n, axis=0) for i in inputs]
@@ -386,7 +387,6 @@ class AutoRegressiveDecoder(object):
                 flag[:, 0] = False  # 结合上面的np.roll，实现平移一位的效果
                 probas[flag] = 0  # 后面的全部置零
                 probas /= probas.sum(axis=1, keepdims=True)  # 重新归一化
-            probas /= probas.sum(axis=1, keepdims=True)  # 重新归一化
             sample_func = lambda p: np.random.choice(len(p), p=p)  # 按概率采样函数
             sample_ids = np.apply_along_axis(sample_func, 1, probas)  # 执行采样
             sample_ids = sample_ids.reshape((-1, 1))  # 对齐形状
