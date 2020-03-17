@@ -359,10 +359,10 @@ class AutoRegressiveDecoder(object):
                         topk = flag.sum()  # topk相应变化
         # 达到长度直接输出
         return output_ids[output_scores.argmax()]
-
-    def random_sample(self, inputs, n, topk=None):
+    def random_sample(self, inputs, n, topk=None, topp=None):
         """随机采样n个结果
-        说明：非None的topk表示每一步只从概率最高的topk个中采样；
+        说明：非None的topk表示每一步只从概率最高的topk个中采样；而非None的topp
+             表示每一步只从概率最高的且概率之和刚好达到topp的若干个token中采样。
         返回：n个解码序列组成的list。
         """
         inputs = [np.array([i]) for i in inputs]
