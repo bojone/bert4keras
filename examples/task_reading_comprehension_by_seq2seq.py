@@ -167,13 +167,13 @@ class ReadingComprehension(AutoRegressiveDecoder):
             ngrams = {}
             for token_ids in inputs:
                 token_ids = token_ids[0]
-                sep_idx = np.where(token_ids == tokenizer._token_sep_id)[0][0]
+                sep_idx = np.where(token_ids == tokenizer._token_end_id)[0][0]
                 p_token_ids = token_ids[1:sep_idx]
                 for k, v in self.get_ngram_set(p_token_ids, step + 1).items():
                     ngrams[k] = ngrams.get(k, set()) | v
             for i, ids in enumerate(output_ids):
                 available_idxs = ngrams.get(tuple(ids), set())
-                available_idxs.add(tokenizer._token_sep_id)
+                available_idxs.add(tokenizer._token_end_id)
                 available_idxs = list(available_idxs)
                 new_probas[:, i, available_idxs] = probas[:, i, available_idxs]
             probas = new_probas
