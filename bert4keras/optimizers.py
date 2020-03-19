@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # 优化相关
 
+import numpy as np
 import tensorflow as tf
 from bert4keras.backend import keras, K, is_tf_keras
 from bert4keras.snippets import is_string, string_matching
