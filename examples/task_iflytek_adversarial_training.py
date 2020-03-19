@@ -108,7 +108,7 @@ def adversarial_training(model, embedding_name, epsilon=1):
     # 求Embedding梯度
     embeddings = embedding_layer.embeddings  # Embedding矩阵
     gradients = K.gradients(model.total_loss, [embeddings])  # Embedding梯度
-    gradients = K.zeros_like(embeddings) + gradients[0]  # 转为dense tensor
+    gradients = K._to_tensor(gradients[0])  # 转为dense tensor
 
     # 封装为函数
     inputs = (model._feed_inputs +
