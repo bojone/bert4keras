@@ -570,11 +570,10 @@ class ConditionalRandomField(Layer):
 
         return sequence_masking(inputs, mask, 1, 1)
 
-    def target_score(self, y_true, y_pred, mask=None):
+    def target_score(self, y_true, y_pred):
         """计算目标路径的相对概率（还没有归一化）
         要点：逐标签得分，加上转移概率得分。
         """
-        y_true = sequence_masking(y_true, mask, 0)
         point_score = tf.einsum('bni,bni->b', y_true, y_pred)  # 逐标签得分
         trans_score = tf.einsum('bni,ij,bnj->b', y_true[:, :-1], self.trans,
                                 y_true[:, 1:])  # 标签转移得分
