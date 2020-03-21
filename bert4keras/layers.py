@@ -602,7 +602,7 @@ class ConditionalRandomField(Layer):
             mask = K.ones_like(y_pred[:, :, :1])
         else:
             mask = K.expand_dims(mask, 2)
-        y_pred = K.concatenate([y_pred, mask])
+        y_pred = K.concatenate([y_pred, mask], axis=2)
         log_norm, _, _ = K.rnn(self.log_norm_step,
                                y_pred[:, 1:],
                                init_states)  # 最后一步的log Z向量
