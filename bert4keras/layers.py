@@ -564,6 +564,12 @@ class ConditionalRandomField(Layer):
     def compute_mask(self, inputs, mask=None):
         return None
 
+    def call(self, inputs, mask=None):
+        if mask is not None:
+            mask = K.cast(mask, K.floatx())
+
+        return sequence_masking(inputs, mask, 1, 1)
+
     def target_score(self, y_true, y_pred, mask=None):
         """计算目标路径的相对概率（还没有归一化）
         要点：逐标签得分，加上转移概率得分。
@@ -590,22 +596,19 @@ class ConditionalRandomField(Layer):
         """y_true需要是one hot形式
         """
         # 导出mask并转换数据类型
-        if self.input_mask is None:
-            mask = None
-        else:
-            mask = K.cast(self.input_mask, K.floatx())
+        mask = K.all(K.greater(y_pred, -1e6), axis=2, keepdims=True)
+        mask = K.cast(mask, K.floatx())
         # 计算目标分数
-        target_score = self.target_score(y_true, y_pred, mask)
+        y_true, y_pred = y_true * mask, y_pred * mask
+        target_score = self.target_score(y_true, y_pred)
         # 递归计算log Z
         init_states = [y_pred[:, 0]]
-        if mask is None:
-            mask = K.ones_like(y_pred[:, :, :1])
-        else:
-            mask = K.expand_dims(mask, 2)
         y_pred = K.concatenate([y_pred, mask], axis=2)
+        input_length = K.int_shape(y_pred[:, 1:])[1]
         log_norm, _, _ = K.rnn(self.log_norm_step,
                                y_pred[:, 1:],
-                               init_states)  # 最后一步的log Z向量
+                               init_states,
+                               input_length=input_length)  # 最后一步的log Z向量
         log_norm = tf.reduce_logsumexp(log_norm, 1)  # logsumexp得标量
         # 计算损失 -log p
         return log_norm - target_score
@@ -632,20 +635,15 @@ class ConditionalRandomField(Layer):
         此处y_true需要是整数形式（非one hot）
         """
         # 导出mask并转换数据类型
-        if self.input_mask is None:
-            mask = None
-        else:
-            mask = K.cast(self.input_mask, K.floatx())
+        mask = K.all(K.greater(y_pred, -1e6), axis=2)
+        mask = K.cast(mask, K.floatx())
         # y_true需要重新明确一下shape和dtype
         y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
         y_true = K.cast(y_true, 'int32')
         # 逐标签取最大来粗略评测训练效果
         y_pred = K.cast(K.argmax(y_pred, 2), 'int32')
         isequal = K.cast(K.equal(y_true, y_pred), K.floatx())
-        if mask is None:
-            return K.mean(isequal)
-        else:
-            return K.sum(isequal * mask) / K.sum(mask)
+        return K.sum(isequal * mask) / K.sum(mask)
 
     def get_config(self):
         config = {
@@ -696,6 +694,12 @@ class MaximumEntropyMarkovModel(Layer):
     def compute_mask(self, inputs, mask=None):
         return None
 
+    def call(self, inputs, mask=None):
+        if mask is not None:
+            mask = K.cast(mask, K.floatx())
+
+        return sequence_masking(inputs, mask, 1, 1)
+
     def reverse_sequence(self, inputs, mask=None):
         if mask is None:
             return [x[:, ::-1] for x in inputs]
@@ -710,10 +714,8 @@ class MaximumEntropyMarkovModel(Layer):
         """y_true需要是整数形式（非one hot）
         """
         # 导出mask并转换数据类型
-        if self.input_mask is None:
-            mask = None
-        else:
-            mask = K.cast(self.input_mask, K.floatx())
+        mask = K.all(K.greater(y_pred, -1e6), axis=2)
+        mask = K.cast(mask, K.floatx())
         # y_true需要重新明确一下shape和dtype
         y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
         y_true = K.cast(y_true, 'int32')
@@ -737,10 +739,7 @@ class MaximumEntropyMarkovModel(Layer):
         histoty = K.concatenate([y_pred[:, :1], histoty[:, :-1]], 1)
         y_pred = (y_pred + histoty) / 2
         loss = K.sparse_categorical_crossentropy(y_true, y_pred, from_logits=True)
-        if mask is None:
-            return K.mean(loss)
-        else:
-            return K.sum(loss * mask) / K.sum(mask)
+        K.sum(loss * mask) / K.sum(mask)
 
     def sparse_loss(self, y_true, y_pred):
         """y_true需要是整数形式（非one hot）
@@ -760,10 +759,8 @@ class MaximumEntropyMarkovModel(Layer):
         此处y_true需要是整数形式（非one hot）
         """
         # 导出mask并转换数据类型
-        if self.input_mask is None:
-            mask = None
-        else:
-            mask = K.cast(self.input_mask, K.floatx())
+        mask = K.all(K.greater(y_pred, -1e6), axis=2)
+        mask = K.cast(mask, K.floatx())
         # y_true需要重新明确一下shape和dtype
         y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
         y_true = K.cast(y_true, 'int32')
@@ -788,10 +785,7 @@ class MaximumEntropyMarkovModel(Layer):
         y_pred = (y_pred + histoty) / 2
         y_pred = K.cast(K.argmax(y_pred, 2), 'int32')
         isequal = K.cast(K.equal(y_true, y_pred), K.floatx())
-        if mask is None:
-            return K.mean(isequal)
-        else:
-            return K.sum(isequal * mask) / K.sum(mask)
+        return K.sum(isequal * mask) / K.sum(mask)
 
     def sparse_accuracy(self, y_true, y_pred):
         """训练过程中显示逐帧准确率的函数，排除了mask的影响
