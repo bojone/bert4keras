@@ -738,7 +738,7 @@ class MaximumEntropyMarkovModel(Layer):
         histoty = K.concatenate([y_pred[:, :1], histoty[:, :-1]], 1)
         y_pred = (y_pred + histoty) / 2
         loss = K.sparse_categorical_crossentropy(y_true, y_pred, from_logits=True)
-        K.sum(loss * mask) / K.sum(mask)
+        return K.sum(loss * mask) / K.sum(mask)
 
     def sparse_loss(self, y_true, y_pred):
         """y_true需要是整数形式（非one hot）
