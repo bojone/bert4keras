@@ -13,6 +13,25 @@ from keras import initializers, activations
 from keras.layers import *
 
 
+def integerize_shape(func):
+    """装饰器，保证input_shape一定是int或None
+    """
+    def convert(item):
+        if hasattr(item, '__iter__'):
+            return [convert(i) for i in item]
+        elif hasattr(item, 'value'):
+            return item.value
+        else:
+            return item
+
+    def new_func(self, input_shape):
+        input_shape = convert(input_shape)
+        print input_shape
+        return func(self, input_shape)
+
+    return new_func
+
+
 if keras.__version__[-2:] != 'tf' and keras.__version__ < '2.3':
 
     class Layer(keras.layers.Layer):
@@ -464,11 +483,10 @@ class FeedForward(Layer):
         self.use_bias = use_bias
         self.kernel_initializer = initializers.get(kernel_initializer)
 
+    @integerize_shape
     def build(self, input_shape):
         super(FeedForward, self).build(input_shape)
         output_dim = input_shape[-1]
-        if not isinstance(output_dim, int):
-            output_dim = output_dim.value
 
         self.dense_1 = Dense(units=self.units,
                              activation=self.activation,
@@ -549,10 +567,9 @@ class ConditionalRandomField(Layer):
         super(ConditionalRandomField, self).__init__(**kwargs)
         self.lr_multiplier = lr_multiplier  # 当前层学习率的放大倍数
 
+    @integerize_shape
     def build(self, input_shape):
         output_dim = input_shape[-1]
-        if not isinstance(output_dim, int):
-            output_dim = output_dim.value
         self.trans = self.add_weight(name='trans',
                                      shape=(output_dim, output_dim),
                                      initializer='glorot_uniform',
@@ -661,10 +678,9 @@ class MaximumEntropyMarkovModel(Layer):
         self.lr_multiplier = lr_multiplier  # 当前层学习率的放大倍数
         self.hidden_dim = hidden_dim  # 如果非None，则将转移矩阵低秩分解
 
+    @integerize_shape
     def build(self, input_shape):
         output_dim = input_shape[-1]
-        if not isinstance(output_dim, int):
-            output_dim = output_dim.value
 
         if self.hidden_dim is None:
             self.trans = self.add_weight(name='trans',
