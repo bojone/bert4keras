@@ -26,7 +26,6 @@ def integerize_shape(func):
 
     def new_func(self, input_shape):
         input_shape = convert(input_shape)
-        print input_shape
         return func(self, input_shape)
 
     return new_func
