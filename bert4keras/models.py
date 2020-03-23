@@ -1571,7 +1571,7 @@ def extend_with_unified_language_model(BaseModel):
     return UnifiedLanguageModel
 
 
-def build_transformer_model(config_path=None,
+def build_transformer_model(configs_path=None,
                             checkpoint_path=None,
                             model='bert',
                             application='encoder',
@@ -1579,15 +1579,16 @@ def build_transformer_model(config_path=None,
                             **kwargs):
     """根据配置文件构建模型，可选加载checkpoint权重
     """
-    config = {}
-    if config_path is not None:
-        config.update(json.load(open(config_path)))
-    config.update(kwargs)
-    if 'max_position' not in config:
-        config['max_position'] = config.get('max_position_embeddings')
-    if 'dropout_rate' not in config:
-        config['dropout_rate'] = config.get('hidden_dropout_prob')
+    configs = {}
+    if configs_path is not None:
+        configs.update(json.load(open(configs_path)))
+    configs.update(kwargs)
+    if 'max_position' not in configs:
+        configs['max_position'] = configs.get('max_position_embeddings')
+    if 'dropout_rate' not in configs:
+        configs['dropout_rate'] = configs.get('hidden_dropout_prob')
 
+    print configs
     model, application = model.lower(), application.lower()
 
     models = {
@@ -1606,8 +1607,8 @@ def build_transformer_model(config_path=None,
         elif application == 'unilm':
             MODEL = extend_with_unified_language_model(MODEL)
 
-    transformer = MODEL(**kwargs)
-    transformer.build(**kwargs)
+    transformer = MODEL(**configs)
+    transformer.build(**configs)
 
     if checkpoint_path is not None:
         transformer.load_weights_from_checkpoint(checkpoint_path)
