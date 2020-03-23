@@ -67,7 +67,7 @@ elif model == 'gpt':
     )
 
 
-def build_bert_model_with_mlm():
+def build_transformer_model_with_mlm():
     """带mlm的bert模型
     """
     bert = build_transformer_model(config_path,
@@ -112,7 +112,7 @@ def build_bert_model_with_mlm():
     return bert, train_model, loss
 
 
-def build_bert_model_with_lm():
+def build_transformer_model_with_lm():
     """带lm的bert模型
     """
     bert = build_transformer_model(config_path,
@@ -159,7 +159,7 @@ def build_bert_model_with_lm():
     return bert, train_model, loss
 
 
-def build_bert_model_for_pretraining():
+def build_transformer_model_for_pretraining():
     """构建训练模型，通用于TPU/GPU
     注意全程要用keras标准的层写法，一些比较灵活的“移花接木”式的
     写法可能会在TPU上训练失败。此外，要注意的是TPU并非支持所有
@@ -167,9 +167,9 @@ def build_bert_model_for_pretraining():
     时要格外留意。
     """
     if model == 'roberta':
-        bert, train_model, loss = build_bert_model_with_mlm()
+        bert, train_model, loss = build_transformer_model_with_mlm()
     elif model == 'gpt':
-        bert, train_model, loss = build_bert_model_with_lm()
+        bert, train_model, loss = build_transformer_model_with_lm()
 
     # 优化器
     optimizer = extend_with_weight_decay(Adam)
@@ -209,7 +209,7 @@ else:
     strategy = tf.distribute.experimental.TPUStrategy(resolver)
 
 with strategy.scope():
-    train_model = build_bert_model_for_pretraining()
+    train_model = build_transformer_model_for_pretraining()
     train_model.summary()
 
 
