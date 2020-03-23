@@ -21,6 +21,7 @@ class Transformer(object):
             hidden_act,  # FeedForward隐层的激活函数
             dropout_rate,  # Dropout比例
             embedding_size=None,  # 是否指定embedding_size
+            attention_key_size=None,  # Attention中Q,K的head_size
             keep_tokens=None,  # 要保留的词ID列表
             layers=None,  # 外部传入的Keras层
             name=None,  # 模型名称
@@ -33,6 +34,7 @@ class Transformer(object):
         self.num_hidden_layers = num_hidden_layers
         self.num_attention_heads = num_attention_heads
         self.attention_head_size = hidden_size // num_attention_heads
+        self.attention_key_size = attention_key_size or self.attention_head_size
         self.intermediate_size = intermediate_size
         self.dropout_rate = dropout_rate
         self.hidden_act = hidden_act
@@ -303,6 +305,7 @@ class BERT(Transformer):
                       arguments=arguments,
                       heads=self.num_attention_heads,
                       head_size=self.attention_head_size,
+                      key_size=self.attention_key_size,
                       kernel_initializer=self.initializer,
                       name=attention_name)
         x = self.call(inputs=x,
@@ -526,6 +529,7 @@ class ALBERT(BERT):
                       arguments=arguments,
                       heads=self.num_attention_heads,
                       head_size=self.attention_head_size,
+                      key_size=self.attention_key_size,
                       kernel_initializer=self.initializer,
                       name=attention_name)
         x = self.call(inputs=x,
@@ -716,6 +720,7 @@ class NEZHA(BERT):
                       arguments=arguments,
                       heads=self.num_attention_heads,
                       head_size=self.attention_head_size,
+                      key_size=self.attention_key_size,
                       kernel_initializer=self.initializer,
                       name=attention_name)
         x = self.call(inputs=x,
@@ -863,6 +868,7 @@ class GPT2_ML(Transformer):
                       arguments=arguments,
                       heads=self.num_attention_heads,
                       head_size=self.attention_head_size,
+                      key_size=self.attention_key_size,
                       kernel_initializer=self.initializer,
                       name=attention_name)
         x = self.call(inputs=x,
@@ -1159,6 +1165,7 @@ class T5_Encoder(T5_Base):
                       arguments={'p_bias': 't5_relative'},
                       heads=self.num_attention_heads,
                       head_size=self.attention_head_size,
+                      key_size=self.attention_key_size,
                       use_bias=False,
                       kernel_initializer=self.initializer,
                       name=attention_name)
@@ -1311,6 +1318,7 @@ class T5_Decoder(Transformer):
                       arguments={'a_mask': True, 'p_bias': 't5_relative'},
                       heads=self.num_attention_heads,
                       head_size=self.attention_head_size,
+                      key_size=self.attention_key_size,
                       use_bias=False,
                       kernel_initializer=self.initializer,
                       name=self_attention_name)
@@ -1338,6 +1346,7 @@ class T5_Decoder(Transformer):
                       arguments={'a_mask': None, 'p_bias': 't5_relative'},
                       heads=self.num_attention_heads,
                       head_size=self.attention_head_size,
+                      key_size=self.attention_key_size,
                       use_bias=False,
                       kernel_initializer=self.initializer,
                       name=cross_attention_name)
