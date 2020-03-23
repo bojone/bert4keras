@@ -292,6 +292,9 @@ class Tokenizer(BasicTokenizer):
     @staticmethod
     def _is_punctuation(ch):
         """标点符号类字符判断（全/半角均在此内）
+        提醒：unicodedata.category这个函数在py2和py3下的
+        表现可能不一样，比如u'§'字符，在py2下的结果为'So'，
+        在py3下的结果是'Po'。
         """
         code = ord(ch)
         return 33 <= code <= 47 or \
