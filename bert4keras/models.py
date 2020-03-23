@@ -1571,7 +1571,7 @@ def extend_with_unified_language_model(BaseModel):
     return UnifiedLanguageModel
 
 
-def build_transformer_model(configs_path=None,
+def build_transformer_model(config_path=None,
                             checkpoint_path=None,
                             model='bert',
                             application='encoder',
@@ -1581,7 +1581,7 @@ def build_transformer_model(configs_path=None,
     """
     configs = {}
     if configs_path is not None:
-        configs.update(json.load(open(configs_path)))
+        configs.update(json.load(open(config_path)))
     configs.update(kwargs)
     if 'max_position' not in configs:
         configs['max_position'] = configs.get('max_position_embeddings')
