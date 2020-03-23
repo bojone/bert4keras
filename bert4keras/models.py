@@ -1167,6 +1167,7 @@ class T5_Encoder(T5_Base):
                       head_size=self.attention_head_size,
                       key_size=self.attention_key_size,
                       use_bias=False,
+                      scaled_dot_product=False,
                       kernel_initializer=self.initializer,
                       name=attention_name)
         x = self.call(inputs=x,
@@ -1320,6 +1321,7 @@ class T5_Decoder(Transformer):
                       head_size=self.attention_head_size,
                       key_size=self.attention_key_size,
                       use_bias=False,
+                      scaled_dot_product=False,
                       kernel_initializer=self.initializer,
                       name=self_attention_name)
         x = self.call(inputs=x,
@@ -1348,6 +1350,7 @@ class T5_Decoder(Transformer):
                       head_size=self.attention_head_size,
                       key_size=self.attention_key_size,
                       use_bias=False,
+                      scaled_dot_product=False,
                       kernel_initializer=self.initializer,
                       name=cross_attention_name)
         x = self.call(inputs=x,
