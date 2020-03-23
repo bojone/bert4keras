@@ -1576,9 +1576,10 @@ def build_transformer_model(config_path=None,
                             **kwargs):
     """根据配置文件构建模型，可选加载checkpoint权重
     """
-    config = kwargs
+    config = {}
     if config_path is not None:
         config.update(json.load(open(config_path)))
+    config.update(kwargs)
     if 'max_position' not in config:
         config['max_position'] = config.get('max_position_embeddings')
     if 'dropout_rate' not in config:
