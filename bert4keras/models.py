@@ -190,6 +190,30 @@ class Transformer(object):
             layer = self.layers[layer]
             weights = layer.trainable_weights
             values = [self.load_variable(checkpoint, v) for v in variables]
+
+            if isinstance(layer, MultiHeadAttention):
+                """如果key_size不等于head_size，则可以通过
+                正交矩阵将相应的权重投影到合适的shape。
+                """
+                count = 2
+                if layer.use_bias:
+                    count += 2
+                heads = self.num_attention_heads
+                head_size = self.attention_head_size
+                key_size = self.attention_key_size
+                W = np.linalg.qr(np.random.randn(key_size, head_size))[0].T
+                if layer.scaled_dot_product:
+                    W = W * key_size**0.25 / head_size**0.25
+                for i in range(count):
+                    w, v = weights[i], values[i]
+                    w_shape, v_shape = K.int_shape(w), v.shape
+                    if w_shape[-1] != v_shape[-1]:
+                        pre_shape = w_shape[:-1]
+                        v = v.reshape(pre_shape + (heads, head_size))
+                        v = np.dot(v, W)
+                        v = v.reshape(pre_shape + (heads * key_size, ))
+                        values[i] = v
+
             weight_value_pairs.extend(zip(weights, values))
 
         K.batch_set_value(weight_value_pairs)
