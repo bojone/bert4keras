@@ -1580,7 +1580,7 @@ def build_transformer_model(config_path=None,
     """根据配置文件构建模型，可选加载checkpoint权重
     """
     configs = {}
-    if configs_path is not None:
+    if config_path is not None:
         configs.update(json.load(open(config_path)))
     configs.update(kwargs)
     if 'max_position' not in configs:
