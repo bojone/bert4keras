@@ -816,6 +816,38 @@ class NEZHA(BERT):
         return self.position_bias
 
 
+class ELECTRA(BERT):
+    """Google推出的ELECTRA模型
+    链接：https://arxiv.org/abs/2003.10555
+    """
+    def __init__(
+            self,
+            max_position,  # 序列最大长度
+            **kwargs  # 其余参数
+    ):
+        if 'keep_tokens' in kwargs:
+            del kwargs['keep_tokens']
+
+        super(ELECTRA, self).__init__(max_position, **kwargs)
+
+    def prepare_final_layers(self, inputs):
+        x = inputs
+        z = self.layer_norm_conds[0]
+        return x
+
+    def variable_mapping(self):
+        mapping = super(ELECTRA, self).variable_mapping()
+        mapping['Embedding-Mapping'] = [
+            'electra/embeddings_project/kernel',
+            'electra/embeddings_project/bias',
+        ]
+        mapping = {
+            k: [i.replace('bert/', 'electra/') for i in v]
+            for k, v in mapping.items()
+        }
+        return mapping
+
+
 class GPT2_ML(Transformer):
     """构建GPT2_ML模型
     链接: https://github.com/imcaspar/gpt2-ml
