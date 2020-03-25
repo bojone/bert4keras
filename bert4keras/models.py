@@ -184,6 +184,7 @@ class Transformer(object):
         """根据mapping从checkpoint加载权重
         """
         mapping = mapping or self.variable_mapping()
+        mapping = {k: v for k, v in mapping.items() if k in self.layers}
 
         weight_value_pairs = []
         for layer, variables in mapping.items():
@@ -523,8 +524,6 @@ class BERT(Transformer):
                 ],
             })
 
-        mapping = {k: v for k, v in mapping.items() if k in self.layers}
-
         return mapping
 
 
@@ -629,8 +628,6 @@ class ALBERT(BERT):
             ],
         })
 
-        mapping = {k: v for k, v in mapping.items() if k in self.layers}
-
         return mapping
 
 
@@ -670,8 +667,6 @@ class ALBERT_Unshared(BERT):
                     prefix + 'LayerNorm_1/gamma',
                 ],
             })
-
-        mapping = {k: v for k, v in mapping.items() if k in self.layers}
 
         return mapping
 
@@ -845,7 +840,6 @@ class ELECTRA(BERT):
             k: [i.replace('bert/', 'electra/') for i in v]
             for k, v in mapping.items()
         }
-        mapping = {k: v for k, v in mapping.items() if k in self.layers}
         return mapping
 
 
@@ -1058,8 +1052,6 @@ class GPT2_ML(Transformer):
                 ],
             })
 
-        mapping = {k: v for k, v in mapping.items() if k in self.layers}
-
         return mapping
 
 
@@ -1152,8 +1144,6 @@ class T5_Base(Transformer):
                     prefix + 'layer_002/layer_norm/scale',
                 ],
             })
-
-        mapping = {k: v for k, v in mapping.items() if k in self.layers}
 
         return mapping
 
