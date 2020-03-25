@@ -845,6 +845,7 @@ class ELECTRA(BERT):
             k: [i.replace('bert/', 'electra/') for i in v]
             for k, v in mapping.items()
         }
+        mapping = {k: v for k, v in mapping.items() if k in self.layers}
         return mapping
 
 
