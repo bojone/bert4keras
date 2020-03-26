@@ -5,7 +5,6 @@ import numpy as np
 from bert4keras.layers import *
 from keras.models import Model
 import json
-import warnings
 
 
 class Transformer(object):
