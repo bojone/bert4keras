@@ -1664,13 +1664,3 @@ def build_transformer_model(config_path=None,
         return transformer.model
     else:
         return transformer
-
-
-def build_bert_model(*args, **kwargs):
-    warnings.warn('build_bert_model has been renamed as build_transformer_model.')
-    warnings.warn('please use build_transformer_model.')
-    if kwargs.get('application') == 'seq2seq':
-        warnings.warn('application=\'seq2seq\' has been renamed as application=\'unilm\'')
-        warnings.warn('please use application=\'unilm\'')
-        kwargs['application'] = 'unilm'
-    return build_transformer_model(*args, **kwargs)
