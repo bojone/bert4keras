@@ -916,11 +916,11 @@ def extend_with_exponential_moving_average(base_optimizer):
             self.old_weights = K.batch_get_value(params)
             K.batch_set_value(zip(self.ema_weights, self.old_weights))
 
-            ema_updates = []
+            ema_updates, ema_momentum = [], self.ema_momentum
             with tf.control_dependencies(updates):
                 for w1, w2 in zip(self.ema_weights, params):
-                    op = K.moving_average_update(w1, w2, self.ema_momentum)
-                    ema_updates.append(op)
+                    new_w = ema_momentum * w1 + (1 - ema_momentum) * w2
+                    ema_updates.append(K.update(w1, new_w))
 
             return ema_updates
 
