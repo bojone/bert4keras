@@ -452,8 +452,7 @@ def extend_with_layer_adaptation(base_optimizer, name=None):
 
         def get_config(self):
             config = {
-                'exclude_from_layer_adaptation':
-                self.exclude_from_layer_adaptation
+                'exclude_from_layer_adaptation': self.exclude_from_layer_adaptation
             }
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
@@ -505,8 +504,7 @@ def extend_with_layer_adaptation_v2(base_optimizer, name=None):
 
         def get_config(self):
             config = {
-                'exclude_from_layer_adaptation':
-                self.exclude_from_layer_adaptation
+                'exclude_from_layer_adaptation': self.exclude_from_layer_adaptation
             }
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
@@ -843,8 +841,7 @@ def extend_with_lazy_optimization(base_optimizer, name=None):
 
         def get_config(self):
             config = {
-                'include_in_lazy_optimization':
-                self.include_in_lazy_optimization
+                'include_in_lazy_optimization': self.include_in_lazy_optimization
             }
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
@@ -893,8 +890,7 @@ def extend_with_lazy_optimization_v2(base_optimizer, name=None):
 
         def get_config(self):
             config = {
-                'include_in_lazy_optimization':
-                self.include_in_lazy_optimization
+                'include_in_lazy_optimization': self.include_in_lazy_optimization
             }
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
