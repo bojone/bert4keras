@@ -571,6 +571,7 @@ class ConditionalRandomField(Layer):
 
     @integerize_shape
     def build(self, input_shape):
+        super(ConditionalRandomField, self).build(input_shape)
         output_dim = input_shape[-1]
         self.trans = self.add_weight(name='trans',
                                      shape=(output_dim, output_dim),
@@ -682,6 +683,7 @@ class MaximumEntropyMarkovModel(Layer):
 
     @integerize_shape
     def build(self, input_shape):
+        super(MaximumEntropyMarkovModel, self).build(input_shape)
         output_dim = input_shape[-1]
 
         if self.hidden_dim is None:
