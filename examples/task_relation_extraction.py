@@ -11,7 +11,7 @@ from bert4keras.backend import keras, K, batch_gather
 from bert4keras.layers import LayerNormalization
 from bert4keras.tokenizers import Tokenizer
 from bert4keras.models import build_transformer_model
-from bert4keras.optimizers import Adam, ExponentialMovingAverage
+from bert4keras.optimizers import Adam, extend_with_exponential_moving_average
 from bert4keras.snippets import sequence_padding, DataGenerator
 from bert4keras.snippets import open
 from keras.layers import Input, Dense, Lambda, Reshape
@@ -185,8 +185,10 @@ object_loss = K.binary_crossentropy(object_labels, object_preds)
 object_loss = K.sum(K.mean(object_loss, 3), 2)
 object_loss = K.sum(object_loss * mask) / K.sum(mask)
 
+AdamEMA = extend_with_exponential_moving_average(Adam, name='AdamEMA')
+optimizer = AdamEMA(learning_rate=1e-5)
 train_model.add_loss(subject_loss + object_loss)
-train_model.compile(optimizer=Adam(1e-5))
+train_model.compile(optimizer=optimizer)
 
 
 def extract_spoes(text):
@@ -288,12 +290,12 @@ class Evaluator(keras.callbacks.Callback):
         self.best_val_f1 = 0.
 
     def on_epoch_end(self, epoch, logs=None):
-        EMAer.apply_ema_weights()
+        optimizer.apply_ema_weights()
         f1, precision, recall = evaluate(valid_data)
         if f1 >= self.best_val_f1:
             self.best_val_f1 = f1
             train_model.save_weights('best_model.weights')
-        EMAer.reset_old_weights()
+        optimizer.reset_old_weights()
         print('f1: %.5f, precision: %.5f, recall: %.5f, best f1: %.5f\n' %
               (f1, precision, recall, self.best_val_f1))
 
@@ -302,12 +304,11 @@ if __name__ == '__main__':
 
     train_generator = data_generator(train_data, batch_size)
     evaluator = Evaluator()
-    EMAer = ExponentialMovingAverage(0.999)
 
     train_model.fit_generator(train_generator.forfit(),
                              steps_per_epoch=len(train_generator),
                              epochs=20,
-                             callbacks=[evaluator, EMAer])
+                             callbacks=[evaluator])
 
 else:
 
