@@ -295,7 +295,25 @@ class AdaFactorV2(AdaFactorBase):
         return self._resource_apply_dense(grad, var)
 
 
-def extend_with_weight_decay(base_optimizer, name=None):
+def export_to_custom_objects(base_extend_with):
+    """装饰器，用来将优化器放到custom_objects中
+    """
+    def new_extend_with(base_optimizer, name=None):
+        new_optimizer = base_extend_with(base_optimizer)
+
+        if is_string(name):
+            new_optimizer.__name__ = name
+
+        name = new_optimizer.__name__
+        keras.utils.get_custom_objects()[name] = new_optimizer
+
+        return new_optimizer
+
+    return new_extend_with
+
+
+@export_to_custom_objects
+def extend_with_weight_decay(base_optimizer):
     """返回新的优化器类，加入权重衰减
     """
     class new_optimizer(base_optimizer):
@@ -339,13 +357,10 @@ def extend_with_weight_decay(base_optimizer, name=None):
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    if is_string(name):
-        new_optimizer.__name__ = name
-        keras.utils.get_custom_objects()[name] = new_optimizer
-
     return new_optimizer
 
 
+@export_to_custom_objects
 def extend_with_weight_decay_v2(base_optimizer, name=None):
     """返回新的优化器类，加入权重衰减
     """
@@ -396,6 +411,7 @@ def extend_with_weight_decay_v2(base_optimizer, name=None):
     return new_optimizer
 
 
+@export_to_custom_objects
 def extend_with_layer_adaptation(base_optimizer, name=None):
     """返回新的优化器类，加入层自适应学习率
     """
@@ -446,13 +462,10 @@ def extend_with_layer_adaptation(base_optimizer, name=None):
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    if is_string(name):
-        new_optimizer.__name__ = name
-        keras.utils.get_custom_objects()[name] = new_optimizer
-
     return new_optimizer
 
 
+@export_to_custom_objects
 def extend_with_layer_adaptation_v2(base_optimizer, name=None):
     """返回新的优化器类，加入层自适应学习率
     """
@@ -502,13 +515,10 @@ def extend_with_layer_adaptation_v2(base_optimizer, name=None):
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    if is_string(name):
-        new_optimizer.__name__ = name
-        keras.utils.get_custom_objects()[name] = new_optimizer
-
     return new_optimizer
 
 
+@export_to_custom_objects
 def extend_with_piecewise_linear_lr(base_optimizer, name=None):
     """返回新的优化器类，加入分段线性学习率
     """
@@ -544,13 +554,10 @@ def extend_with_piecewise_linear_lr(base_optimizer, name=None):
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    if is_string(name):
-        new_optimizer.__name__ = name
-        keras.utils.get_custom_objects()[name] = new_optimizer
-
     return new_optimizer
 
 
+@export_to_custom_objects
 def extend_with_piecewise_linear_lr_v2(base_optimizer, name=None):
     """返回新的优化器类，加入分段线性学习率
     """
@@ -581,6 +588,7 @@ def extend_with_piecewise_linear_lr_v2(base_optimizer, name=None):
     return new_optimizer
 
 
+@export_to_custom_objects
 def extend_with_gradient_accumulation(base_optimizer, name=None):
     """返回新的优化器类，加入梯度累积
     """
@@ -636,13 +644,10 @@ def extend_with_gradient_accumulation(base_optimizer, name=None):
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    if is_string(name):
-        new_optimizer.__name__ = name
-        keras.utils.get_custom_objects()[name] = new_optimizer
-
     return new_optimizer
 
 
+@export_to_custom_objects
 def extend_with_gradient_accumulation_v2(base_optimizer, name=None):
     """返回新的优化器类，加入梯度累积
     """
@@ -691,13 +696,10 @@ def extend_with_gradient_accumulation_v2(base_optimizer, name=None):
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    if is_string(name):
-        new_optimizer.__name__ = name
-        keras.utils.get_custom_objects()[name] = new_optimizer
-
     return new_optimizer
 
 
+@export_to_custom_objects
 def extend_with_lookahead(base_optimizer, name=None):
     """返回新的优化器类，加入look ahead
     """
@@ -749,13 +751,10 @@ def extend_with_lookahead(base_optimizer, name=None):
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    if is_string(name):
-        new_optimizer.__name__ = name
-        keras.utils.get_custom_objects()[name] = new_optimizer
-
     return new_optimizer
 
 
+@export_to_custom_objects
 def extend_with_lookahead_v2(base_optimizer, name=None):
     """返回新的优化器类，加入look ahead
     """
@@ -804,13 +803,10 @@ def extend_with_lookahead_v2(base_optimizer, name=None):
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    if is_string(name):
-        new_optimizer.__name__ = name
-        keras.utils.get_custom_objects()[name] = new_optimizer
-
     return new_optimizer
 
 
+@export_to_custom_objects
 def extend_with_lazy_optimization(base_optimizer, name=None):
     """返回新的优化器类，加入懒惰更新
     """
@@ -861,13 +857,10 @@ def extend_with_lazy_optimization(base_optimizer, name=None):
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    if is_string(name):
-        new_optimizer.__name__ = name
-        keras.utils.get_custom_objects()[name] = new_optimizer
-
     return new_optimizer
 
 
+@export_to_custom_objects
 def extend_with_lazy_optimization_v2(base_optimizer, name=None):
     """返回新的优化器类，加入懒惰更新
     """
@@ -913,10 +906,6 @@ def extend_with_lazy_optimization_v2(base_optimizer, name=None):
             }
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
-
-    if is_string(name):
-        new_optimizer.__name__ = name
-        keras.utils.get_custom_objects()[name] = new_optimizer
 
     return new_optimizer
 
@@ -968,3 +957,10 @@ if is_tf_keras:
 else:
     Adam = keras.optimizers.Adam
     AdaFactor = AdaFactorV1
+
+custom_objects = {
+    'Adam': Adam,
+    'AdaFactor': AdaFactor,
+}
+
+keras.utils.get_custom_objects().update(custom_objects)
