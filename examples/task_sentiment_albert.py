@@ -72,7 +72,10 @@ output = Dense(units=num_classes,
 
 model = keras.models.Model(bert.model.input, output)
 model.summary()
-AdamLR = extend_with_piecewise_linear_lr(Adam)
+
+# 派生为带分段线性学习率的优化器。
+# 其中name参数可选，但最好填入，以区分不同的派生优化器。
+AdamLR = extend_with_piecewise_linear_lr(Adam, name='AdamLR')
 
 model.compile(
     loss='sparse_categorical_crossentropy',
