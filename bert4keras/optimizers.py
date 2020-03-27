@@ -898,40 +898,50 @@ def extend_with_lazy_optimization_v2(base_optimizer):
     return new_optimizer
 
 
-class ExponentialMovingAverage(keras.callbacks.Callback):
-    """对模型权重进行指数滑动平均（作为Callback来使用）
+@export_to_custom_objects
+def extend_with_exponential_moving_average(base_optimizer):
+    """返回新的优化器类，加入EMA（权重滑动平均）
     """
-    def __init__(self, momentum=0.999):
-        self.momentum = momentum
-
-    def set_model(self, model):
-        """绑定模型，并初始化参数
+    class new_optimizer(base_optimizer):
+        """带EMA（权重滑动平均）的优化器
         """
-        super(ExponentialMovingAverage, self).set_model(model)
-        self.ema_weights = [K.zeros(K.shape(w)) for w in model.weights]
-        self.old_weights = K.batch_get_value(model.weights)
-        K.batch_set_value(zip(self.ema_weights, self.old_weights))
-        self.updates = []
-        for w1, w2 in zip(self.ema_weights, model.weights):
-            op = K.moving_average_update(w1, w2, self.momentum)
-            self.updates.append(op)
+        def __init__(self, ema_momentum=0.999, *args, **kwargs):
+            super(new_optimizer, self).__init__(*args, **kwargs)
+            self.ema_momentum = ema_momentum
 
-    def on_batch_end(self, batch, logs=None):
-        """每个batch后自动执行
-        """
-        K.batch_get_value(self.updates)
+        def get_updates(self, loss, params):
+            updates = super(new_optimizer, self).get_updates(loss, params)
+            self.model_weights = params
+            self.ema_weights = [K.zeros(K.shape(w)) for w in params]
+            self.old_weights = K.batch_get_value(params)
+            K.batch_set_value(zip(self.ema_weights, self.old_weights))
 
-    def apply_ema_weights(self):
-        """备份原模型权重，然后将平均权重应用到模型上去。
-        """
-        self.old_weights = K.batch_get_value(self.model.weights)
-        ema_weights = K.batch_get_value(self.ema_weights)
-        K.batch_set_value(zip(self.model.weights, ema_weights))
+            ema_updates = []
+            with tf.control_dependencies(updates):
+                for w1, w2 in zip(self.ema_weights, params):
+                    op = K.moving_average_update(w1, w2, self.ema_momentum)
+                    ema_updates.append(op)
 
-    def reset_old_weights(self):
-        """恢复模型到旧权重。
-        """
-        K.batch_set_value(zip(self.model.weights, self.old_weights))
+            return ema_updates
+
+        def get_config(self):
+            config = {'ema_momentum': self.ema_momentum}
+            base_config = super(new_optimizer, self).get_config()
+            return dict(list(base_config.items()) + list(config.items()))
+
+        def apply_ema_weights(self):
+            """备份原模型权重，然后将平均权重应用到模型上去。
+            """
+            self.old_weights = K.batch_get_value(self.model_weights)
+            ema_weights = K.batch_get_value(self.ema_weights)
+            K.batch_set_value(zip(self.model_weights, ema_weights))
+
+        def reset_old_weights(self):
+            """恢复模型到旧权重。
+            """
+            K.batch_set_value(zip(self.model_weights, self.old_weights))
+
+    return new_optimizer
 
 
 if is_tf_keras:
