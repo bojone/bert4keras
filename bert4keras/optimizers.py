@@ -361,7 +361,7 @@ def extend_with_weight_decay(base_optimizer):
 
 
 @export_to_custom_objects
-def extend_with_weight_decay_v2(base_optimizer, name=None):
+def extend_with_weight_decay_v2(base_optimizer):
     """返回新的优化器类，加入权重衰减
     """
     class new_optimizer(base_optimizer):
@@ -408,7 +408,7 @@ def extend_with_weight_decay_v2(base_optimizer, name=None):
 
 
 @export_to_custom_objects
-def extend_with_layer_adaptation(base_optimizer, name=None):
+def extend_with_layer_adaptation(base_optimizer):
     """返回新的优化器类，加入层自适应学习率
     """
     class new_optimizer(base_optimizer):
@@ -461,7 +461,7 @@ def extend_with_layer_adaptation(base_optimizer, name=None):
 
 
 @export_to_custom_objects
-def extend_with_layer_adaptation_v2(base_optimizer, name=None):
+def extend_with_layer_adaptation_v2(base_optimizer):
     """返回新的优化器类，加入层自适应学习率
     """
     class new_optimizer(base_optimizer):
@@ -513,7 +513,7 @@ def extend_with_layer_adaptation_v2(base_optimizer, name=None):
 
 
 @export_to_custom_objects
-def extend_with_piecewise_linear_lr(base_optimizer, name=None):
+def extend_with_piecewise_linear_lr(base_optimizer):
     """返回新的优化器类，加入分段线性学习率
     """
     class new_optimizer(base_optimizer):
@@ -552,7 +552,7 @@ def extend_with_piecewise_linear_lr(base_optimizer, name=None):
 
 
 @export_to_custom_objects
-def extend_with_piecewise_linear_lr_v2(base_optimizer, name=None):
+def extend_with_piecewise_linear_lr_v2(base_optimizer):
     """返回新的优化器类，加入分段线性学习率
     """
     class new_optimizer(base_optimizer):
@@ -579,7 +579,7 @@ def extend_with_piecewise_linear_lr_v2(base_optimizer, name=None):
 
 
 @export_to_custom_objects
-def extend_with_gradient_accumulation(base_optimizer, name=None):
+def extend_with_gradient_accumulation(base_optimizer):
     """返回新的优化器类，加入梯度累积
     """
     class new_optimizer(base_optimizer):
@@ -638,7 +638,7 @@ def extend_with_gradient_accumulation(base_optimizer, name=None):
 
 
 @export_to_custom_objects
-def extend_with_gradient_accumulation_v2(base_optimizer, name=None):
+def extend_with_gradient_accumulation_v2(base_optimizer):
     """返回新的优化器类，加入梯度累积
     """
     class new_optimizer(base_optimizer):
@@ -690,7 +690,7 @@ def extend_with_gradient_accumulation_v2(base_optimizer, name=None):
 
 
 @export_to_custom_objects
-def extend_with_lookahead(base_optimizer, name=None):
+def extend_with_lookahead(base_optimizer):
     """返回新的优化器类，加入look ahead
     """
     class new_optimizer(base_optimizer):
@@ -745,7 +745,7 @@ def extend_with_lookahead(base_optimizer, name=None):
 
 
 @export_to_custom_objects
-def extend_with_lookahead_v2(base_optimizer, name=None):
+def extend_with_lookahead_v2(base_optimizer):
     """返回新的优化器类，加入look ahead
     """
     class new_optimizer(base_optimizer):
@@ -797,7 +797,7 @@ def extend_with_lookahead_v2(base_optimizer, name=None):
 
 
 @export_to_custom_objects
-def extend_with_lazy_optimization(base_optimizer, name=None):
+def extend_with_lazy_optimization(base_optimizer):
     """返回新的优化器类，加入懒惰更新
     """
     class new_optimizer(base_optimizer):
@@ -850,7 +850,7 @@ def extend_with_lazy_optimization(base_optimizer, name=None):
 
 
 @export_to_custom_objects
-def extend_with_lazy_optimization_v2(base_optimizer, name=None):
+def extend_with_lazy_optimization_v2(base_optimizer):
     """返回新的优化器类，加入懒惰更新
     """
     class new_optimizer(base_optimizer):
