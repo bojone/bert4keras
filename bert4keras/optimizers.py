@@ -404,10 +404,6 @@ def extend_with_weight_decay_v2(base_optimizer, name=None):
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    if is_string(name):
-        new_optimizer.__name__ = name
-        keras.utils.get_custom_objects()[name] = new_optimizer
-
     return new_optimizer
 
 
@@ -580,10 +576,6 @@ def extend_with_piecewise_linear_lr_v2(base_optimizer, name=None):
             config = {'lr_schedule': self.lr_schedule}
             base_config = super(new_optimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
-
-    if is_string(name):
-        new_optimizer.__name__ = name
-        keras.utils.get_custom_objects()[name] = new_optimizer
 
     return new_optimizer
 
