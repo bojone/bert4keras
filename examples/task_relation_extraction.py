@@ -185,9 +185,10 @@ object_loss = K.binary_crossentropy(object_labels, object_preds)
 object_loss = K.sum(K.mean(object_loss, 3), 2)
 object_loss = K.sum(object_loss * mask) / K.sum(mask)
 
+train_model.add_loss(subject_loss + object_loss)
+
 AdamEMA = extend_with_exponential_moving_average(Adam, name='AdamEMA')
 optimizer = AdamEMA(learning_rate=1e-5)
-train_model.add_loss(subject_loss + object_loss)
 train_model.compile(optimizer=optimizer)
 
 
