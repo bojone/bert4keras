@@ -819,6 +819,10 @@ class ELECTRA(BERT):
             max_position,  # 序列最大长度
             **kwargs  # 其余参数
     ):
+        if 'with_pool' in kwargs:
+            raise ValueError('ELECTRA got an unexpected keyword argument \'with_pool\'')
+        if 'with_mlm' in kwargs:
+            raise ValueError('ELECTRA got an unexpected keyword argument \'with_mlm\'')
         if 'keep_tokens' in kwargs:
             del kwargs['keep_tokens']
 
