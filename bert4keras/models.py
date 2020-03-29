@@ -3,6 +3,7 @@
 
 import numpy as np
 from bert4keras.layers import *
+from bert4keras.snippets import delete_arguments
 from keras.models import Model
 import json
 
@@ -814,15 +815,12 @@ class ELECTRA(BERT):
     """Google推出的ELECTRA模型
     链接：https://arxiv.org/abs/2003.10555
     """
+    @delete_arguments('with_pool', 'with_mlm')
     def __init__(
             self,
             max_position,  # 序列最大长度
             **kwargs  # 其余参数
     ):
-        if 'with_pool' in kwargs:
-            raise TypeError('ELECTRA got an unexpected keyword argument \'with_pool\'')
-        if 'with_mlm' in kwargs:
-            raise TypeError('ELECTRA got an unexpected keyword argument \'with_mlm\'')
         if 'keep_tokens' in kwargs:
             del kwargs['keep_tokens']
 
