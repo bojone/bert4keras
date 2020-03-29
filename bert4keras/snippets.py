@@ -336,7 +336,7 @@ class AutoRegressiveDecoder(object):
 
             return new_predict
 
-        return predict_decorator
+        return actual_decorator
 
     def predict(self, inputs, output_ids, step, rtype='logits'):
         """用户需自定义递归预测函数
