@@ -430,6 +430,42 @@ class AutoRegressiveDecoder(object):
         return results
 
 
+def insert_arguments(**arguments):
+    """装饰器，为类方法增加参数
+    （主要用于类的__init__方法）
+    """
+    def actual_decorator(func):
+        def new_func(self, *args, **kwargs):
+            for k, v in arguments.items():
+                if k in kwargs:
+                    v = kwargs.pop(k)
+                setattr(self, k, v)
+            return func(self, *args, **kwargs)
+
+        return new_func
+
+    return actual_decorator
+
+
+def delete_arguments(*arguments):
+    """装饰器，为类方法删除参数
+    （主要用于类的__init__方法）
+    """
+    def actual_decorator(func):
+        def new_func(self, *args, **kwargs):
+            for k in arguments:
+                if k in kwargs:
+                    raise TypeError(
+                        '%s got an unexpected keyword argument \'%s\'' %
+                        (self.__class__.__name__, k))
+                setattr(self, k, v)
+            return func(self, *args, **kwargs)
+
+        return new_func
+
+    return actual_decorator
+
+
 class Hook:
     """注入uniout模块，实现import时才触发
     """
