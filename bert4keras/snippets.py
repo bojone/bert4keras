@@ -319,7 +319,7 @@ class AutoRegressiveDecoder(object):
     def set_rtype(default='probas'):
         """用来给predict方法加上rtype参数，并作相应的处理
         """
-        def predict_decorator(predict):
+        def actual_decorator(predict):
             def new_predict(self, inputs, output_ids, step, rtype=default):
                 assert rtype in ['probas', 'logits']
                 result = predict(self, inputs, output_ids, step)
