@@ -34,7 +34,7 @@ class Adam(keras.optimizers.Optimizer):
             self.add_slot(var, 'm')
             self.add_slot(var, 'v')
 
-    def _resource_apply_op(self, grad, var, indices=None):
+    def _resource_apply(self, grad, var, indices=None):
         # 准备变量
         var_dtype = var.dtype.base_dtype
         lr_t = self._decayed_lr(var_dtype)
@@ -68,10 +68,10 @@ class Adam(keras.optimizers.Optimizer):
             return K.update(var, var_t)
 
     def _resource_apply_dense(self, grad, var):
-        return self._resource_apply_op(grad, var)
+        return self._resource_apply(grad, var)
 
     def _resource_apply_sparse(self, grad, var, indices):
-        return self._resource_apply_op(grad, var, indices)
+        return self._resource_apply(grad, var, indices)
 
     def get_config(self):
         config = {
@@ -250,7 +250,7 @@ class AdaFactorV2(AdaFactorBase):
                 self.add_slot(var, 'vr', value1)
                 self.add_slot(var, 'vc', value2)
 
-    def _resource_apply_dense(self, grad, var):
+    def _resource_apply(self, grad, var, indices=None):
         lr = self.learning_rate
         g2 = K.square(grad) + self.epsilon1
         shape = K.int_shape(var)
@@ -288,6 +288,9 @@ class AdaFactorV2(AdaFactorBase):
             u = u * K.maximum(K.mean(K.sum(K.square(var))), self.epsilon2)
         # 更新参数
         return K.update(var, var - lr * u)
+    
+    def _resource_apply_dense(self, grad, var):
+        return self._resource_apply(grad, var)
 
     def _resource_apply_sparse(self, grad, var, indices):
         grad = tf.IndexedSlices(grad, indices, K.shape(var))
@@ -376,7 +379,7 @@ def extend_with_weight_decay_v2(base_optimizer):
             self.weight_decay_rate = weight_decay_rate
             self.exclude_from_weight_decay = exclude_from_weight_decay or []
 
-        def _resource_apply_op(self, grad, var, indices=None):
+        def _resource_apply(self, grad, var, indices=None):
             old_update = K.update
 
             def new_update(x, new_x):
@@ -386,8 +389,7 @@ def extend_with_weight_decay_v2(base_optimizer):
                 return old_update(x, new_x)
 
             K.update = new_update
-            op = super(new_optimizer,
-                       self)._resource_apply_op(grad, var, indices)
+            op = super(new_optimizer, self)._resource_apply(grad, var, indices)
             K.update = old_update
 
             return op
@@ -474,7 +476,7 @@ def extend_with_layer_adaptation_v2(base_optimizer):
             super(new_optimizer, self).__init__(*args, **kwargs)
             self.exclude_from_layer_adaptation = exclude_from_layer_adaptation or []
 
-        def _resource_apply_op(self, grad, var, indices=None):
+        def _resource_apply(self, grad, var, indices=None):
             old_update = K.update
 
             def new_update(x, new_x):
@@ -492,8 +494,7 @@ def extend_with_layer_adaptation_v2(base_optimizer):
                 return old_update(x, new_x)
 
             K.update = new_update
-            op = super(new_optimizer,
-                       self)._resource_apply_op(grad, var, indices)
+            op = super(new_optimizer, self)._resource_apply(grad, var, indices)
             K.update = old_update
 
             return op
@@ -653,7 +654,7 @@ def extend_with_gradient_accumulation_v2(base_optimizer):
             for var in var_list:
                 self.add_slot(var, 'ag')
 
-        def _resource_apply_op(self, grad, var, indices=None):
+        def _resource_apply(self, grad, var, indices=None):
             # 更新判据
             cond = K.equal(self.iterations % self.grad_accum_steps, 0)
             # 获取梯度
@@ -667,7 +668,7 @@ def extend_with_gradient_accumulation_v2(base_optimizer):
 
             K.update = new_update
             ag_t = ag / self.grad_accum_steps
-            op = super(new_optimizer, self)._resource_apply_op(ag_t, var)
+            op = super(new_optimizer, self)._resource_apply(ag_t, var)
             K.update = old_update
 
             # 累积梯度
@@ -768,9 +769,8 @@ def extend_with_lookahead_v2(base_optimizer):
             for var in var_list:
                 self.add_slot(var, 'slow_var')
 
-        def _resource_apply_op(self, grad, var, indices=None):
-            op = super(new_optimizer,
-                       self)._resource_apply_op(grad, var, indices)
+        def _resource_apply(self, grad, var, indices=None):
+            op = super(new_optimizer, self)._resource_apply(grad, var, indices)
 
             k, alpha = self.steps_per_slow_update, self.slow_step_size
             cond = K.equal(self.iterations % k, 0)
@@ -862,7 +862,7 @@ def extend_with_lazy_optimization_v2(base_optimizer):
             super(new_optimizer, self).__init__(*args, **kwargs)
             self.include_in_lazy_optimization = include_in_lazy_optimization or []
 
-        def _resource_apply_op(self, grad, var, indices=None):
+        def _resource_apply(self, grad, var, indices=None):
             old_update = K.update
 
             def new_update(x, new_x):
@@ -879,8 +879,7 @@ def extend_with_lazy_optimization_v2(base_optimizer):
                 return old_update(x, new_x)
 
             K.update = new_update
-            op = super(new_optimizer,
-                       self)._resource_apply_op(grad, var, indices)
+            op = super(new_optimizer, self)._resource_apply(grad, var, indices)
             K.update = old_update
 
             return op
