@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 from bert4keras.backend import keras, K, is_tf_keras
 from bert4keras.snippets import is_string, string_matching
-from bert4keras.snippets import is_one_of
+from bert4keras.snippets import is_one_of, insert_arguments
 from bert4keras.backend import piecewise_linear
 import re
 
@@ -321,14 +321,9 @@ def extend_with_weight_decay(BaseOptimizer):
     class NewOptimizer(BaseOptimizer):
         """带有权重衰减的优化器
         """
-        def __init__(self,
-                     weight_decay_rate,
-                     exclude_from_weight_decay=None,
-                     *args,
-                     **kwargs):
+        @insert_arguments(weight_decay_rate=0.01, exclude_from_weight_decay=[])
+        def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
-            self.weight_decay_rate = weight_decay_rate
-            self.exclude_from_weight_decay = exclude_from_weight_decay or []
             if not hasattr(self, 'learning_rate'):
                 self.learning_rate = self.lr
 
@@ -369,14 +364,9 @@ def extend_with_weight_decay_v2(BaseOptimizer):
     class NewOptimizer(BaseOptimizer):
         """带有权重衰减的优化器
         """
-        def __init__(self,
-                     weight_decay_rate,
-                     exclude_from_weight_decay=None,
-                     *args,
-                     **kwargs):
+        @insert_arguments(weight_decay_rate=0.01, exclude_from_weight_decay=[])
+        def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
-            self.weight_decay_rate = weight_decay_rate
-            self.exclude_from_weight_decay = exclude_from_weight_decay or []
 
         def _resource_apply(self, grad, var, indices=None):
             old_update = K.update
@@ -417,10 +407,9 @@ def extend_with_layer_adaptation(BaseOptimizer):
         用每一层参数的模长来校正当前参数的学习率
         https://arxiv.org/abs/1904.00962
         """
-        def __init__(self, exclude_from_layer_adaptation=None, *args,
-                     **kwargs):
+        @insert_arguments(exclude_from_layer_adaptation=[])
+        def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
-            self.exclude_from_layer_adaptation = exclude_from_layer_adaptation or []
             if not hasattr(self, 'learning_rate'):
                 self.learning_rate = self.lr
 
@@ -470,10 +459,9 @@ def extend_with_layer_adaptation_v2(BaseOptimizer):
         用每一层参数的模长来校正当前参数的学习率
         https://arxiv.org/abs/1904.00962
         """
-        def __init__(self, exclude_from_layer_adaptation=None, *args,
-                     **kwargs):
+        @insert_arguments(exclude_from_layer_adaptation=[])
+        def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
-            self.exclude_from_layer_adaptation = exclude_from_layer_adaptation or []
 
         def _resource_apply(self, grad, var, indices=None):
             old_update = K.update
@@ -522,9 +510,10 @@ def extend_with_piecewise_linear_lr(BaseOptimizer):
         表示0～1000步内学习率线性地从零增加到100%，然后
         1000～2000步内线性地降到10%，2000步以后保持10%
         """
-        def __init__(self, lr_schedule, *args, **kwargs):
+        @insert_arguments(lr_schedule={0: 1})
+        def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
-            self.lr_schedule = {int(i): j for i, j in lr_schedule.items()}
+            self.lr_schedule = {int(i): j for i, j in self.lr_schedule.items()}
 
         @K.symbolic
         def get_updates(self, loss, params):
@@ -561,9 +550,10 @@ def extend_with_piecewise_linear_lr_v2(BaseOptimizer):
         表示0～1000步内学习率线性地从零增加到100%，然后
         1000～2000步内线性地降到10%，2000步以后保持10%
         """
-        def __init__(self, lr_schedule, *args, **kwargs):
+        @insert_arguments(lr_schedule={0: 1})
+        def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
-            self.lr_schedule = {int(i): j for i, j in lr_schedule.items()}
+            self.lr_schedule = {int(i): j for i, j in self.lr_schedule.items()}
 
         def _decayed_lr(self, var_dtype):
             lr_multiplier = piecewise_linear(self.iterations, self.lr_schedule)
@@ -585,9 +575,9 @@ def extend_with_gradient_accumulation(BaseOptimizer):
     class NewOptimizer(BaseOptimizer):
         """带有梯度累积的优化器
         """
-        def __init__(self, grad_accum_steps, *args, **kwargs):
+        @insert_arguments(grad_accum_steps=2)
+        def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
-            self.grad_accum_steps = grad_accum_steps
             self._first_get_gradients = True
 
         def get_gradients(self, loss, params):
@@ -644,9 +634,9 @@ def extend_with_gradient_accumulation_v2(BaseOptimizer):
     class NewOptimizer(BaseOptimizer):
         """带有梯度累积的优化器
         """
-        def __init__(self, grad_accum_steps, *args, **kwargs):
+        @insert_arguments(grad_accum_steps=2)
+        def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
-            self.grad_accum_steps = grad_accum_steps
 
         def _create_slots(self, var_list):
             super(NewOptimizer, self)._create_slots(var_list)
@@ -699,14 +689,9 @@ def extend_with_lookahead(BaseOptimizer):
         steps_per_slow_update: 即论文中的k；
         slow_step_size: 即论文中的alpha。
         """
-        def __init__(self,
-                     steps_per_slow_update=5,
-                     slow_step_size=0.5,
-                     *args,
-                     **kwargs):
+        @insert_arguments(steps_per_slow_update=5, slow_step_size=0.5)
+        def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
-            self.steps_per_slow_update = steps_per_slow_update
-            self.slow_step_size = slow_step_size
 
         @K.symbolic
         def get_updates(self, loss, params):
@@ -754,14 +739,9 @@ def extend_with_lookahead_v2(BaseOptimizer):
         steps_per_slow_update: 即论文中的k；
         slow_step_size: 即论文中的alpha。
         """
-        def __init__(self,
-                     steps_per_slow_update=5,
-                     slow_step_size=0.5,
-                     *args,
-                     **kwargs):
+        @insert_arguments(steps_per_slow_update=5, slow_step_size=0.5)
+        def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
-            self.steps_per_slow_update = steps_per_slow_update
-            self.slow_step_size = slow_step_size
 
         def _create_slots(self, var_list):
             super(NewOptimizer, self)._create_slots(var_list)
@@ -804,9 +784,9 @@ def extend_with_lazy_optimization(BaseOptimizer):
         使得部分权重（尤其是embedding）只有在梯度不等于0时
         才发生更新。
         """
-        def __init__(self, include_in_lazy_optimization=None, *args, **kwargs):
+        @insert_arguments(include_in_lazy_optimization=[])
+        def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
-            self.include_in_lazy_optimization = include_in_lazy_optimization or []
             self._first_get_gradients = True
 
         def get_gradients(self, loss, params):
@@ -857,9 +837,9 @@ def extend_with_lazy_optimization_v2(BaseOptimizer):
         使得部分权重（尤其是embedding）只有在梯度不等于0时
         才发生更新。
         """
-        def __init__(self, include_in_lazy_optimization=None, *args, **kwargs):
+        @insert_arguments(include_in_lazy_optimization=[])
+        def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
-            self.include_in_lazy_optimization = include_in_lazy_optimization or []
 
         def _resource_apply(self, grad, var, indices=None):
             old_update = K.update
@@ -903,9 +883,9 @@ def extend_with_exponential_moving_average(BaseOptimizer):
     class NewOptimizer(BaseOptimizer):
         """带EMA（权重滑动平均）的优化器
         """
-        def __init__(self, ema_momentum=0.999, *args, **kwargs):
+        @insert_arguments(ema_momentum=0.999)
+        def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
-            self.ema_momentum = ema_momentum
 
         def get_updates(self, loss, params):
             updates = super(NewOptimizer, self).get_updates(loss, params)
