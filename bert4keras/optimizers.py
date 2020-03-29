@@ -288,7 +288,7 @@ class AdaFactorV2(AdaFactorBase):
             u = u * K.maximum(K.mean(K.sum(K.square(var))), self.epsilon2)
         # 更新参数
         return K.update(var, var - lr * u)
-    
+
     def _resource_apply_dense(self, grad, var):
         return self._resource_apply(grad, var)
 
@@ -301,25 +301,25 @@ class AdaFactorV2(AdaFactorBase):
 def export_to_custom_objects(base_extend_with):
     """装饰器，用来将优化器放到custom_objects中
     """
-    def new_extend_with(base_optimizer, name=None):
-        new_optimizer = base_extend_with(base_optimizer)
+    def new_extend_with(BaseOptimizer, name=None):
+        NewOptimizer = base_extend_with(BaseOptimizer)
 
         if is_string(name):
-            new_optimizer.__name__ = name
+            NewOptimizer.__name__ = name
 
-        name = new_optimizer.__name__
-        keras.utils.get_custom_objects()[name] = new_optimizer
+        name = NewOptimizer.__name__
+        keras.utils.get_custom_objects()[name] = NewOptimizer
 
-        return new_optimizer
+        return NewOptimizer
 
     return new_extend_with
 
 
 @export_to_custom_objects
-def extend_with_weight_decay(base_optimizer):
+def extend_with_weight_decay(BaseOptimizer):
     """返回新的优化器类，加入权重衰减
     """
-    class new_optimizer(base_optimizer):
+    class NewOptimizer(BaseOptimizer):
         """带有权重衰减的优化器
         """
         def __init__(self,
@@ -327,7 +327,7 @@ def extend_with_weight_decay(base_optimizer):
                      exclude_from_weight_decay=None,
                      *args,
                      **kwargs):
-            super(new_optimizer, self).__init__(*args, **kwargs)
+            super(NewOptimizer, self).__init__(*args, **kwargs)
             self.weight_decay_rate = weight_decay_rate
             self.exclude_from_weight_decay = exclude_from_weight_decay or []
             if not hasattr(self, 'learning_rate'):
@@ -343,7 +343,7 @@ def extend_with_weight_decay(base_optimizer):
                 return old_update(x, new_x)
 
             K.update = new_update
-            updates = super(new_optimizer, self).get_updates(loss, params)
+            updates = super(NewOptimizer, self).get_updates(loss, params)
             K.update = old_update
 
             return updates
@@ -357,17 +357,17 @@ def extend_with_weight_decay(base_optimizer):
                 'weight_decay_rate': self.weight_decay_rate,
                 'exclude_from_weight_decay': self.exclude_from_weight_decay
             }
-            base_config = super(new_optimizer, self).get_config()
+            base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    return new_optimizer
+    return NewOptimizer
 
 
 @export_to_custom_objects
-def extend_with_weight_decay_v2(base_optimizer):
+def extend_with_weight_decay_v2(BaseOptimizer):
     """返回新的优化器类，加入权重衰减
     """
-    class new_optimizer(base_optimizer):
+    class NewOptimizer(BaseOptimizer):
         """带有权重衰减的优化器
         """
         def __init__(self,
@@ -375,7 +375,7 @@ def extend_with_weight_decay_v2(base_optimizer):
                      exclude_from_weight_decay=None,
                      *args,
                      **kwargs):
-            super(new_optimizer, self).__init__(*args, **kwargs)
+            super(NewOptimizer, self).__init__(*args, **kwargs)
             self.weight_decay_rate = weight_decay_rate
             self.exclude_from_weight_decay = exclude_from_weight_decay or []
 
@@ -389,7 +389,7 @@ def extend_with_weight_decay_v2(base_optimizer):
                 return old_update(x, new_x)
 
             K.update = new_update
-            op = super(new_optimizer, self)._resource_apply(grad, var, indices)
+            op = super(NewOptimizer, self)._resource_apply(grad, var, indices)
             K.update = old_update
 
             return op
@@ -403,24 +403,24 @@ def extend_with_weight_decay_v2(base_optimizer):
                 'weight_decay_rate': self.weight_decay_rate,
                 'exclude_from_weight_decay': self.exclude_from_weight_decay
             }
-            base_config = super(new_optimizer, self).get_config()
+            base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    return new_optimizer
+    return NewOptimizer
 
 
 @export_to_custom_objects
-def extend_with_layer_adaptation(base_optimizer):
+def extend_with_layer_adaptation(BaseOptimizer):
     """返回新的优化器类，加入层自适应学习率
     """
-    class new_optimizer(base_optimizer):
+    class NewOptimizer(BaseOptimizer):
         """带有层自适应学习率的优化器
         用每一层参数的模长来校正当前参数的学习率
         https://arxiv.org/abs/1904.00962
         """
         def __init__(self, exclude_from_layer_adaptation=None, *args,
                      **kwargs):
-            super(new_optimizer, self).__init__(*args, **kwargs)
+            super(NewOptimizer, self).__init__(*args, **kwargs)
             self.exclude_from_layer_adaptation = exclude_from_layer_adaptation or []
             if not hasattr(self, 'learning_rate'):
                 self.learning_rate = self.lr
@@ -443,7 +443,7 @@ def extend_with_layer_adaptation(base_optimizer):
                 return old_update(x, new_x)
 
             K.update = new_update
-            updates = super(new_optimizer, self).get_updates(loss, params)
+            updates = super(NewOptimizer, self).get_updates(loss, params)
             K.update = old_update
 
             return updates
@@ -456,24 +456,24 @@ def extend_with_layer_adaptation(base_optimizer):
             config = {
                 'exclude_from_layer_adaptation': self.exclude_from_layer_adaptation
             }
-            base_config = super(new_optimizer, self).get_config()
+            base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    return new_optimizer
+    return NewOptimizer
 
 
 @export_to_custom_objects
-def extend_with_layer_adaptation_v2(base_optimizer):
+def extend_with_layer_adaptation_v2(BaseOptimizer):
     """返回新的优化器类，加入层自适应学习率
     """
-    class new_optimizer(base_optimizer):
+    class NewOptimizer(BaseOptimizer):
         """带有层自适应学习率的优化器
         用每一层参数的模长来校正当前参数的学习率
         https://arxiv.org/abs/1904.00962
         """
         def __init__(self, exclude_from_layer_adaptation=None, *args,
                      **kwargs):
-            super(new_optimizer, self).__init__(*args, **kwargs)
+            super(NewOptimizer, self).__init__(*args, **kwargs)
             self.exclude_from_layer_adaptation = exclude_from_layer_adaptation or []
 
         def _resource_apply(self, grad, var, indices=None):
@@ -494,7 +494,7 @@ def extend_with_layer_adaptation_v2(base_optimizer):
                 return old_update(x, new_x)
 
             K.update = new_update
-            op = super(new_optimizer, self)._resource_apply(grad, var, indices)
+            op = super(NewOptimizer, self)._resource_apply(grad, var, indices)
             K.update = old_update
 
             return op
@@ -507,24 +507,24 @@ def extend_with_layer_adaptation_v2(base_optimizer):
             config = {
                 'exclude_from_layer_adaptation': self.exclude_from_layer_adaptation
             }
-            base_config = super(new_optimizer, self).get_config()
+            base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    return new_optimizer
+    return NewOptimizer
 
 
 @export_to_custom_objects
-def extend_with_piecewise_linear_lr(base_optimizer):
+def extend_with_piecewise_linear_lr(BaseOptimizer):
     """返回新的优化器类，加入分段线性学习率
     """
-    class new_optimizer(base_optimizer):
+    class NewOptimizer(BaseOptimizer):
         """带有分段线性学习率的优化器
         其中schedule是形如{1000: 1, 2000: 0.1}的字典，
         表示0～1000步内学习率线性地从零增加到100%，然后
         1000～2000步内线性地降到10%，2000步以后保持10%
         """
         def __init__(self, lr_schedule, *args, **kwargs):
-            super(new_optimizer, self).__init__(*args, **kwargs)
+            super(NewOptimizer, self).__init__(*args, **kwargs)
             self.lr_schedule = {int(i): j for i, j in lr_schedule.items()}
 
         @K.symbolic
@@ -539,62 +539,62 @@ def extend_with_piecewise_linear_lr(base_optimizer):
                 return old_update(x, new_x)
 
             K.update = new_update
-            updates = super(new_optimizer, self).get_updates(loss, params)
+            updates = super(NewOptimizer, self).get_updates(loss, params)
             K.update = old_update
 
             return updates
 
         def get_config(self):
             config = {'lr_schedule': self.lr_schedule}
-            base_config = super(new_optimizer, self).get_config()
+            base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    return new_optimizer
+    return NewOptimizer
 
 
 @export_to_custom_objects
-def extend_with_piecewise_linear_lr_v2(base_optimizer):
+def extend_with_piecewise_linear_lr_v2(BaseOptimizer):
     """返回新的优化器类，加入分段线性学习率
     """
-    class new_optimizer(base_optimizer):
+    class NewOptimizer(BaseOptimizer):
         """带有分段线性学习率的优化器
         其中schedule是形如{1000: 1, 2000: 0.1}的字典，
         表示0～1000步内学习率线性地从零增加到100%，然后
         1000～2000步内线性地降到10%，2000步以后保持10%
         """
         def __init__(self, lr_schedule, *args, **kwargs):
-            super(new_optimizer, self).__init__(*args, **kwargs)
+            super(NewOptimizer, self).__init__(*args, **kwargs)
             self.lr_schedule = {int(i): j for i, j in lr_schedule.items()}
 
         def _decayed_lr(self, var_dtype):
             lr_multiplier = piecewise_linear(self.iterations, self.lr_schedule)
-            lr_t = super(new_optimizer, self)._decayed_lr(var_dtype)
+            lr_t = super(NewOptimizer, self)._decayed_lr(var_dtype)
             return lr_t * K.cast(lr_multiplier, var_dtype)
 
         def get_config(self):
             config = {'lr_schedule': self.lr_schedule}
-            base_config = super(new_optimizer, self).get_config()
+            base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    return new_optimizer
+    return NewOptimizer
 
 
 @export_to_custom_objects
-def extend_with_gradient_accumulation(base_optimizer):
+def extend_with_gradient_accumulation(BaseOptimizer):
     """返回新的优化器类，加入梯度累积
     """
-    class new_optimizer(base_optimizer):
+    class NewOptimizer(BaseOptimizer):
         """带有梯度累积的优化器
         """
         def __init__(self, grad_accum_steps, *args, **kwargs):
-            super(new_optimizer, self).__init__(*args, **kwargs)
+            super(NewOptimizer, self).__init__(*args, **kwargs)
             self.grad_accum_steps = grad_accum_steps
             self._first_get_gradients = True
 
         def get_gradients(self, loss, params):
             if self._first_get_gradients:
                 self._first_get_gradients = False
-                return super(new_optimizer, self).get_gradients(loss, params)
+                return super(NewOptimizer, self).get_gradients(loss, params)
             else:
                 return [ag / self.grad_accum_steps for ag in self.accum_grads]
 
@@ -618,7 +618,7 @@ def extend_with_gradient_accumulation(base_optimizer):
                 return old_update(x, new_x)
 
             K.update = new_update
-            updates = super(new_optimizer, self).get_updates(loss, params)
+            updates = super(NewOptimizer, self).get_updates(loss, params)
             K.update = old_update
 
             # 累积梯度
@@ -632,25 +632,25 @@ def extend_with_gradient_accumulation(base_optimizer):
 
         def get_config(self):
             config = {'grad_accum_steps': self.grad_accum_steps}
-            base_config = super(new_optimizer, self).get_config()
+            base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    return new_optimizer
+    return NewOptimizer
 
 
 @export_to_custom_objects
-def extend_with_gradient_accumulation_v2(base_optimizer):
+def extend_with_gradient_accumulation_v2(BaseOptimizer):
     """返回新的优化器类，加入梯度累积
     """
-    class new_optimizer(base_optimizer):
+    class NewOptimizer(BaseOptimizer):
         """带有梯度累积的优化器
         """
         def __init__(self, grad_accum_steps, *args, **kwargs):
-            super(new_optimizer, self).__init__(*args, **kwargs)
+            super(NewOptimizer, self).__init__(*args, **kwargs)
             self.grad_accum_steps = grad_accum_steps
 
         def _create_slots(self, var_list):
-            super(new_optimizer, self)._create_slots(var_list)
+            super(NewOptimizer, self)._create_slots(var_list)
             for var in var_list:
                 self.add_slot(var, 'ag')
 
@@ -668,7 +668,7 @@ def extend_with_gradient_accumulation_v2(base_optimizer):
 
             K.update = new_update
             ag_t = ag / self.grad_accum_steps
-            op = super(new_optimizer, self)._resource_apply(ag_t, var)
+            op = super(NewOptimizer, self)._resource_apply(ag_t, var)
             K.update = old_update
 
             # 累积梯度
@@ -684,17 +684,17 @@ def extend_with_gradient_accumulation_v2(base_optimizer):
 
         def get_config(self):
             config = {'grad_accum_steps': self.grad_accum_steps}
-            base_config = super(new_optimizer, self).get_config()
+            base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    return new_optimizer
+    return NewOptimizer
 
 
 @export_to_custom_objects
-def extend_with_lookahead(base_optimizer):
+def extend_with_lookahead(BaseOptimizer):
     """返回新的优化器类，加入look ahead
     """
-    class new_optimizer(base_optimizer):
+    class NewOptimizer(BaseOptimizer):
         """带有look ahead的优化器
         https://arxiv.org/abs/1907.08610
         steps_per_slow_update: 即论文中的k；
@@ -705,13 +705,13 @@ def extend_with_lookahead(base_optimizer):
                      slow_step_size=0.5,
                      *args,
                      **kwargs):
-            super(new_optimizer, self).__init__(*args, **kwargs)
+            super(NewOptimizer, self).__init__(*args, **kwargs)
             self.steps_per_slow_update = steps_per_slow_update
             self.slow_step_size = slow_step_size
 
         @K.symbolic
         def get_updates(self, loss, params):
-            updates = super(new_optimizer, self).get_updates(loss, params)
+            updates = super(NewOptimizer, self).get_updates(loss, params)
 
             k, alpha = self.steps_per_slow_update, self.slow_step_size
             cond = K.equal(self.iterations % k, 0)
@@ -739,17 +739,17 @@ def extend_with_lookahead(base_optimizer):
                 'steps_per_slow_update': self.steps_per_slow_update,
                 'slow_step_size': self.slow_step_size
             }
-            base_config = super(new_optimizer, self).get_config()
+            base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    return new_optimizer
+    return NewOptimizer
 
 
 @export_to_custom_objects
-def extend_with_lookahead_v2(base_optimizer):
+def extend_with_lookahead_v2(BaseOptimizer):
     """返回新的优化器类，加入look ahead
     """
-    class new_optimizer(base_optimizer):
+    class NewOptimizer(BaseOptimizer):
         """带有look ahead的优化器
         https://arxiv.org/abs/1907.08610
         steps_per_slow_update: 即论文中的k；
@@ -760,17 +760,17 @@ def extend_with_lookahead_v2(base_optimizer):
                      slow_step_size=0.5,
                      *args,
                      **kwargs):
-            super(new_optimizer, self).__init__(*args, **kwargs)
+            super(NewOptimizer, self).__init__(*args, **kwargs)
             self.steps_per_slow_update = steps_per_slow_update
             self.slow_step_size = slow_step_size
 
         def _create_slots(self, var_list):
-            super(new_optimizer, self)._create_slots(var_list)
+            super(NewOptimizer, self)._create_slots(var_list)
             for var in var_list:
                 self.add_slot(var, 'slow_var')
 
         def _resource_apply(self, grad, var, indices=None):
-            op = super(new_optimizer, self)._resource_apply(grad, var, indices)
+            op = super(NewOptimizer, self)._resource_apply(grad, var, indices)
 
             k, alpha = self.steps_per_slow_update, self.slow_step_size
             cond = K.equal(self.iterations % k, 0)
@@ -790,30 +790,30 @@ def extend_with_lookahead_v2(base_optimizer):
                 'steps_per_slow_update': self.steps_per_slow_update,
                 'slow_step_size': self.slow_step_size
             }
-            base_config = super(new_optimizer, self).get_config()
+            base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    return new_optimizer
+    return NewOptimizer
 
 
 @export_to_custom_objects
-def extend_with_lazy_optimization(base_optimizer):
+def extend_with_lazy_optimization(BaseOptimizer):
     """返回新的优化器类，加入懒惰更新
     """
-    class new_optimizer(base_optimizer):
+    class NewOptimizer(BaseOptimizer):
         """带有懒惰更新的优化器
         使得部分权重（尤其是embedding）只有在梯度不等于0时
         才发生更新。
         """
         def __init__(self, include_in_lazy_optimization=None, *args, **kwargs):
-            super(new_optimizer, self).__init__(*args, **kwargs)
+            super(NewOptimizer, self).__init__(*args, **kwargs)
             self.include_in_lazy_optimization = include_in_lazy_optimization or []
             self._first_get_gradients = True
 
         def get_gradients(self, loss, params):
             if self._first_get_gradients:
                 self._first_get_gradients = False
-                return super(new_optimizer, self).get_gradients(loss, params)
+                return super(NewOptimizer, self).get_gradients(loss, params)
             else:
                 return [self.grads[p] for p in params]
 
@@ -831,7 +831,7 @@ def extend_with_lazy_optimization(base_optimizer):
                 return old_update(x, new_x)
 
             K.update = new_update
-            updates = super(new_optimizer, self).get_updates(loss, params)
+            updates = super(NewOptimizer, self).get_updates(loss, params)
             K.update = old_update
 
             return updates
@@ -843,23 +843,23 @@ def extend_with_lazy_optimization(base_optimizer):
             config = {
                 'include_in_lazy_optimization': self.include_in_lazy_optimization
             }
-            base_config = super(new_optimizer, self).get_config()
+            base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    return new_optimizer
+    return NewOptimizer
 
 
 @export_to_custom_objects
-def extend_with_lazy_optimization_v2(base_optimizer):
+def extend_with_lazy_optimization_v2(BaseOptimizer):
     """返回新的优化器类，加入懒惰更新
     """
-    class new_optimizer(base_optimizer):
+    class NewOptimizer(BaseOptimizer):
         """带有懒惰更新的优化器
         使得部分权重（尤其是embedding）只有在梯度不等于0时
         才发生更新。
         """
         def __init__(self, include_in_lazy_optimization=None, *args, **kwargs):
-            super(new_optimizer, self).__init__(*args, **kwargs)
+            super(NewOptimizer, self).__init__(*args, **kwargs)
             self.include_in_lazy_optimization = include_in_lazy_optimization or []
 
         def _resource_apply(self, grad, var, indices=None):
@@ -879,7 +879,7 @@ def extend_with_lazy_optimization_v2(base_optimizer):
                 return old_update(x, new_x)
 
             K.update = new_update
-            op = super(new_optimizer, self)._resource_apply(grad, var, indices)
+            op = super(NewOptimizer, self)._resource_apply(grad, var, indices)
             K.update = old_update
 
             return op
@@ -891,25 +891,25 @@ def extend_with_lazy_optimization_v2(base_optimizer):
             config = {
                 'include_in_lazy_optimization': self.include_in_lazy_optimization
             }
-            base_config = super(new_optimizer, self).get_config()
+            base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-    return new_optimizer
+    return NewOptimizer
 
 
 @export_to_custom_objects
-def extend_with_exponential_moving_average(base_optimizer):
+def extend_with_exponential_moving_average(BaseOptimizer):
     """返回新的优化器类，加入EMA（权重滑动平均）
     """
-    class new_optimizer(base_optimizer):
+    class NewOptimizer(BaseOptimizer):
         """带EMA（权重滑动平均）的优化器
         """
         def __init__(self, ema_momentum=0.999, *args, **kwargs):
-            super(new_optimizer, self).__init__(*args, **kwargs)
+            super(NewOptimizer, self).__init__(*args, **kwargs)
             self.ema_momentum = ema_momentum
 
         def get_updates(self, loss, params):
-            updates = super(new_optimizer, self).get_updates(loss, params)
+            updates = super(NewOptimizer, self).get_updates(loss, params)
             self.model_weights = params
             self.ema_weights = [K.zeros(K.shape(w)) for w in params]
             self.old_weights = K.batch_get_value(params)
@@ -925,7 +925,7 @@ def extend_with_exponential_moving_average(base_optimizer):
 
         def get_config(self):
             config = {'ema_momentum': self.ema_momentum}
-            base_config = super(new_optimizer, self).get_config()
+            base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
         def apply_ema_weights(self):
@@ -940,7 +940,7 @@ def extend_with_exponential_moving_average(base_optimizer):
             """
             K.batch_set_value(zip(self.model_weights, self.old_weights))
 
-    return new_optimizer
+    return NewOptimizer
 
 
 if is_tf_keras:
