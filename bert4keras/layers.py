@@ -342,7 +342,7 @@ class PositionEmbedding(Layer):
         self.embeddings = self.add_weight(
             name='embeddings',
             shape=(self.input_dim, self.output_dim),
-            initializer=self.embeddings_initializer,
+            initializer=self.embeddings_initializer
         )
 
     def call(self, inputs):
