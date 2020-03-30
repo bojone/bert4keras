@@ -62,7 +62,7 @@ class Transformer(object):
         if self.built:
             return None
         # Input
-        inputs = self.prepare_inputs()
+        inputs = self.apply_inputs()
         self.set_inputs(inputs, additional_input_layers)
         # Other
         self.layer_norm_conds = [
@@ -80,12 +80,12 @@ class Transformer(object):
         """定义模型的执行流程
         """
         # Embedding
-        outputs = self.prepare_embeddings(inputs)
+        outputs = self.apply_embeddings(inputs)
         # Main
         for i in range(self.num_hidden_layers):
-            outputs = self.prepare_main_layers(outputs, i)
+            outputs = self.apply_main_layers(outputs, i)
         # Final
-        outputs = self.prepare_final_layers(outputs)
+        outputs = self.apply_final_layers(outputs)
         return outputs
 
     def apply(self, inputs, layer=None, arguments=None, **kwargs):
@@ -107,16 +107,16 @@ class Transformer(object):
 
         return self.layers[name](inputs, **arguments)
 
-    def prepare_inputs(self):
+    def apply_inputs(self):
         raise NotImplementedError
 
-    def prepare_embeddings(self, inputs):
+    def apply_embeddings(self, inputs):
         raise NotImplementedError
 
-    def prepare_main_layers(self, inputs, index):
+    def apply_main_layers(self, inputs, index):
         raise NotImplementedError
 
-    def prepare_final_layers(self, inputs):
+    def apply_final_layers(self, inputs):
         raise NotImplementedError
 
     def compute_attention_mask(self, inputs=None):
@@ -266,14 +266,14 @@ class BERT(Transformer):
         self.with_nsp = with_nsp
         self.with_mlm = with_mlm
 
-    def prepare_inputs(self):
+    def apply_inputs(self):
         """BERT的输入是token_ids和segment_ids
         """
         x_in = Input(shape=(None,), name='Input-Token')
         s_in = Input(shape=(None,), name='Input-Segment')
         return [x_in, s_in]
 
-    def prepare_embeddings(self, inputs):
+    def apply_embeddings(self, inputs):
         """BERT的embedding是token、position、segment三者embedding之和
         """
         x, s = inputs
@@ -332,7 +332,7 @@ class BERT(Transformer):
 
         return x
 
-    def prepare_main_layers(self, inputs, index):
+    def apply_main_layers(self, inputs, index):
         """BERT的主体是基于Self-Attention的模块
         顺序：Att --> Add --> LN --> FFN --> Add --> LN
         """
@@ -409,7 +409,7 @@ class BERT(Transformer):
 
         return x
 
-    def prepare_final_layers(self, inputs):
+    def apply_final_layers(self, inputs):
         """根据剩余参数决定输出
         """
         x = inputs
@@ -578,7 +578,7 @@ class BERT(Transformer):
 class ALBERT(BERT):
     """构建ALBERT模型
     """
-    def prepare_main_layers(self, inputs, index):
+    def apply_main_layers(self, inputs, index):
         """ALBERT的主体是基于Self-Attention的模块
         顺序：Att --> Add --> LN --> FFN --> Add --> LN
         """
@@ -735,7 +735,7 @@ class NEZHA(BERT):
     """华为推出的NAZHA模型
     链接：https://arxiv.org/abs/1909.00204
     """
-    def prepare_embeddings(self, inputs):
+    def apply_embeddings(self, inputs):
         """NEZHA的embedding是token、segment两者embedding之和
         """
         x, s = inputs
@@ -785,7 +785,7 @@ class NEZHA(BERT):
 
         return x
 
-    def prepare_main_layers(self, inputs, index):
+    def apply_main_layers(self, inputs, index):
         """NEZHA的主体是基于Self-Attention的模块
         顺序：Att --> Add --> LN --> FFN --> Add --> LN
         """
@@ -910,7 +910,7 @@ class ELECTRA(BERT):
 
         super(ELECTRA, self).__init__(max_position, **kwargs)
 
-    def prepare_final_layers(self, inputs):
+    def apply_final_layers(self, inputs):
         x = inputs
         z = self.layer_norm_conds[0]
         return x
@@ -942,13 +942,13 @@ class GPT2_ML(Transformer):
         self.max_position = max_position
         self.final_activation = final_activation
 
-    def prepare_inputs(self):
+    def apply_inputs(self):
         """GPT2_ML的输入是token_ids和segment_ids
         """
         x_in = Input(shape=(None,), name='Input-Token')
         return x_in
 
-    def prepare_embeddings(self, inputs):
+    def apply_embeddings(self, inputs):
         """GPT2_ML的embedding是token、position两者embedding之和
         """
         x = inputs
@@ -993,7 +993,7 @@ class GPT2_ML(Transformer):
 
         return x
 
-    def prepare_main_layers(self, inputs, index):
+    def apply_main_layers(self, inputs, index):
         """GPT2_ML的主体是基于Self-Attention的模块
         顺序：Att  --> LN --> FFN --> Add --> LN
         """
@@ -1069,7 +1069,7 @@ class GPT2_ML(Transformer):
 
         return x
 
-    def prepare_final_layers(self, inputs):
+    def apply_final_layers(self, inputs):
         """剩余部分
         """
         x = inputs
@@ -1260,13 +1260,13 @@ class T5_Base(Transformer):
 class T5_Encoder(T5_Base):
     """Google的T5模型（Encoder）
     """
-    def prepare_inputs(self):
+    def apply_inputs(self):
         """T5的Encoder的输入只有token_ids
         """
         x_in = Input(shape=(None,), name='Encoder-Input-Token')
         return x_in
 
-    def prepare_embeddings(self, inputs):
+    def apply_embeddings(self, inputs):
         """T5的embedding只有token embedding，
         并把relative position embedding准备好，待attention使用。
         """
@@ -1298,7 +1298,7 @@ class T5_Encoder(T5_Base):
 
         return x
 
-    def prepare_main_layers(self, inputs, index):
+    def apply_main_layers(self, inputs, index):
         """T5的Encoder的主体是基于Self-Attention的模块
         顺序：LN --> Att --> Add --> LN --> FFN --> Add
         """
@@ -1380,7 +1380,7 @@ class T5_Encoder(T5_Base):
 
         return x
 
-    def prepare_final_layers(self, inputs):
+    def apply_final_layers(self, inputs):
         """剩余部分
         """
         x = inputs
@@ -1436,14 +1436,14 @@ class T5_Decoder(Transformer):
         else:
             self.with_lm = with_lm
 
-    def prepare_inputs(self):
+    def apply_inputs(self):
         """T5的Decoder的输入为context序列和token_ids
         """
         c_in = Input(shape=(None, self.hidden_size), name='Input-Context')
         x_in = Input(shape=(None,), name='Decoder-Input-Token')
         return [c_in, x_in]
 
-    def prepare_embeddings(self, inputs):
+    def apply_embeddings(self, inputs):
         """T5的embedding只有token embedding，
         并把relative position embedding准备好，待attention使用。
         """
@@ -1475,7 +1475,7 @@ class T5_Decoder(Transformer):
 
         return [c, x]
 
-    def prepare_main_layers(self, inputs, index):
+    def apply_main_layers(self, inputs, index):
         """T5的Dencoder主体是基于Self-Attention、Cross-Attention的模块
         顺序：LN --> Att1 --> Add --> LN --> Att2 --> Add -->  LN --> FFN --> Add
         """
@@ -1599,7 +1599,7 @@ class T5_Decoder(Transformer):
 
         return [c, x]
 
-    def prepare_final_layers(self, inputs):
+    def apply_final_layers(self, inputs):
         """剩余部分
         """
         c, x = inputs
