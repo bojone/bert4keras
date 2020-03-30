@@ -70,9 +70,9 @@ class data_generator(DataGenerator):
             passage = re.sub(u' |、|；|，', ',', passage)
             final_answer = ''
             for answer in answers:
-                if all(
-                    [a in passage[:max_p_len - 2] for a in answer.split(' ')]
-                ):
+                if all([
+                    a in passage[:max_p_len - 2] for a in answer.split(' ')
+                ]):
                     final_answer = answer.replace(' ', ',')
                     break
             a_token_ids, _ = tokenizer.encode(
@@ -164,7 +164,7 @@ def gen_answer(question, passages):
             # pi是将passage以外的token的概率置零
             pi = np.zeros_like(p[i])
             pi[idxs] = p[i, idxs]
-            a = a + (pi.argmax(), )
+            a = a + (pi.argmax(),)
             score += pi.max()
             if a[-1] == tokenizer._token_end_id:
                 break
@@ -173,8 +173,7 @@ def gen_answer(question, passages):
         if a:
             results[a] = results.get(a, []) + [score]
     results = {
-        k: (np.array(v)**2).sum() / (sum(v) + 1)
-        for k, v in results.items()
+        k: (np.array(v)**2).sum() / (sum(v) + 1) for k, v in results.items()
     }
     return results
 

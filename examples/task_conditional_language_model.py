@@ -56,13 +56,11 @@ def load_data(filenames):
 
 
 # 加载数据集
-data = load_data(
-    [
-        'datasets/sentiment/sentiment.train.data',
-        'datasets/sentiment/sentiment.valid.data',
-        'datasets/sentiment/sentiment.test.data',
-    ]
-)
+data = load_data([
+    'datasets/sentiment/sentiment.train.data',
+    'datasets/sentiment/sentiment.valid.data',
+    'datasets/sentiment/sentiment.test.data',
+])
 
 
 class data_generator(DataGenerator):
@@ -83,9 +81,9 @@ class data_generator(DataGenerator):
                 batch_token_ids, batch_segment_ids, batch_labels = [], [], []
 
 
-c_in = Input(shape=(1, ))
+c_in = Input(shape=(1,))
 c = Embedding(2, 128)(c_in)
-c = Reshape((128, ))(c)
+c = Reshape((128,))(c)
 
 # Bert模型
 model = build_transformer_model(

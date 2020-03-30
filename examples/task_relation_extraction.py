@@ -30,16 +30,11 @@ def load_data(filename):
     with open(filename, encoding='utf-8') as f:
         for l in f:
             l = json.loads(l)
-            D.append(
-                {
-                    'text': l['text'],
-                    'spo_list':
-                        [
-                            (spo['subject'], spo['predicate'], spo['object'])
-                            for spo in l['spo_list']
-                        ]
-                }
-            )
+            D.append({
+                'text': l['text'],
+                'spo_list': [(spo['subject'], spo['predicate'], spo['object'])
+                             for spo in l['spo_list']]
+            })
     return D
 
 
@@ -149,7 +144,7 @@ def extrac_subject(inputs):
 
 # 补充输入
 subject_labels = Input(shape=(None, 2), name='Subject-Labels')
-subject_ids = Input(shape=(2, ), name='Subject-Ids')
+subject_ids = Input(shape=(2,), name='Subject-Ids')
 object_labels = Input(shape=(None, len(predicate2id), 2), name='Object-Labels')
 
 # 加载预训练模型
@@ -236,16 +231,14 @@ def extract_spoes(text):
                     if _start <= _end and predicate1 == predicate2:
                         spoes.append((subject, predicate1, (_start, _end)))
                         break
-        return [
-            (
-                tokenizer.decode(
-                    token_ids[0, s[0]:s[1] + 1], tokens[s[0]:s[1] + 1]
-                ), id2predicate[p],
-                tokenizer.decode(
-                    token_ids[0, o[0]:o[1] + 1], tokens[o[0]:o[1] + 1]
-                )
-            ) for s, p, o in spoes
-        ]
+        return [(
+            tokenizer.decode(
+                token_ids[0, s[0]:s[1] + 1], tokens[s[0]:s[1] + 1]
+            ), id2predicate[p],
+            tokenizer.decode(
+                token_ids[0, o[0]:o[1] + 1], tokens[o[0]:o[1] + 1]
+            )
+        ) for s, p, o in spoes]
     else:
         return []
 
@@ -286,17 +279,15 @@ def evaluate(data):
         pbar.set_description(
             'f1: %.5f, precision: %.5f, recall: %.5f' % (f1, precision, recall)
         )
-        s = json.dumps(
-            {
-                'text': d['text'],
-                'spo_list': list(T),
-                'spo_list_pred': list(R),
-                'new': list(R - T),
-                'lack': list(T - R),
-            },
-            ensure_ascii=False,
-            indent=4
-        )
+        s = json.dumps({
+            'text': d['text'],
+            'spo_list': list(T),
+            'spo_list_pred': list(R),
+            'new': list(R - T),
+            'lack': list(T - R),
+        },
+                       ensure_ascii=False,
+                       indent=4)
         f.write(s + '\n')
     pbar.close()
     f.close()

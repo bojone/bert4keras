@@ -67,9 +67,9 @@ class data_generator(DataGenerator):
             passage = re.sub(u' |、|；|，', ',', passage)
             final_answer = ''
             for answer in answers:
-                if all(
-                    [a in passage[:max_p_len - 2] for a in answer.split(' ')]
-                ):
+                if all([
+                    a in passage[:max_p_len - 2] for a in answer.split(' ')
+                ]):
                     final_answer = answer.replace(' ', ',')
                     break
             qa_token_ids, qa_segment_ids = tokenizer.encode(
