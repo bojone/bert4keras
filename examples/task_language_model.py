@@ -12,7 +12,6 @@ from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, open
 from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
 
-
 maxlen = 256
 batch_size = 16
 steps_per_epoch = 1000
@@ -22,7 +21,6 @@ epochs = 10000
 config_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_config.json'
 checkpoint_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt'
 dict_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/vocab.txt'
-
 
 novels = []
 
@@ -39,7 +37,6 @@ for txt in glob.glob('/root/金庸/*/*.txt'):
                 sents.append(s)
     novels.append(sents)
 
-
 # 加载并精简词表，建立分词器
 token_dict, keep_tokens = load_vocab(
     dict_path=dict_path,
@@ -47,7 +44,6 @@ token_dict, keep_tokens = load_vocab(
     startwith=['[PAD]', '[UNK]', '[CLS]', '[SEP]'],
 )
 tokenizer = Tokenizer(token_dict, do_lower_case=True)
-
 
 data = []
 pbar = tqdm(desc=u'构建语料中', total=sum(len(n) for n in novels))
@@ -125,9 +121,9 @@ class StoryCompletion(AutoRegressiveDecoder):
         return [text + tokenizer.decode(ids) for ids in results]
 
 
-story_completion = StoryCompletion(start_id=None,
-                                   end_id=tokenizer._token_end_id,
-                                   maxlen=maxlen)
+story_completion = StoryCompletion(
+    start_id=None, end_id=tokenizer._token_end_id, maxlen=maxlen
+)
 
 
 def just_show():
@@ -158,15 +154,16 @@ if __name__ == '__main__':
     evaluator = Evaluate()
     train_generator = data_generator(data, batch_size)
 
-    model.fit_generator(train_generator.forfit(),
-                        steps_per_epoch=steps_per_epoch,
-                        epochs=epochs,
-                        callbacks=[evaluator])
+    model.fit_generator(
+        train_generator.forfit(),
+        steps_per_epoch=steps_per_epoch,
+        epochs=epochs,
+        callbacks=[evaluator]
+    )
 
 else:
 
     model.load_weights('./best_model.weights')
-
 """
 效果：
 

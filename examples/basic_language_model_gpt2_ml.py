@@ -8,19 +8,17 @@ from bert4keras.tokenizers import Tokenizer
 from bert4keras.snippets import AutoRegressiveDecoder
 from bert4keras.snippets import uniout
 
-
 config_path = '/root/gpt2/config.json'
 checkpoint_path = '/root/gpt2/model.ckpt-100000'
 dict_path = '/root/gpt2/vocab.txt'
 
-tokenizer = Tokenizer(dict_path,
-                      token_start=None,
-                      token_end=None,
-                      do_lower_case=True)  # 建立分词器
+tokenizer = Tokenizer(
+    dict_path, token_start=None, token_end=None, do_lower_case=True
+)  # 建立分词器
 
-model = build_transformer_model(config_path=config_path,
-                                checkpoint_path=checkpoint_path,
-                                model='gpt2_ml')  # 建立模型，加载权重
+model = build_transformer_model(
+    config_path=config_path, checkpoint_path=checkpoint_path, model='gpt2_ml'
+)  # 建立模型，加载权重
 
 
 class ArticleCompletion(AutoRegressiveDecoder):
@@ -37,13 +35,14 @@ class ArticleCompletion(AutoRegressiveDecoder):
         return [text + tokenizer.decode(ids) for ids in results]
 
 
-article_completion = ArticleCompletion(start_id=None,
-                                       end_id=511,  # 511是中文句号
-                                       maxlen=256,
-                                       minlen=128)
+article_completion = ArticleCompletion(
+    start_id=None,
+    end_id=511,  # 511是中文句号
+    maxlen=256,
+    minlen=128
+)
 
 print(article_completion.generate(u'今天天气不错'))
-
 """
 部分结果：
 

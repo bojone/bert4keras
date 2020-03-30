@@ -16,7 +16,6 @@ from keras.layers import Dense
 from keras.models import Model
 from tqdm import tqdm
 
-
 maxlen = 256
 epochs = 10
 num_labels = 4
@@ -119,9 +118,11 @@ output = CRF(output)
 model = Model(model.input, output)
 model.summary()
 
-model.compile(loss=CRF.sparse_loss,
-              optimizer=Adam(learing_rate),
-              metrics=[CRF.sparse_accuracy])
+model.compile(
+    loss=CRF.sparse_loss,
+    optimizer=Adam(learing_rate),
+    metrics=[CRF.sparse_accuracy]
+)
 
 
 def viterbi_decode(nodes, trans):
@@ -215,10 +216,12 @@ if __name__ == '__main__':
     evaluator = Evaluate()
     train_generator = data_generator(train_data, batch_size)
 
-    model.fit_generator(train_generator.forfit(),
-                        steps_per_epoch=len(train_generator),
-                        epochs=epochs,
-                        callbacks=[evaluator])
+    model.fit_generator(
+        train_generator.forfit(),
+        steps_per_epoch=len(train_generator),
+        epochs=epochs,
+        callbacks=[evaluator]
+    )
 
 else:
 

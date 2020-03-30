@@ -16,7 +16,6 @@ from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
 from rouge import Rouge  # pip install rouge
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 
-
 # 基本参数
 maxlen = 256
 batch_size = 16
@@ -57,9 +56,9 @@ class data_generator(DataGenerator):
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids = [], []
         for is_end, (title, content) in self.sample(random):
-            token_ids, segment_ids = tokenizer.encode(content,
-                                                      title,
-                                                      max_length=maxlen)
+            token_ids, segment_ids = tokenizer.encode(
+                content, title, max_length=maxlen
+            )
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
             if len(batch_token_ids) == self.batch_size or is_end:
@@ -102,13 +101,13 @@ class AutoTitle(AutoRegressiveDecoder):
     def generate(self, text, topk=1):
         max_c_len = maxlen - self.maxlen
         token_ids, segment_ids = tokenizer.encode(text, max_length=max_c_len)
-        output_ids = self.beam_search([token_ids, segment_ids], topk)  # 基于beam search
+        output_ids = self.beam_search(
+            [token_ids, segment_ids], topk
+        )  # 基于beam search
         return tokenizer.decode(output_ids)
 
 
-autotitle = AutoTitle(start_id=None,
-                      end_id=tokenizer._token_end_id,
-                      maxlen=32)
+autotitle = AutoTitle(start_id=None, end_id=tokenizer._token_end_id, maxlen=32)
 
 
 class Evaluate(keras.callbacks.Callback):
@@ -137,9 +136,11 @@ class Evaluate(keras.callbacks.Callback):
                 rouge_1 += scores[0]['rouge-1']['f']
                 rouge_2 += scores[0]['rouge-2']['f']
                 rouge_l += scores[0]['rouge-l']['f']
-                bleu += sentence_bleu(references=[title.split(' ')],
-                                      hypothesis=pred_title.split(' '),
-                                      smoothing_function=self.smooth)
+                bleu += sentence_bleu(
+                    references=[title.split(' ')],
+                    hypothesis=pred_title.split(' '),
+                    smoothing_function=self.smooth
+                )
         rouge_1 /= total
         rouge_2 /= total
         rouge_l /= total
@@ -157,10 +158,12 @@ if __name__ == '__main__':
     evaluator = Evaluate()
     train_generator = data_generator(train_data, batch_size)
 
-    model.fit_generator(train_generator.forfit(),
-                        steps_per_epoch=len(train_generator),
-                        epochs=epochs,
-                        callbacks=[evaluator])
+    model.fit_generator(
+        train_generator.forfit(),
+        steps_per_epoch=len(train_generator),
+        epochs=epochs,
+        callbacks=[evaluator]
+    )
 
 else:
 

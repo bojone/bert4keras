@@ -16,7 +16,6 @@ from keras.layers import Lambda
 from keras.models import Model
 from tqdm import tqdm
 
-
 max_p_len = 256
 max_q_len = 64
 max_a_len = 32
@@ -71,11 +70,17 @@ class data_generator(DataGenerator):
             passage = re.sub(u' |、|；|，', ',', passage)
             final_answer = ''
             for answer in answers:
-                if all([a in passage[:max_p_len - 2] for a in answer.split(' ')]):
+                if all(
+                    [a in passage[:max_p_len - 2] for a in answer.split(' ')]
+                ):
                     final_answer = answer.replace(' ', ',')
                     break
-            a_token_ids, _ = tokenizer.encode(final_answer, max_length=max_a_len + 1)
-            q_token_ids, _ = tokenizer.encode(question, max_length=max_q_len + 1)
+            a_token_ids, _ = tokenizer.encode(
+                final_answer, max_length=max_a_len + 1
+            )
+            q_token_ids, _ = tokenizer.encode(
+                question, max_length=max_q_len + 1
+            )
             p_token_ids, _ = tokenizer.encode(passage, max_length=max_p_len + 1)
             token_ids = [tokenizer._token_start_id]
             token_ids += ([tokenizer._token_mask_id] * max_a_len)
@@ -88,7 +93,9 @@ class data_generator(DataGenerator):
             if len(batch_token_ids) == self.batch_size or is_end:
                 batch_token_ids = sequence_padding(batch_token_ids)
                 batch_segment_ids = sequence_padding(batch_segment_ids)
-                batch_a_token_ids = sequence_padding(batch_a_token_ids, max_a_len)
+                batch_a_token_ids = sequence_padding(
+                    batch_a_token_ids, max_a_len
+                )
                 yield [batch_token_ids, batch_segment_ids], batch_a_token_ids
                 batch_token_ids, batch_segment_ids, batch_a_token_ids = [], [], []
 
@@ -210,10 +217,12 @@ if __name__ == '__main__':
     evaluator = Evaluate()
     train_generator = data_generator(train_data, batch_size)
 
-    model.fit_generator(train_generator.forfit(),
-                        steps_per_epoch=len(train_generator),
-                        epochs=epochs,
-                        callbacks=[evaluator])
+    model.fit_generator(
+        train_generator.forfit(),
+        steps_per_epoch=len(train_generator),
+        epochs=epochs,
+        callbacks=[evaluator]
+    )
 
 else:
 

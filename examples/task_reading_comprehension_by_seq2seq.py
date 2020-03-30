@@ -14,7 +14,6 @@ from bert4keras.snippets import sequence_padding, open
 from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
 from tqdm import tqdm
 
-
 max_p_len = 256
 max_q_len = 64
 max_a_len = 32
@@ -68,13 +67,17 @@ class data_generator(DataGenerator):
             passage = re.sub(u' |、|；|，', ',', passage)
             final_answer = ''
             for answer in answers:
-                if all([a in passage[:max_p_len - 2] for a in answer.split(' ')]):
+                if all(
+                    [a in passage[:max_p_len - 2] for a in answer.split(' ')]
+                ):
                     final_answer = answer.replace(' ', ',')
                     break
             qa_token_ids, qa_segment_ids = tokenizer.encode(
-                question, final_answer, max_length=max_qa_len + 1)
-            p_token_ids, p_segment_ids = tokenizer.encode(passage,
-                                                          max_length=max_p_len)
+                question, final_answer, max_length=max_qa_len + 1
+            )
+            p_token_ids, p_segment_ids = tokenizer.encode(
+                passage, max_length=max_p_len
+            )
             token_ids = p_token_ids + qa_token_ids[1:]
             segment_ids = p_segment_ids + qa_segment_ids[1:]
             batch_token_ids.append(token_ids)
@@ -184,16 +187,19 @@ class ReadingComprehension(AutoRegressiveDecoder):
         for passage in passages:
             passage = re.sub(u' |、|；|，', ',', passage)
             p_token_ids = tokenizer.encode(passage, max_length=max_p_len)[0]
-            q_token_ids = tokenizer.encode(question, max_length=max_q_len + 1)[0]
+            q_token_ids = tokenizer.encode(question,
+                                           max_length=max_q_len + 1)[0]
             token_ids.append(p_token_ids + q_token_ids[1:])
         output_ids = self.beam_search(token_ids, topk)  # 基于beam search
         return tokenizer.decode(output_ids)
 
 
-reader = ReadingComprehension(start_id=None,
-                              end_id=tokenizer._token_end_id,
-                              maxlen=max_a_len,
-                              mode='extractive')
+reader = ReadingComprehension(
+    start_id=None,
+    end_id=tokenizer._token_end_id,
+    maxlen=max_a_len,
+    mode='extractive'
+)
 
 
 def predict_to_file(data, filename, topk=1):
@@ -228,10 +234,12 @@ if __name__ == '__main__':
     evaluator = Evaluate()
     train_generator = data_generator(train_data, batch_size)
 
-    model.fit_generator(train_generator.forfit(),
-                        steps_per_epoch=len(train_generator),
-                        epochs=epochs,
-                        callbacks=[evaluator])
+    model.fit_generator(
+        train_generator.forfit(),
+        steps_per_epoch=len(train_generator),
+        epochs=epochs,
+        callbacks=[evaluator]
+    )
 
 else:
 

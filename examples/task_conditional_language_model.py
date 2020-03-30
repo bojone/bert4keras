@@ -15,7 +15,6 @@ from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
 from bert4keras.snippets import uniout  # 打印中文
 from keras.layers import Input, Embedding, Reshape
 
-
 # 模型配置
 maxlen = 128
 batch_size = 32
@@ -57,11 +56,13 @@ def load_data(filenames):
 
 
 # 加载数据集
-data = load_data([
-    'datasets/sentiment/sentiment.train.data',
-    'datasets/sentiment/sentiment.valid.data',
-    'datasets/sentiment/sentiment.test.data',
-])
+data = load_data(
+    [
+        'datasets/sentiment/sentiment.train.data',
+        'datasets/sentiment/sentiment.valid.data',
+        'datasets/sentiment/sentiment.test.data',
+    ]
+)
 
 
 class data_generator(DataGenerator):
@@ -124,9 +125,11 @@ class RandomSentiment(AutoRegressiveDecoder):
         return [tokenizer.decode(ids) for ids in results]
 
 
-random_sentiment = RandomSentiment(start_id=tokenizer._token_start_id,
-                                   end_id=tokenizer._token_end_id,
-                                   maxlen=maxlen)
+random_sentiment = RandomSentiment(
+    start_id=tokenizer._token_start_id,
+    end_id=tokenizer._token_end_id,
+    maxlen=maxlen
+)
 
 
 def just_show():
@@ -154,16 +157,16 @@ if __name__ == '__main__':
     evaluator = Evaluate()
     train_generator = data_generator(data, batch_size)
 
-    model.fit_generator(train_generator.forfit(),
-                        steps_per_epoch=len(train_generator),
-                        epochs=epochs,
-                        callbacks=[evaluator])
+    model.fit_generator(
+        train_generator.forfit(),
+        steps_per_epoch=len(train_generator),
+        epochs=epochs,
+        callbacks=[evaluator]
+    )
 
 else:
 
     model.load_weights('./best_model.weights')
-
-
 """
 正面采样:
 [

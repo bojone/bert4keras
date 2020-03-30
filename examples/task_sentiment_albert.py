@@ -12,7 +12,6 @@ from keras.layers import Lambda, Dense
 
 set_gelu('tanh')  # 切换gelu版本
 
-
 num_classes = 2
 maxlen = 128
 batch_size = 32
@@ -66,9 +65,11 @@ bert = build_transformer_model(
 )
 
 output = Lambda(lambda x: x[:, 0], name='CLS-token')(bert.model.output)
-output = Dense(units=num_classes,
-               activation='softmax',
-               kernel_initializer=bert.initializer)(output)
+output = Dense(
+    units=num_classes,
+    activation='softmax',
+    kernel_initializer=bert.initializer
+)(output)
 
 model = keras.models.Model(bert.model.input, output)
 model.summary()
@@ -80,8 +81,10 @@ AdamLR = extend_with_piecewise_linear_lr(Adam, name='AdamLR')
 model.compile(
     loss='sparse_categorical_crossentropy',
     # optimizer=Adam(1e-5),  # 用足够小的学习率
-    optimizer=AdamLR(learning_rate=1e-4,
-                     lr_schedule={1000: 1, 2000: 0.1}),
+    optimizer=AdamLR(learning_rate=1e-4, lr_schedule={
+        1000: 1,
+        2000: 0.1
+    }),
     metrics=['accuracy'],
 )
 
@@ -111,15 +114,19 @@ class Evaluator(keras.callbacks.Callback):
             self.best_val_acc = val_acc
             model.save_weights('best_model.weights')
         test_acc = evaluate(test_generator)
-        print(u'val_acc: %.5f, best_val_acc: %.5f, test_acc: %.5f\n' %
-              (val_acc, self.best_val_acc, test_acc))
+        print(
+            u'val_acc: %.5f, best_val_acc: %.5f, test_acc: %.5f\n' %
+            (val_acc, self.best_val_acc, test_acc)
+        )
 
 
 evaluator = Evaluator()
-model.fit_generator(train_generator.forfit(),
-                    steps_per_epoch=len(train_generator),
-                    epochs=10,
-                    callbacks=[evaluator])
+model.fit_generator(
+    train_generator.forfit(),
+    steps_per_epoch=len(train_generator),
+    epochs=10,
+    callbacks=[evaluator]
+)
 
 model.load_weights('best_model.weights')
 print(u'final test acc: %05f\n' % (evaluate(test_generator)))

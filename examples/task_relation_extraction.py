@@ -18,7 +18,6 @@ from keras.layers import Input, Dense, Lambda, Reshape
 from keras.models import Model
 from tqdm import tqdm
 
-
 maxlen = 128
 batch_size = 64
 config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
@@ -31,13 +30,16 @@ def load_data(filename):
     with open(filename, encoding='utf-8') as f:
         for l in f:
             l = json.loads(l)
-            D.append({
-                'text': l['text'],
-                'spo_list': [
-                    (spo['subject'], spo['predicate'], spo['object'])
-                    for spo in l['spo_list']
-                ]
-            })
+            D.append(
+                {
+                    'text': l['text'],
+                    'spo_list':
+                        [
+                            (spo['subject'], spo['predicate'], spo['object'])
+                            for spo in l['spo_list']
+                        ]
+                }
+            )
     return D
 
 
@@ -75,7 +77,9 @@ class data_generator(DataGenerator):
         batch_token_ids, batch_segment_ids = [], []
         batch_subject_labels, batch_subject_ids, batch_object_labels = [], [], []
         for is_end, d in self.sample(random):
-            token_ids, segment_ids = tokenizer.encode(d['text'], max_length=maxlen)
+            token_ids, segment_ids = tokenizer.encode(
+                d['text'], max_length=maxlen
+            )
             # 整理三元组 {s: [(o, p)]}
             spoes = {}
             for s, p, o in d['spo_list']:
@@ -115,12 +119,18 @@ class data_generator(DataGenerator):
                 if len(batch_token_ids) == self.batch_size or is_end:
                     batch_token_ids = sequence_padding(batch_token_ids)
                     batch_segment_ids = sequence_padding(batch_segment_ids)
-                    batch_subject_labels = sequence_padding(batch_subject_labels, padding=np.zeros(2))
+                    batch_subject_labels = sequence_padding(
+                        batch_subject_labels, padding=np.zeros(2)
+                    )
                     batch_subject_ids = np.array(batch_subject_ids)
-                    batch_object_labels = sequence_padding(batch_object_labels, padding=np.zeros((len(predicate2id), 2)))
+                    batch_object_labels = sequence_padding(
+                        batch_object_labels,
+                        padding=np.zeros((len(predicate2id), 2))
+                    )
                     yield [
                         batch_token_ids, batch_segment_ids,
-                        batch_subject_labels, batch_subject_ids, batch_object_labels
+                        batch_subject_labels, batch_subject_ids,
+                        batch_object_labels
                     ], None
                     batch_token_ids, batch_segment_ids = [], []
                     batch_subject_labels, batch_subject_ids, batch_object_labels = [], [], []
@@ -150,9 +160,9 @@ bert = build_transformer_model(
 )
 
 # 预测subject
-output = Dense(units=2,
-               activation='sigmoid',
-               kernel_initializer=bert.initializer)(bert.model.output)
+output = Dense(
+    units=2, activation='sigmoid', kernel_initializer=bert.initializer
+)(bert.model.output)
 subject_preds = Lambda(lambda x: x**2)(output)
 
 subject_model = Model(bert.model.inputs, subject_preds)
@@ -162,17 +172,21 @@ subject_model = Model(bert.model.inputs, subject_preds)
 output = bert.model.layers[-2].get_output_at(-1)
 subject = Lambda(extrac_subject)([output, subject_ids])
 output = LayerNormalization(conditional=True)([output, subject])
-output = Dense(units=len(predicate2id) * 2,
-               activation='sigmoid',
-               kernel_initializer=bert.initializer)(output)
+output = Dense(
+    units=len(predicate2id) * 2,
+    activation='sigmoid',
+    kernel_initializer=bert.initializer
+)(output)
 output = Lambda(lambda x: x**4)(output)
 object_preds = Reshape((-1, len(predicate2id), 2))(output)
 
 object_model = Model(bert.model.inputs + [subject_ids], object_preds)
 
 # 训练模型
-train_model = Model(bert.model.inputs + [subject_labels, subject_ids, object_labels],
-                    [subject_preds, object_preds])
+train_model = Model(
+    bert.model.inputs + [subject_labels, subject_ids, object_labels],
+    [subject_preds, object_preds]
+)
 
 mask = bert.model.get_layer('Embedding-Token').output_mask
 mask = K.cast(mask, K.floatx())
@@ -224,9 +238,12 @@ def extract_spoes(text):
                         break
         return [
             (
-                tokenizer.decode(token_ids[0, s[0]:s[1] + 1], tokens[s[0]:s[1] + 1]),
-                id2predicate[p],
-                tokenizer.decode(token_ids[0, o[0]:o[1] + 1], tokens[o[0]:o[1] + 1])
+                tokenizer.decode(
+                    token_ids[0, s[0]:s[1] + 1], tokens[s[0]:s[1] + 1]
+                ), id2predicate[p],
+                tokenizer.decode(
+                    token_ids[0, o[0]:o[1] + 1], tokens[o[0]:o[1] + 1]
+                )
             ) for s, p, o in spoes
         ]
     else:
@@ -266,8 +283,9 @@ def evaluate(data):
         Z += len(T)
         f1, precision, recall = 2 * X / (Y + Z), X / Y, X / Z
         pbar.update()
-        pbar.set_description('f1: %.5f, precision: %.5f, recall: %.5f' %
-                             (f1, precision, recall))
+        pbar.set_description(
+            'f1: %.5f, precision: %.5f, recall: %.5f' % (f1, precision, recall)
+        )
         s = json.dumps(
             {
                 'text': d['text'],
@@ -277,7 +295,8 @@ def evaluate(data):
                 'lack': list(T - R),
             },
             ensure_ascii=False,
-            indent=4)
+            indent=4
+        )
         f.write(s + '\n')
     pbar.close()
     f.close()
@@ -297,8 +316,10 @@ class Evaluator(keras.callbacks.Callback):
             self.best_val_f1 = f1
             train_model.save_weights('best_model.weights')
         optimizer.reset_old_weights()
-        print('f1: %.5f, precision: %.5f, recall: %.5f, best f1: %.5f\n' %
-              (f1, precision, recall, self.best_val_f1))
+        print(
+            'f1: %.5f, precision: %.5f, recall: %.5f, best f1: %.5f\n' %
+            (f1, precision, recall, self.best_val_f1)
+        )
 
 
 if __name__ == '__main__':
@@ -306,10 +327,12 @@ if __name__ == '__main__':
     train_generator = data_generator(train_data, batch_size)
     evaluator = Evaluator()
 
-    train_model.fit_generator(train_generator.forfit(),
-                             steps_per_epoch=len(train_generator),
-                             epochs=20,
-                             callbacks=[evaluator])
+    train_model.fit_generator(
+        train_generator.forfit(),
+        steps_per_epoch=len(train_generator),
+        epochs=20,
+        callbacks=[evaluator]
+    )
 
 else:
 

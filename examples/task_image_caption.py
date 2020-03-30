@@ -14,7 +14,6 @@ from bert4keras.snippets import sequence_padding, is_string
 from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
 import cv2
 
-
 # 模型配置
 maxlen = 64
 batch_size = 32
@@ -60,24 +59,28 @@ def read_image(f):
         height, width = img_size, width * img_size // height
         img = cv2.resize(img, (width, height))
         delta = (height - width) // 2
-        img = cv2.copyMakeBorder(img,
-                                 top=0,
-                                 bottom=0,
-                                 left=delta,
-                                 right=height - width - delta,
-                                 borderType=cv2.BORDER_CONSTANT,
-                                 value=[255, 255, 255])
+        img = cv2.copyMakeBorder(
+            img,
+            top=0,
+            bottom=0,
+            left=delta,
+            right=height - width - delta,
+            borderType=cv2.BORDER_CONSTANT,
+            value=[255, 255, 255]
+        )
     else:
         height, width = height * img_size // width, img_size
         img = cv2.resize(img, (width, height))
         delta = (width - height) // 2
-        img = cv2.copyMakeBorder(img,
-                                 top=delta,
-                                 bottom=width - height - delta,
-                                 left=0,
-                                 right=0,
-                                 borderType=cv2.BORDER_CONSTANT,
-                                 value=[255, 255, 255])
+        img = cv2.copyMakeBorder(
+            img,
+            top=delta,
+            bottom=width - height - delta,
+            left=0,
+            right=0,
+            borderType=cv2.BORDER_CONSTANT,
+            value=[255, 255, 255]
+        )
     img = img.astype('float32')
     return img[..., ::-1]  # cv2的读取模式为BGR，但keras的模型要求为RGB
 
@@ -90,8 +93,9 @@ class data_generator(DataGenerator):
         for is_end, D in self.sample(random):
             img = '/root/caption/coco/train2014/%s' % D['image_id']
             caption = np.random.choice(D['caption'])
-            token_ids, segment_ids = tokenizer.encode(caption,
-                                                      max_length=maxlen)
+            token_ids, segment_ids = tokenizer.encode(
+                caption, max_length=maxlen
+            )
             batch_images.append(read_image(img))
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
@@ -105,9 +109,12 @@ class data_generator(DataGenerator):
 
 
 # 加载数据
-train_data = read_caption('/root/caption/coco/annotations/captions_train2014.json')
-valid_data = read_caption('/root/caption/coco/annotations/captions_val2014.json')
-
+train_data = read_caption(
+    '/root/caption/coco/annotations/captions_train2014.json'
+)
+valid_data = read_caption(
+    '/root/caption/coco/annotations/captions_val2014.json'
+)
 
 # 图像模型
 MobileNetV2 = keras.applications.mobilenet_v2.MobileNetV2
@@ -159,9 +166,11 @@ class AutoCaption(AutoRegressiveDecoder):
         return tokenizer.decode(output_ids)
 
 
-autocaption = AutoCaption(start_id=tokenizer._token_start_id,
-                          end_id=tokenizer._token_end_id,
-                          maxlen=maxlen)
+autocaption = AutoCaption(
+    start_id=tokenizer._token_start_id,
+    end_id=tokenizer._token_end_id,
+    maxlen=maxlen
+)
 
 
 def just_show():
@@ -193,16 +202,16 @@ if __name__ == '__main__':
     evaluator = Evaluate()
     train_generator = data_generator(train_data, batch_size)
 
-    model.fit_generator(train_generator.forfit(),
-                        steps_per_epoch=steps_per_epoch,
-                        epochs=epochs,
-                        callbacks=[evaluator])
+    model.fit_generator(
+        train_generator.forfit(),
+        steps_per_epoch=steps_per_epoch,
+        epochs=epochs,
+        callbacks=[evaluator]
+    )
 
 else:
 
     model.load_weights('./best_model.weights')
-
-
 """
 image_id: COCO_val2014_000000524611.jpg
 url: http://images.cocodataset.org/val2014/COCO_val2014_000000524611.jpg

@@ -14,7 +14,6 @@ from bert4keras.snippets import sequence_padding, DataGenerator
 from keras.layers import Lambda, Dense
 from tqdm import tqdm
 
-
 num_classes = 119
 maxlen = 128
 batch_size = 32
@@ -36,8 +35,12 @@ def load_data(filename):
 
 
 # 加载数据集
-train_data = load_data('/root/CLUE-master/baselines/CLUEdataset/iflytek/train.json')
-valid_data = load_data('/root/CLUE-master/baselines/CLUEdataset/iflytek/dev.json')
+train_data = load_data(
+    '/root/CLUE-master/baselines/CLUEdataset/iflytek/train.json'
+)
+valid_data = load_data(
+    '/root/CLUE-master/baselines/CLUEdataset/iflytek/dev.json'
+)
 
 # 建立分词器
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
@@ -65,7 +68,6 @@ class data_generator(DataGenerator):
 train_generator = data_generator(train_data, batch_size)
 valid_generator = data_generator(valid_data, batch_size)
 
-
 # 加载预训练模型
 bert = build_transformer_model(
     config_path=config_path,
@@ -74,9 +76,11 @@ bert = build_transformer_model(
 )
 
 output = Lambda(lambda x: x[:, 0])(bert.model.output)
-output = Dense(units=num_classes,
-               activation='softmax',
-               kernel_initializer=bert.initializer)(output)
+output = Dense(
+    units=num_classes,
+    activation='softmax',
+    kernel_initializer=bert.initializer
+)(output)
 
 model = keras.models.Model(bert.model.input, output)
 model.summary()
@@ -111,9 +115,9 @@ def adversarial_training(model, embedding_name, epsilon=1):
     gradients = K.zeros_like(embeddings) + gradients[0]  # 转为dense tensor
 
     # 封装为函数
-    inputs = (model._feed_inputs +
-              model._feed_targets +
-              model._feed_sample_weights)  # 所有输入层
+    inputs = (
+        model._feed_inputs + model._feed_targets + model._feed_sample_weights
+    )  # 所有输入层
     embedding_gradients = K.function(
         inputs=inputs,
         outputs=[gradients],
@@ -154,8 +158,10 @@ class Evaluator(keras.callbacks.Callback):
         if val_acc > self.best_val_acc:
             self.best_val_acc = val_acc
             model.save_weights('best_model.weights')
-        print(u'val_acc: %.5f, best_val_acc: %.5f\n' %
-              (val_acc, self.best_val_acc))
+        print(
+            u'val_acc: %.5f, best_val_acc: %.5f\n' %
+            (val_acc, self.best_val_acc)
+        )
 
 
 def predict_to_file(in_file, out_file):
@@ -178,10 +184,12 @@ if __name__ == '__main__':
 
     evaluator = Evaluator()
 
-    model.fit_generator(train_generator.forfit(),
-                        steps_per_epoch=len(train_generator),
-                        epochs=50,
-                        callbacks=[evaluator])
+    model.fit_generator(
+        train_generator.forfit(),
+        steps_per_epoch=len(train_generator),
+        epochs=50,
+        callbacks=[evaluator]
+    )
 
 else:
 

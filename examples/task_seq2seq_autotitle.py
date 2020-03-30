@@ -12,7 +12,6 @@ from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, open
 from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
 
-
 # 基本参数
 maxlen = 256
 batch_size = 16
@@ -47,9 +46,9 @@ class data_generator(DataGenerator):
             if len(text) > 1:
                 title = text[0]
                 content = '\n'.join(text[1:])
-                token_ids, segment_ids = tokenizer.encode(content,
-                                                          title,
-                                                          max_length=maxlen)
+                token_ids, segment_ids = tokenizer.encode(
+                    content, title, max_length=maxlen
+                )
                 batch_token_ids.append(token_ids)
                 batch_segment_ids.append(segment_ids)
             if len(batch_token_ids) == self.batch_size or is_end:
@@ -92,13 +91,13 @@ class AutoTitle(AutoRegressiveDecoder):
     def generate(self, text, topk=1):
         max_c_len = maxlen - self.maxlen
         token_ids, segment_ids = tokenizer.encode(text, max_length=max_c_len)
-        output_ids = self.beam_search([token_ids, segment_ids], topk)  # 基于beam search
+        output_ids = self.beam_search(
+            [token_ids, segment_ids], topk
+        )  # 基于beam search
         return tokenizer.decode(output_ids)
 
 
-autotitle = AutoTitle(start_id=None,
-                      end_id=tokenizer._token_end_id,
-                      maxlen=32)
+autotitle = AutoTitle(start_id=None, end_id=tokenizer._token_end_id, maxlen=32)
 
 
 def just_show():
@@ -127,10 +126,12 @@ if __name__ == '__main__':
     evaluator = Evaluate()
     train_generator = data_generator(txts, batch_size)
 
-    model.fit_generator(train_generator.forfit(),
-                        steps_per_epoch=steps_per_epoch,
-                        epochs=epochs,
-                        callbacks=[evaluator])
+    model.fit_generator(
+        train_generator.forfit(),
+        steps_per_epoch=steps_per_epoch,
+        epochs=epochs,
+        callbacks=[evaluator]
+    )
 
 else:
 

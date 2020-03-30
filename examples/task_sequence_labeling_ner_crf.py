@@ -15,7 +15,6 @@ from keras.layers import Dense
 from keras.models import Model
 from tqdm import tqdm
 
-
 maxlen = 256
 epochs = 10
 batch_size = 32
@@ -127,9 +126,11 @@ output = CRF(output)
 model = Model(model.input, output)
 model.summary()
 
-model.compile(loss=CRF.sparse_loss,
-              optimizer=Adam(learing_rate),
-              metrics=[CRF.sparse_accuracy])
+model.compile(
+    loss=CRF.sparse_loss,
+    optimizer=Adam(learing_rate),
+    metrics=[CRF.sparse_accuracy]
+)
 
 
 def viterbi_decode(nodes, trans):
@@ -202,11 +203,15 @@ class Evaluate(keras.callbacks.Callback):
         if f1 >= self.best_val_f1:
             self.best_val_f1 = f1
             model.save_weights('./best_model.weights')
-        print('valid:  f1: %.5f, precision: %.5f, recall: %.5f, best f1: %.5f\n' %
-              (f1, precision, recall, self.best_val_f1))
+        print(
+            'valid:  f1: %.5f, precision: %.5f, recall: %.5f, best f1: %.5f\n' %
+            (f1, precision, recall, self.best_val_f1)
+        )
         f1, precision, recall = evaluate(test_data)
-        print('test:  f1: %.5f, precision: %.5f, recall: %.5f\n' %
-              (f1, precision, recall))
+        print(
+            'test:  f1: %.5f, precision: %.5f, recall: %.5f\n' %
+            (f1, precision, recall)
+        )
 
 
 if __name__ == '__main__':
@@ -214,10 +219,12 @@ if __name__ == '__main__':
     evaluator = Evaluate()
     train_generator = data_generator(train_data, batch_size)
 
-    model.fit_generator(train_generator.forfit(),
-                        steps_per_epoch=len(train_generator),
-                        epochs=epochs,
-                        callbacks=[evaluator])
+    model.fit_generator(
+        train_generator.forfit(),
+        steps_per_epoch=len(train_generator),
+        epochs=epochs,
+        callbacks=[evaluator]
+    )
 
 else:
 
