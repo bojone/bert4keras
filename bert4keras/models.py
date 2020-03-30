@@ -45,6 +45,7 @@ class Transformer(object):
         self.position_bias = None
         self.layers = {} if layers is None else layers
         self.name = name
+        self.built = False
 
     def build(
         self,
@@ -58,26 +59,34 @@ class Transformer(object):
         layer_norm_*系列参数为实现Conditional Layer Normalization时使用，
         用来实现以“固定长度向量”为条件的条件Bert。
         """
+        if self.built:
+            return None
         # Input
         inputs = self.prepare_inputs()
         self.set_inputs(inputs, additional_input_layers)
-        outputs = inputs
         # Other
         self.layer_norm_conds = [
             layer_norm_cond,
             layer_norm_cond_hidden_size,
             layer_norm_cond_hidden_act or 'linear',
         ]
+        # Call
+        outputs = self.call(inputs)
+        self.set_outputs(outputs)
+        # Model
+        self.model = Model(self.inputs, self.outputs, name=self.name)
+
+    def call(self, inputs):
+        """定义模型的执行流程
+        """
         # Embedding
-        outputs = self.prepare_embeddings(outputs)
+        outputs = self.prepare_embeddings(inputs)
         # Main
         for i in range(self.num_hidden_layers):
             outputs = self.prepare_main_layers(outputs, i)
         # Final
         outputs = self.prepare_final_layers(outputs)
-        self.set_outputs(outputs)
-        # Model
-        self.model = Model(self.inputs, self.outputs, name=self.name)
+        return outputs
 
     def apply(self, inputs, layer=None, arguments=None, **kwargs):
         """通过apply调用层会自动重用同名层
