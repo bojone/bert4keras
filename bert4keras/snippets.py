@@ -7,7 +7,6 @@ import numpy as np
 import re
 import sys
 
-
 _open_ = open
 is_py2 = six.PY2
 
@@ -139,12 +138,9 @@ class Progress:
             yield j
 
 
-def parallel_apply(func,
-                   iterable,
-                   workers,
-                   max_queue_size,
-                   callback=None,
-                   dummy=False):
+def parallel_apply(
+    func, iterable, workers, max_queue_size, callback=None, dummy=False
+):
     """多进程或多线程地将func应用到iterable的每个元素中。
     注意这个apply是异步且无序的，也就是说依次输入a,b,c，但是
     输出可能是func(c), func(a), func(b)。
@@ -212,10 +208,12 @@ def sequence_padding(inputs, length=None, padding=0):
     if length is None:
         length = max([len(x) for x in inputs])
 
-    outputs = np.array([
-        np.concatenate([x, [padding] * (length - len(x))])
-        if len(x) < length else x[:length] for x in inputs
-    ])
+    outputs = np.array(
+        [
+            np.concatenate([x, [padding] * (length - len(x))])
+            if len(x) < length else x[:length] for x in inputs
+        ]
+    )
     return outputs
 
 
@@ -361,8 +359,12 @@ class AutoRegressiveDecoder(object):
             indices = scores.argpartition(-topk, axis=None)[-topk:]  # 仅保留topk
             indices_1 = indices // scores.shape[1]  # 行索引
             indices_2 = (indices % scores.shape[1]).reshape((-1, 1))  # 列索引
-            output_ids = np.concatenate([output_ids[indices_1], indices_2], 1)  # 更新输出
-            output_scores = np.take_along_axis(scores, indices, axis=None)  # 更新得分
+            output_ids = np.concatenate(
+                [output_ids[indices_1], indices_2], 1
+            )  # 更新输出
+            output_scores = np.take_along_axis(
+                scores, indices, axis=None
+            )  # 更新得分
             if output_ids.shape[1] >= self.minlen:  # 最短长度判断
                 best_one = output_scores.argmax()  # 得分最大的那个
                 if indices_2[best_one, 0] == self.end_id:  # 如果已经终止
@@ -394,7 +396,8 @@ class AutoRegressiveDecoder(object):
                 inputs = [np.repeat(i, n, axis=0) for i in inputs]
                 output_ids = np.repeat(output_ids, n, axis=0)
             if topk is not None:
-                k_indices = probas.argpartition(-topk, axis=1)[:, -topk:]  # 仅保留topk
+                k_indices = probas.argpartition(-topk,
+                                                axis=1)[:, -topk:]  # 仅保留topk
                 probas = np.take_along_axis(probas, k_indices, axis=1)  # topk概率
                 probas /= probas.sum(axis=1, keepdims=True)  # 重新归一化
             if topp is not None:
@@ -409,9 +412,13 @@ class AutoRegressiveDecoder(object):
             sample_ids = np.apply_along_axis(sample_func, 1, probas)  # 执行采样
             sample_ids = sample_ids.reshape((-1, 1))  # 对齐形状
             if topp is not None:
-                sample_ids = np.take_along_axis(p_indices, sample_ids, axis=1)  # 对齐原id
+                sample_ids = np.take_along_axis(
+                    p_indices, sample_ids, axis=1
+                )  # 对齐原id
             if topk is not None:
-                sample_ids = np.take_along_axis(k_indices, sample_ids, axis=1)  # 对齐原id
+                sample_ids = np.take_along_axis(
+                    k_indices, sample_ids, axis=1
+                )  # 对齐原id
             output_ids = np.concatenate([output_ids, sample_ids], 1)  # 更新输出
             if output_ids.shape[1] >= self.minlen:  # 最短长度判断
                 flag = (sample_ids[:, 0] == self.end_id)  # 标记已完成序列
@@ -457,7 +464,8 @@ def delete_arguments(*arguments):
                 if k in kwargs:
                     raise TypeError(
                         '%s got an unexpected keyword argument \'%s\'' %
-                        (self.__class__.__name__, k))
+                        (self.__class__.__name__, k)
+                    )
                 setattr(self, k, v)
             return func(self, *args, **kwargs)
 

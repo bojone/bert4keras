@@ -27,8 +27,10 @@ def load_vocab(dict_path, encoding='utf-8', simplified=False, startwith=None):
                 keep = True
                 if len(t) > 1:
                     for c in (t[2:] if t[:2] == '##' else t):
-                        if (Tokenizer._is_cjk_character(c)
-                                or Tokenizer._is_punctuation(c)):
+                        if (
+                            Tokenizer._is_cjk_character(c) or
+                            Tokenizer._is_punctuation(c)
+                        ):
                             keep = False
                             break
                 if keep:
@@ -43,10 +45,9 @@ def load_vocab(dict_path, encoding='utf-8', simplified=False, startwith=None):
 class BasicTokenizer(object):
     """分词器基类
     """
-    def __init__(self,
-                 token_start='[CLS]',
-                 token_end='[SEP]',
-                 do_lower_case=False):
+    def __init__(
+        self, token_start='[CLS]', token_end='[SEP]', do_lower_case=False
+    ):
         """初始化
         """
         self._token_pad = '[PAD]'
@@ -64,7 +65,8 @@ class BasicTokenizer(object):
                 text = unicode(text)
             text = unicodedata.normalize('NFD', text)
             text = ''.join(
-                [ch for ch in text if unicodedata.category(ch) != 'Mn'])
+                [ch for ch in text if unicodedata.category(ch) != 'Mn']
+            )
             text = text.lower()
 
         tokens = self._tokenize(text)
@@ -88,11 +90,9 @@ class BasicTokenizer(object):
         """
         return [self.token_to_id(token) for token in tokens]
 
-    def truncate_sequence(self,
-                          max_length,
-                          first_sequence,
-                          second_sequence=None,
-                          pop_index=-1):
+    def truncate_sequence(
+        self, max_length, first_sequence, second_sequence=None, pop_index=-1
+    ):
         """截断总长度
         """
         if second_sequence is None:
@@ -107,12 +107,14 @@ class BasicTokenizer(object):
             else:
                 second_sequence.pop(pop_index)
 
-    def encode(self,
-               first_text,
-               second_text=None,
-               max_length=None,
-               first_length=None,
-               second_length=None):
+    def encode(
+        self,
+        first_text,
+        second_text=None,
+        max_length=None,
+        first_length=None,
+        second_length=None
+    ):
         """输出文本对应token id和segment id
         如果传入first_length，则强行padding第一个句子到指定长度；
         同理，如果传入second_length，则强行padding第二个句子到指定长度。
@@ -136,8 +138,9 @@ class BasicTokenizer(object):
         first_token_ids = self.tokens_to_ids(first_tokens)
         if first_length is not None:
             first_token_ids = first_token_ids[:first_length]
-            first_token_ids.extend([self._token_pad_id] *
-                                   (first_length - len(first_token_ids)))
+            first_token_ids.extend(
+                [self._token_pad_id] * (first_length - len(first_token_ids))
+            )
         first_segment_ids = [0] * len(first_token_ids)
 
         if second_text is not None:
@@ -146,7 +149,8 @@ class BasicTokenizer(object):
                 second_token_ids = second_token_ids[:second_length]
                 second_token_ids.extend(
                     [self._token_pad_id] *
-                    (second_length - len(second_token_ids)))
+                    (second_length - len(second_token_ids))
+                )
             second_segment_ids = [1] * len(second_token_ids)
 
             first_token_ids.extend(second_token_ids)

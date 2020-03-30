@@ -142,7 +142,7 @@ def batch_gather(params, indices):
         try:
             return tf.batch_gather(params, indices)
         except Exception as e2:
-            raise ValueError('%s\n%s\n' % (e1.0message, e2.0message))
+            raise ValueError('%s\n%s\n' % (e1.message, e2.message))
 
 
 def pool1d(

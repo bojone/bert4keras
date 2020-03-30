@@ -200,16 +200,11 @@ class MultiHeadAttention(Layer):
 
     def get_config(self):
         config = {
-            'heads':
-                self.heads,
-            'head_size':
-                self.head_size,
-            'key_size':
-                self.key_size,
-            'use_bias':
-                self.use_bias,
-            'scaled_dot_product':
-                self.scaled_dot_product,
+            'heads': self.heads,
+            'head_size': self.head_size,
+            'key_size': self.key_size,
+            'use_bias': self.use_bias,
+            'scaled_dot_product': self.scaled_dot_product,
             'kernel_initializer':
                 initializers.serialize(self.kernel_initializer),
         }
@@ -312,18 +307,12 @@ class LayerNormalization(Layer):
 
     def get_config(self):
         config = {
-            'center':
-                self.center,
-            'scale':
-                self.scale,
-            'epsilon':
-                self.epsilon,
-            'conditional':
-                self.conditional,
-            'hidden_units':
-                self.hidden_units,
-            'hidden_activation':
-                activations.serialize(self.hidden_activation),
+            'center': self.center,
+            'scale': self.scale,
+            'epsilon': self.epsilon,
+            'conditional': self.conditional,
+            'hidden_units': self.hidden_units,
+            'hidden_activation': activations.serialize(self.hidden_activation),
             'hidden_initializer':
                 initializers.serialize(self.hidden_initializer),
         }
@@ -376,12 +365,9 @@ class PositionEmbedding(Layer):
 
     def get_config(self):
         config = {
-            'input_dim':
-                self.input_dim,
-            'output_dim':
-                self.output_dim,
-            'merge_mode':
-                self.merge_mode,
+            'input_dim': self.input_dim,
+            'output_dim': self.output_dim,
+            'merge_mode': self.merge_mode,
             'embeddings_initializer':
                 initializers.serialize(self.embeddings_initializer),
         }
@@ -435,10 +421,8 @@ class RelativePositionEmbedding(Layer):
 
     def get_config(self):
         config = {
-            'input_dim':
-                self.input_dim,
-            'output_dim':
-                self.output_dim,
+            'input_dim': self.input_dim,
+            'output_dim': self.output_dim,
             'embeddings_initializer':
                 initializers.serialize(self.embeddings_initializer),
         }
@@ -547,12 +531,9 @@ class FeedForward(Layer):
 
     def get_config(self):
         config = {
-            'units':
-                self.units,
-            'activation':
-                activations.serialize(self.activation),
-            'use_bias':
-                self.use_bias,
+            'units': self.units,
+            'activation': activations.serialize(self.activation),
+            'use_bias': self.use_bias,
             'kernel_initializer':
                 initializers.serialize(self.kernel_initializer),
         }
