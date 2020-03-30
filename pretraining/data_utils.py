@@ -91,8 +91,7 @@ class TrainingDataset(object):
         serialized_instances = []
         for instance in instances:
             features = {
-                k: create_feature(v)
-                for k, v in zip(instance_keys, instance)
+                k: create_feature(v) for k, v in zip(instance_keys, instance)
             }
             tf_features = tf.train.Features(feature=features)
             tf_example = tf.train.Example(features=tf_features)

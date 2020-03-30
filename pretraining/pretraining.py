@@ -76,8 +76,8 @@ def build_transformer_model_with_mlm():
     proba = bert.model.output
 
     # 辅助输入
-    token_ids = Input(shape=(None, ), dtype='int64', name='token_ids')  # 目标id
-    is_masked = Input(shape=(None, ), dtype=floatx, name='is_masked')  # mask标记
+    token_ids = Input(shape=(None,), dtype='int64', name='token_ids')  # 目标id
+    is_masked = Input(shape=(None,), dtype=floatx, name='is_masked')  # mask标记
 
     def mlm_loss(inputs):
         """计算loss的函数，需要封装为一个层
