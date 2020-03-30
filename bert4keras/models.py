@@ -1307,7 +1307,6 @@ class T5_Encoder(T5_Base):
         """T5的Encoder的主体是基于Self-Attention的模块
         顺序：LN --> Att --> Add --> LN --> FFN --> Add
         """
-
         x = inputs
         z = self._layer_norm_conds[0]
 
@@ -1484,7 +1483,6 @@ class T5_Decoder(Transformer):
         """T5的Dencoder主体是基于Self-Attention、Cross-Attention的模块
         顺序：LN --> Att1 --> Add --> LN --> Att2 --> Add -->  LN --> FFN --> Add
         """
-
         c, x = inputs
         z = self._layer_norm_conds[0]
 
