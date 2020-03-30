@@ -173,7 +173,8 @@ def gen_answer(question, passages):
         if a:
             results[a] = results.get(a, []) + [score]
     results = {
-        k: (np.array(v)**2).sum() / (sum(v) + 1) for k, v in results.items()
+        k: (np.array(v)**2).sum() / (sum(v) + 1)
+        for k, v in results.items()
     }
     return results
 
