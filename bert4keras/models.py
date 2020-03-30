@@ -907,8 +907,8 @@ class ELECTRA(BERT):
             'electra/embeddings_project/bias',
         ]
         mapping = {
-            k: [i.replace('bert/', 'electra/') for i in v
-               ] for k, v in mapping.items()
+            k: [i.replace('bert/', 'electra/') for i in v]
+            for k, v in mapping.items()
         }
         return mapping
 
