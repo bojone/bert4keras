@@ -75,6 +75,7 @@ class Transformer(object):
         self.set_outputs(outputs)
         # Model
         self.model = Model(self.inputs, self.outputs, name=self.name)
+        self.built = True
 
     def call(self, inputs):
         """定义模型的执行流程
