@@ -77,7 +77,7 @@ class Transformer(object):
         self.model = Model(self.inputs, self.outputs, name=self.name)
         self.built = True
 
-    def call(self, *inputs):
+    def call(self, inputs):
         """定义模型的执行流程
         """
         # Embedding
