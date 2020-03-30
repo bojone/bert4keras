@@ -32,7 +32,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 
 之前基于keras-bert给出的<a href="https://github.com/bojone/bert_in_keras">例子</a>，仍适用于本项目，只需要将`bert_model`的加载方式换成本项目的。
 
-理论上兼容Python2和Python3，实验环境是Python 2.7、Tesorflow 1.13+以及Keras 2.3.1（已经在2.2.4、2.3.0、2.3.1、tf.keras下测试通过）。
+理论上兼容Python2和Python3，实验环境是Python 2.7、Tesorflow 1.14+以及Keras 2.3.1（已经在2.2.4、2.3.0、2.3.1、tf.keras下测试通过）。
 
 当然，乐于贡献的朋友如果发现了某些bug的话，也欢迎指出修正甚至Pull Requests～
 
