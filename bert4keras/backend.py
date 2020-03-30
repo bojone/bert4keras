@@ -7,7 +7,6 @@ from distutils.util import strtobool
 import numpy as np
 import tensorflow as tf
 
-
 # 判断是tf.keras还是纯keras的标记
 is_tf_keras = strtobool(os.environ.get('TF_KERAS', '0'))
 
@@ -29,8 +28,9 @@ def gelu_erf(x):
 def gelu_tanh(x):
     """基于Tanh近似计算的gelu函数
     """
-    cdf = 0.5 * (1.0 + K.tanh(
-        (np.sqrt(2 / np.pi) * (x + 0.044715 * K.pow(x, 3)))))
+    cdf = 0.5 * (
+        1.0 + K.tanh((np.sqrt(2 / np.pi) * (x + 0.044715 * K.pow(x, 3))))
+    )
     return x * cdf
 
 
@@ -54,7 +54,7 @@ def piecewise_linear(t, schedule):
     """
     schedule = sorted(schedule.items())
     if schedule[0][0] != 0:
-        schedule = [(0, 0.)] + schedule
+        schedule = [(0, 0.0)] + schedule
 
     x = K.constant(schedule[0][1], dtype=K.floatx())
     t = K.cast(t, K.floatx())
@@ -64,7 +64,7 @@ def piecewise_linear(t, schedule):
         if i != len(schedule) - 1:
             dx = schedule[i + 1][1] - schedule[i][1]
             dt = schedule[i + 1][0] - schedule[i][0]
-            slope = 1. * dx / dt
+            slope = 1.0 * dx / dt
             x = schedule[i][1] + slope * (t - t_begin)
         else:
             x = K.constant(schedule[i][1], dtype=K.floatx())
@@ -142,24 +142,28 @@ def batch_gather(params, indices):
         try:
             return tf.batch_gather(params, indices)
         except Exception as e2:
-            raise ValueError('%s\n%s\n' % (e1.message, e2.message))
+            raise ValueError('%s\n%s\n' % (e1.0message, e2.0message))
 
 
-def pool1d(x,
-           pool_size,
-           strides=1,
-           padding='valid',
-           data_format=None,
-           pool_mode='max'):
+def pool1d(
+    x,
+    pool_size,
+    strides=1,
+    padding='valid',
+    data_format=None,
+    pool_mode='max'
+):
     """向量序列的pool函数
     """
     x = K.expand_dims(x, 1)
-    x = K.pool2d(x,
-                 pool_size=(1, pool_size),
-                 strides=(1, strides),
-                 padding=padding,
-                 data_format=data_format,
-                 pool_mode=pool_mode)
+    x = K.pool2d(
+        x,
+        pool_size=(1, pool_size),
+        strides=(1, strides),
+        padding=padding,
+        data_format=data_format,
+        pool_mode=pool_mode
+    )
     return x[:, 0]
 
 
