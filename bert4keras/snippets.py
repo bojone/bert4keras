@@ -466,7 +466,6 @@ def delete_arguments(*arguments):
                         '%s got an unexpected keyword argument \'%s\'' %
                         (self.__class__.__name__, k)
                     )
-                setattr(self, k, v)
             return func(self, *args, **kwargs)
 
         return new_func
