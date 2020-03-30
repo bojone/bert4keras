@@ -80,7 +80,7 @@ class Transformer(object):
         self.model = Model(self.inputs, self.outputs, name=self.name)
 
     def apply(self, inputs, layer=None, arguments=None, **kwargs):
-        """通过call调用层会自动重用同名层
+        """通过apply调用层会自动重用同名层
         inputs: 上一层的输出；
         layer: 要调用的层类名；
         arguments: 传递给layer.call的参数；
