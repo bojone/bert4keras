@@ -62,7 +62,7 @@ class Transformer(object):
         if self.built:
             return None
         # Input
-        inputs = self.apply_inputs()
+        inputs = self.get_inputs()
         self.set_inputs(inputs, additional_input_layers)
         # Other
         self.layer_norm_conds = [
@@ -107,7 +107,7 @@ class Transformer(object):
 
         return self.layers[name](inputs, **arguments)
 
-    def apply_inputs(self):
+    def get_inputs(self):
         raise NotImplementedError
 
     def apply_embeddings(self, inputs):
@@ -266,7 +266,7 @@ class BERT(Transformer):
         self.with_nsp = with_nsp
         self.with_mlm = with_mlm
 
-    def apply_inputs(self):
+    def get_inputs(self):
         """BERT的输入是token_ids和segment_ids
         """
         x_in = Input(shape=(None,), name='Input-Token')
@@ -942,7 +942,7 @@ class GPT2_ML(Transformer):
         self.max_position = max_position
         self.final_activation = final_activation
 
-    def apply_inputs(self):
+    def get_inputs(self):
         """GPT2_ML的输入是token_ids和segment_ids
         """
         x_in = Input(shape=(None,), name='Input-Token')
@@ -1260,7 +1260,7 @@ class T5_Base(Transformer):
 class T5_Encoder(T5_Base):
     """Google的T5模型（Encoder）
     """
-    def apply_inputs(self):
+    def get_inputs(self):
         """T5的Encoder的输入只有token_ids
         """
         x_in = Input(shape=(None,), name='Encoder-Input-Token')
@@ -1436,7 +1436,7 @@ class T5_Decoder(Transformer):
         else:
             self.with_lm = with_lm
 
-    def apply_inputs(self):
+    def get_inputs(self):
         """T5的Decoder的输入为context序列和token_ids
         """
         c_in = Input(shape=(None, self.hidden_size), name='Input-Context')
