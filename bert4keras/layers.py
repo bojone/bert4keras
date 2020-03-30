@@ -240,9 +240,9 @@ class LayerNormalization(Layer):
         super(LayerNormalization, self).build(input_shape)
 
         if self.conditional:
-            shape = (input_shape[0][-1], )
+            shape = (input_shape[0][-1],)
         else:
-            shape = (input_shape[-1], )
+            shape = (input_shape[-1],)
 
         if self.center:
             self.beta = self.add_weight(
@@ -361,7 +361,7 @@ class PositionEmbedding(Layer):
         if self.merge_mode == 'add':
             return input_shape
         else:
-            return input_shape[:2] + (input_shape[2] + self.output_dim, )
+            return input_shape[:2] + (input_shape[2] + self.output_dim,)
 
     def get_config(self):
         config = {
@@ -563,7 +563,7 @@ class EmbeddingDense(Layer):
             self.units = K.int_shape(self.kernel)[1]
             if self.use_bias:
                 self.bias = self.add_weight(
-                    name='bias', shape=(self.units, ), initializer='zeros'
+                    name='bias', shape=(self.units,), initializer='zeros'
                 )
 
         outputs = K.dot(inputs, self.kernel)
@@ -573,7 +573,7 @@ class EmbeddingDense(Layer):
         return outputs
 
     def compute_output_shape(self, input_shape):
-        return input_shape[:-1] + (self.units, )
+        return input_shape[:-1] + (self.units,)
 
     def get_config(self):
         config = {

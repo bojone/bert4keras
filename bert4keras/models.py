@@ -215,7 +215,7 @@ class Transformer(object):
                         pre_shape = w_shape[:-1]
                         v = v.reshape(pre_shape + (heads, head_size))
                         v = np.dot(v, W)
-                        v = v.reshape(pre_shape + (heads * key_size, ))
+                        v = v.reshape(pre_shape + (heads * key_size,))
                         values[i] = v
 
             weight_value_pairs.extend(zip(weights, values))
@@ -260,8 +260,8 @@ class BERT(Transformer):
     def prepare_inputs(self):
         """BERT的输入是token_ids和segment_ids
         """
-        x_in = Input(shape=(None, ), name='Input-Token')
-        s_in = Input(shape=(None, ), name='Input-Segment')
+        x_in = Input(shape=(None,), name='Input-Token')
+        s_in = Input(shape=(None,), name='Input-Segment')
         return [x_in, s_in]
 
     def prepare_embeddings(self, inputs):
@@ -505,73 +505,61 @@ class BERT(Transformer):
             'Embedding-Token': ['bert/embeddings/word_embeddings'],
             'Embedding-Segment': ['bert/embeddings/token_type_embeddings'],
             'Embedding-Position': ['bert/embeddings/position_embeddings'],
-            'Embedding-Norm':
-                [
-                    'bert/embeddings/LayerNorm/beta',
-                    'bert/embeddings/LayerNorm/gamma',
-                ],
-            'Embedding-Mapping':
-                [
-                    'bert/encoder/embedding_hidden_mapping_in/kernel',
-                    'bert/encoder/embedding_hidden_mapping_in/bias',
-                ],
-            'Pooler-Dense':
-                [
-                    'bert/pooler/dense/kernel',
-                    'bert/pooler/dense/bias',
-                ],
-            'NSP-Proba':
-                [
-                    'cls/seq_relationship/output_weights',
-                    'cls/seq_relationship/output_bias',
-                ],
-            'MLM-Dense':
-                [
-                    'cls/predictions/transform/dense/kernel',
-                    'cls/predictions/transform/dense/bias',
-                ],
-            'MLM-Norm':
-                [
-                    'cls/predictions/transform/LayerNorm/beta',
-                    'cls/predictions/transform/LayerNorm/gamma',
-                ],
+            'Embedding-Norm': [
+                'bert/embeddings/LayerNorm/beta',
+                'bert/embeddings/LayerNorm/gamma',
+            ],
+            'Embedding-Mapping': [
+                'bert/encoder/embedding_hidden_mapping_in/kernel',
+                'bert/encoder/embedding_hidden_mapping_in/bias',
+            ],
+            'Pooler-Dense': [
+                'bert/pooler/dense/kernel',
+                'bert/pooler/dense/bias',
+            ],
+            'NSP-Proba': [
+                'cls/seq_relationship/output_weights',
+                'cls/seq_relationship/output_bias',
+            ],
+            'MLM-Dense': [
+                'cls/predictions/transform/dense/kernel',
+                'cls/predictions/transform/dense/bias',
+            ],
+            'MLM-Norm': [
+                'cls/predictions/transform/LayerNorm/beta',
+                'cls/predictions/transform/LayerNorm/gamma',
+            ],
             'MLM-Proba': ['cls/predictions/output_bias'],
         }
 
         for i in range(self.num_hidden_layers):
             prefix = 'bert/encoder/layer_%d/' % i
-            mapping.update(
-                {
-                    'Transformer-%d-MultiHeadSelfAttention' % i:
-                        [
-                            prefix + 'attention/self/query/kernel',
-                            prefix + 'attention/self/query/bias',
-                            prefix + 'attention/self/key/kernel',
-                            prefix + 'attention/self/key/bias',
-                            prefix + 'attention/self/value/kernel',
-                            prefix + 'attention/self/value/bias',
-                            prefix + 'attention/output/dense/kernel',
-                            prefix + 'attention/output/dense/bias',
-                        ],
-                    'Transformer-%d-MultiHeadSelfAttention-Norm' % i:
-                        [
-                            prefix + 'attention/output/LayerNorm/beta',
-                            prefix + 'attention/output/LayerNorm/gamma',
-                        ],
-                    'Transformer-%d-FeedForward' % i:
-                        [
-                            prefix + 'intermediate/dense/kernel',
-                            prefix + 'intermediate/dense/bias',
-                            prefix + 'output/dense/kernel',
-                            prefix + 'output/dense/bias',
-                        ],
-                    'Transformer-%d-FeedForward-Norm' % i:
-                        [
-                            prefix + 'output/LayerNorm/beta',
-                            prefix + 'output/LayerNorm/gamma',
-                        ],
-                }
-            )
+            mapping.update({
+                'Transformer-%d-MultiHeadSelfAttention' % i: [
+                    prefix + 'attention/self/query/kernel',
+                    prefix + 'attention/self/query/bias',
+                    prefix + 'attention/self/key/kernel',
+                    prefix + 'attention/self/key/bias',
+                    prefix + 'attention/self/value/kernel',
+                    prefix + 'attention/self/value/bias',
+                    prefix + 'attention/output/dense/kernel',
+                    prefix + 'attention/output/dense/bias',
+                ],
+                'Transformer-%d-MultiHeadSelfAttention-Norm' % i: [
+                    prefix + 'attention/output/LayerNorm/beta',
+                    prefix + 'attention/output/LayerNorm/gamma',
+                ],
+                'Transformer-%d-FeedForward' % i: [
+                    prefix + 'intermediate/dense/kernel',
+                    prefix + 'intermediate/dense/bias',
+                    prefix + 'output/dense/kernel',
+                    prefix + 'output/dense/bias',
+                ],
+                'Transformer-%d-FeedForward-Norm' % i: [
+                    prefix + 'output/LayerNorm/beta',
+                    prefix + 'output/LayerNorm/gamma',
+                ],
+            })
 
         return mapping
 
@@ -660,38 +648,32 @@ class ALBERT(BERT):
         mapping = super(ALBERT, self).variable_mapping()
 
         prefix = 'bert/encoder/transformer/group_0/inner_group_0/'
-        mapping.update(
-            {
-                'Transformer-MultiHeadSelfAttention':
-                    [
-                        prefix + 'attention_1/self/query/kernel',
-                        prefix + 'attention_1/self/query/bias',
-                        prefix + 'attention_1/self/key/kernel',
-                        prefix + 'attention_1/self/key/bias',
-                        prefix + 'attention_1/self/value/kernel',
-                        prefix + 'attention_1/self/value/bias',
-                        prefix + 'attention_1/output/dense/kernel',
-                        prefix + 'attention_1/output/dense/bias',
-                    ],
-                'Transformer-MultiHeadSelfAttention-Norm':
-                    [
-                        prefix + 'LayerNorm/beta',
-                        prefix + 'LayerNorm/gamma',
-                    ],
-                'Transformer-FeedForward':
-                    [
-                        prefix + 'ffn_1/intermediate/dense/kernel',
-                        prefix + 'ffn_1/intermediate/dense/bias',
-                        prefix + 'ffn_1/intermediate/output/dense/kernel',
-                        prefix + 'ffn_1/intermediate/output/dense/bias',
-                    ],
-                'Transformer-FeedForward-Norm':
-                    [
-                        prefix + 'LayerNorm_1/beta',
-                        prefix + 'LayerNorm_1/gamma',
-                    ],
-            }
-        )
+        mapping.update({
+            'Transformer-MultiHeadSelfAttention': [
+                prefix + 'attention_1/self/query/kernel',
+                prefix + 'attention_1/self/query/bias',
+                prefix + 'attention_1/self/key/kernel',
+                prefix + 'attention_1/self/key/bias',
+                prefix + 'attention_1/self/value/kernel',
+                prefix + 'attention_1/self/value/bias',
+                prefix + 'attention_1/output/dense/kernel',
+                prefix + 'attention_1/output/dense/bias',
+            ],
+            'Transformer-MultiHeadSelfAttention-Norm': [
+                prefix + 'LayerNorm/beta',
+                prefix + 'LayerNorm/gamma',
+            ],
+            'Transformer-FeedForward': [
+                prefix + 'ffn_1/intermediate/dense/kernel',
+                prefix + 'ffn_1/intermediate/dense/bias',
+                prefix + 'ffn_1/intermediate/output/dense/kernel',
+                prefix + 'ffn_1/intermediate/output/dense/bias',
+            ],
+            'Transformer-FeedForward-Norm': [
+                prefix + 'LayerNorm_1/beta',
+                prefix + 'LayerNorm_1/gamma',
+            ],
+        })
 
         return mapping
 
@@ -706,38 +688,32 @@ class ALBERT_Unshared(BERT):
 
         prefix = 'bert/encoder/transformer/group_0/inner_group_0/'
         for i in range(self.num_hidden_layers):
-            mapping.update(
-                {
-                    'Transformer-%d-MultiHeadSelfAttention' % i:
-                        [
-                            prefix + 'attention_1/self/query/kernel',
-                            prefix + 'attention_1/self/query/bias',
-                            prefix + 'attention_1/self/key/kernel',
-                            prefix + 'attention_1/self/key/bias',
-                            prefix + 'attention_1/self/value/kernel',
-                            prefix + 'attention_1/self/value/bias',
-                            prefix + 'attention_1/output/dense/kernel',
-                            prefix + 'attention_1/output/dense/bias',
-                        ],
-                    'Transformer-%d-MultiHeadSelfAttention-Norm' % i:
-                        [
-                            prefix + 'LayerNorm/beta',
-                            prefix + 'LayerNorm/gamma',
-                        ],
-                    'Transformer-%d-FeedForward' % i:
-                        [
-                            prefix + 'ffn_1/intermediate/dense/kernel',
-                            prefix + 'ffn_1/intermediate/dense/bias',
-                            prefix + 'ffn_1/intermediate/output/dense/kernel',
-                            prefix + 'ffn_1/intermediate/output/dense/bias',
-                        ],
-                    'Transformer-%d-FeedForward-Norm' % i:
-                        [
-                            prefix + 'LayerNorm_1/beta',
-                            prefix + 'LayerNorm_1/gamma',
-                        ],
-                }
-            )
+            mapping.update({
+                'Transformer-%d-MultiHeadSelfAttention' % i: [
+                    prefix + 'attention_1/self/query/kernel',
+                    prefix + 'attention_1/self/query/bias',
+                    prefix + 'attention_1/self/key/kernel',
+                    prefix + 'attention_1/self/key/bias',
+                    prefix + 'attention_1/self/value/kernel',
+                    prefix + 'attention_1/self/value/bias',
+                    prefix + 'attention_1/output/dense/kernel',
+                    prefix + 'attention_1/output/dense/bias',
+                ],
+                'Transformer-%d-MultiHeadSelfAttention-Norm' % i: [
+                    prefix + 'LayerNorm/beta',
+                    prefix + 'LayerNorm/gamma',
+                ],
+                'Transformer-%d-FeedForward' % i: [
+                    prefix + 'ffn_1/intermediate/dense/kernel',
+                    prefix + 'ffn_1/intermediate/dense/bias',
+                    prefix + 'ffn_1/intermediate/output/dense/kernel',
+                    prefix + 'ffn_1/intermediate/output/dense/bias',
+                ],
+                'Transformer-%d-FeedForward-Norm' % i: [
+                    prefix + 'LayerNorm_1/beta',
+                    prefix + 'LayerNorm_1/gamma',
+                ],
+            })
 
         return mapping
 
@@ -931,8 +907,8 @@ class ELECTRA(BERT):
             'electra/embeddings_project/bias',
         ]
         mapping = {
-            k: [i.replace('bert/', 'electra/') for i in v]
-            for k, v in mapping.items()
+            k: [i.replace('bert/', 'electra/') for i in v
+               ] for k, v in mapping.items()
         }
         return mapping
 
@@ -954,7 +930,7 @@ class GPT2_ML(Transformer):
     def prepare_inputs(self):
         """GPT2_ML的输入是token_ids和segment_ids
         """
-        x_in = Input(shape=(None, ), name='Input-Token')
+        x_in = Input(shape=(None,), name='Input-Token')
         return x_in
 
     def prepare_embeddings(self, inputs):
@@ -1133,47 +1109,40 @@ class GPT2_ML(Transformer):
         mapping = {
             'Embedding-Token': ['newslm/embeddings/word_embed'],
             'Embedding-Position': ['newslm/embeddings/pos_embed'],
-            'Embedding-Norm':
-                [
-                    'newslm/embeddings/LayerNorm_embed_norm/beta',
-                    'newslm/embeddings/LayerNorm_embed_norm/gamma',
-                ],
+            'Embedding-Norm': [
+                'newslm/embeddings/LayerNorm_embed_norm/beta',
+                'newslm/embeddings/LayerNorm_embed_norm/gamma',
+            ],
         }
 
         for i in range(self.num_hidden_layers):
             prefix = 'newslm/layer%02d/' % i
-            mapping.update(
-                {
-                    'Transformer-%d-MultiHeadSelfAttention' % i:
-                        [
-                            prefix + 'query_layer/kernel',
-                            prefix + 'query_layer/bias',
-                            prefix + 'key_layer/kernel',
-                            prefix + 'key_layer/bias',
-                            prefix + 'value_layer/kernel',
-                            prefix + 'value_layer/bias',
-                            prefix + 'context_projection_layer/kernel',
-                            prefix + 'context_projection_layer/bias',
-                        ],
-                    'Transformer-%d-FeedForward-Norm-0' % i:
-                        [
-                            prefix + 'LayerNorm_mlp_ln0/beta',
-                            prefix + 'LayerNorm_mlp_ln0/gamma',
-                        ],
-                    'Transformer-%d-FeedForward' % i:
-                        [
-                            prefix + 'intermediate/kernel',
-                            prefix + 'intermediate/bias',
-                            prefix + 'output/kernel',
-                            prefix + 'output/bias',
-                        ],
-                    'Transformer-%d-FeedForward-Norm-1' % i:
-                        [
-                            prefix + 'LayerNorm_mlp_ln1/beta',
-                            prefix + 'LayerNorm_mlp_ln1/gamma',
-                        ],
-                }
-            )
+            mapping.update({
+                'Transformer-%d-MultiHeadSelfAttention' % i: [
+                    prefix + 'query_layer/kernel',
+                    prefix + 'query_layer/bias',
+                    prefix + 'key_layer/kernel',
+                    prefix + 'key_layer/bias',
+                    prefix + 'value_layer/kernel',
+                    prefix + 'value_layer/bias',
+                    prefix + 'context_projection_layer/kernel',
+                    prefix + 'context_projection_layer/bias',
+                ],
+                'Transformer-%d-FeedForward-Norm-0' % i: [
+                    prefix + 'LayerNorm_mlp_ln0/beta',
+                    prefix + 'LayerNorm_mlp_ln0/gamma',
+                ],
+                'Transformer-%d-FeedForward' % i: [
+                    prefix + 'intermediate/kernel',
+                    prefix + 'intermediate/bias',
+                    prefix + 'output/kernel',
+                    prefix + 'output/bias',
+                ],
+                'Transformer-%d-FeedForward-Norm-1' % i: [
+                    prefix + 'LayerNorm_mlp_ln1/beta',
+                    prefix + 'LayerNorm_mlp_ln1/gamma',
+                ],
+            })
 
         return mapping
 
@@ -1207,72 +1176,66 @@ class T5_Base(Transformer):
         """
         mapping = {
             'Embedding-Token': ['shared/embedding'],
-            'Encoder-Embedding-Relative-Position':
-                [
-                    'encoder/block_000/layer_000/SelfAttention/relative_attention_bias'
-                ],
+            'Encoder-Embedding-Relative-Position': [
+                'encoder/block_000/layer_000/SelfAttention/relative_attention_bias'
+            ],
             'Encoder-Output-Norm': ['encoder/final_layer_norm/scale'],
-            'Decoder-Embedding-Relative-Position':
-                [
-                    'decoder/block_000/layer_000/SelfAttention/relative_attention_bias',
-                ],
+            'Decoder-Embedding-Relative-Position': [
+                'decoder/block_000/layer_000/SelfAttention/relative_attention_bias',
+            ],
             'Decoder-Output-Norm': ['decoder/final_layer_norm/scale'],
         }
 
         for i in range(self.num_hidden_layers):
             # Encoder主体
             prefix = 'encoder/block_%03d/' % i
-            mapping.update(
-                {
-                    'Encoder-Transformer-%d-MultiHeadSelfAttention' % i:
-                        [
-                            prefix + 'layer_000/SelfAttention/q',
-                            prefix + 'layer_000/SelfAttention/k',
-                            prefix + 'layer_000/SelfAttention/v',
-                            prefix + 'layer_000/SelfAttention/o',
-                        ],
-                    'Encoder-Transformer-%d-MultiHeadSelfAttention-Norm' % i:
-                        [prefix + 'layer_000/layer_norm/scale', ],
-                    'Encoder-Transformer-%d-FeedForward' % i:
-                        [
-                            prefix + 'layer_001/DenseReluDense/wi/kernel',
-                            prefix + 'layer_001/DenseReluDense/wo/kernel',
-                        ],
-                    'Encoder-Transformer-%d-FeedForward-Norm' % i:
-                        [prefix + 'layer_001/layer_norm/scale', ],
-                }
-            )
+            mapping.update({
+                'Encoder-Transformer-%d-MultiHeadSelfAttention' % i: [
+                    prefix + 'layer_000/SelfAttention/q',
+                    prefix + 'layer_000/SelfAttention/k',
+                    prefix + 'layer_000/SelfAttention/v',
+                    prefix + 'layer_000/SelfAttention/o',
+                ],
+                'Encoder-Transformer-%d-MultiHeadSelfAttention-Norm' % i: [
+                    prefix + 'layer_000/layer_norm/scale',
+                ],
+                'Encoder-Transformer-%d-FeedForward' % i: [
+                    prefix + 'layer_001/DenseReluDense/wi/kernel',
+                    prefix + 'layer_001/DenseReluDense/wo/kernel',
+                ],
+                'Encoder-Transformer-%d-FeedForward-Norm' % i: [
+                    prefix + 'layer_001/layer_norm/scale',
+                ],
+            })
             # Decoder主体
             prefix = 'decoder/block_%03d/' % i
-            mapping.update(
-                {
-                    'Decoder-Transformer-%d-MultiHeadSelfAttention' % i:
-                        [
-                            prefix + 'layer_000/SelfAttention/q',
-                            prefix + 'layer_000/SelfAttention/k',
-                            prefix + 'layer_000/SelfAttention/v',
-                            prefix + 'layer_000/SelfAttention/o',
-                        ],
-                    'Decoder-Transformer-%d-MultiHeadSelfAttention-Norm' % i:
-                        [prefix + 'layer_000/layer_norm/scale', ],
-                    'Decoder-Transformer-%d-MultiHeadCrossAttention' % i:
-                        [
-                            prefix + 'layer_001/EncDecAttention/q',
-                            prefix + 'layer_001/EncDecAttention/k',
-                            prefix + 'layer_001/EncDecAttention/v',
-                            prefix + 'layer_001/EncDecAttention/o',
-                        ],
-                    'Decoder-Transformer-%d-MultiHeadCrossAttention-Norm' % i:
-                        [prefix + 'layer_001/layer_norm/scale', ],
-                    'Decoder-Transformer-%d-FeedForward' % i:
-                        [
-                            prefix + 'layer_002/DenseReluDense/wi/kernel',
-                            prefix + 'layer_002/DenseReluDense/wo/kernel',
-                        ],
-                    'Decoder-Transformer-%d-FeedForward-Norm' % i:
-                        [prefix + 'layer_002/layer_norm/scale', ],
-                }
-            )
+            mapping.update({
+                'Decoder-Transformer-%d-MultiHeadSelfAttention' % i: [
+                    prefix + 'layer_000/SelfAttention/q',
+                    prefix + 'layer_000/SelfAttention/k',
+                    prefix + 'layer_000/SelfAttention/v',
+                    prefix + 'layer_000/SelfAttention/o',
+                ],
+                'Decoder-Transformer-%d-MultiHeadSelfAttention-Norm' % i: [
+                    prefix + 'layer_000/layer_norm/scale',
+                ],
+                'Decoder-Transformer-%d-MultiHeadCrossAttention' % i: [
+                    prefix + 'layer_001/EncDecAttention/q',
+                    prefix + 'layer_001/EncDecAttention/k',
+                    prefix + 'layer_001/EncDecAttention/v',
+                    prefix + 'layer_001/EncDecAttention/o',
+                ],
+                'Decoder-Transformer-%d-MultiHeadCrossAttention-Norm' % i: [
+                    prefix + 'layer_001/layer_norm/scale',
+                ],
+                'Decoder-Transformer-%d-FeedForward' % i: [
+                    prefix + 'layer_002/DenseReluDense/wi/kernel',
+                    prefix + 'layer_002/DenseReluDense/wo/kernel',
+                ],
+                'Decoder-Transformer-%d-FeedForward-Norm' % i: [
+                    prefix + 'layer_002/layer_norm/scale',
+                ],
+            })
 
         return mapping
 
@@ -1283,7 +1246,7 @@ class T5_Encoder(T5_Base):
     def prepare_inputs(self):
         """T5的Encoder的输入只有token_ids
         """
-        x_in = Input(shape=(None, ), name='Encoder-Input-Token')
+        x_in = Input(shape=(None,), name='Encoder-Input-Token')
         return x_in
 
     def prepare_embeddings(self, inputs):
@@ -1458,7 +1421,7 @@ class T5_Decoder(Transformer):
         """T5的Decoder的输入为context序列和token_ids
         """
         c_in = Input(shape=(None, self.hidden_size), name='Input-Context')
-        x_in = Input(shape=(None, ), name='Decoder-Input-Token')
+        x_in = Input(shape=(None,), name='Decoder-Input-Token')
         return [c_in, x_in]
 
     def prepare_embeddings(self, inputs):

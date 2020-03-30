@@ -64,9 +64,9 @@ class BasicTokenizer(object):
             if is_py2:
                 text = unicode(text)
             text = unicodedata.normalize('NFD', text)
-            text = ''.join(
-                [ch for ch in text if unicodedata.category(ch) != 'Mn']
-            )
+            text = ''.join([
+                ch for ch in text if unicodedata.category(ch) != 'Mn'
+            ])
             text = text.lower()
 
         tokens = self._tokenize(text)
@@ -138,19 +138,16 @@ class BasicTokenizer(object):
         first_token_ids = self.tokens_to_ids(first_tokens)
         if first_length is not None:
             first_token_ids = first_token_ids[:first_length]
-            first_token_ids.extend(
-                [self._token_pad_id] * (first_length - len(first_token_ids))
-            )
+            first_token_ids.extend([self._token_pad_id] *
+                                   (first_length - len(first_token_ids)))
         first_segment_ids = [0] * len(first_token_ids)
 
         if second_text is not None:
             second_token_ids = self.tokens_to_ids(second_tokens)
             if second_length is not None:
                 second_token_ids = second_token_ids[:second_length]
-                second_token_ids.extend(
-                    [self._token_pad_id] *
-                    (second_length - len(second_token_ids))
-                )
+                second_token_ids.extend([self._token_pad_id] *
+                                        (second_length - len(second_token_ids)))
             second_segment_ids = [1] * len(second_token_ids)
 
             first_token_ids.extend(second_token_ids)

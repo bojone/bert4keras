@@ -208,12 +208,11 @@ def sequence_padding(inputs, length=None, padding=0):
     if length is None:
         length = max([len(x) for x in inputs])
 
-    outputs = np.array(
-        [
-            np.concatenate([x, [padding] * (length - len(x))])
-            if len(x) < length else x[:length] for x in inputs
-        ]
-    )
+    outputs = np.array([
+        np.concatenate([x, [padding] *
+                        (length - len(x))]) if len(x) < length else x[:length]
+        for x in inputs
+    ])
     return outputs
 
 
@@ -359,9 +358,8 @@ class AutoRegressiveDecoder(object):
             indices = scores.argpartition(-topk, axis=None)[-topk:]  # 仅保留topk
             indices_1 = indices // scores.shape[1]  # 行索引
             indices_2 = (indices % scores.shape[1]).reshape((-1, 1))  # 列索引
-            output_ids = np.concatenate(
-                [output_ids[indices_1], indices_2], 1
-            )  # 更新输出
+            output_ids = np.concatenate([output_ids[indices_1], indices_2],
+                                        1)  # 更新输出
             output_scores = np.take_along_axis(
                 scores, indices, axis=None
             )  # 更新得分
