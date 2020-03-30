@@ -14,13 +14,15 @@ class Adam(keras.optimizers.Optimizer):
     """重新定义Adam优化器，便于派生出新的优化器
     （tensorflow的optimizer_v2类）
     """
-    def __init__(self,
-                 learning_rate=0.001,
-                 beta_1=0.9,
-                 beta_2=0.999,
-                 epsilon=1e-6,
-                 bias_correction=True,
-                 **kwargs):
+    def __init__(
+        self,
+        learning_rate=0.001,
+        beta_1=0.9,
+        beta_2=0.999,
+        epsilon=1e-6,
+        bias_correction=True,
+        **kwargs
+    ):
         kwargs['name'] = kwargs.get('name') or 'Adam'
         super(Adam, self).__init__(**kwargs)
         self._set_hyper('learning_rate', learning_rate)
@@ -54,16 +56,18 @@ class Adam(keras.optimizers.Optimizer):
         else:
             mv_ops = [K.update(m, beta_1_t * m), K.update(v, beta_2_t * v)]
             with tf.control_dependencies(mv_ops):
-                m_t = self._resource_scatter_add(m, indices,
-                                                 (1 - beta_1_t) * grad)
-                v_t = self._resource_scatter_add(v, indices,
-                                                 (1 - beta_2_t) * grad**2)
+                m_t = self._resource_scatter_add(
+                    m, indices, (1 - beta_1_t) * grad
+                )
+                v_t = self._resource_scatter_add(
+                    v, indices, (1 - beta_2_t) * grad**2
+                )
 
         # 返回算子
         with tf.control_dependencies([m_t, v_t]):
             if self.bias_correction:
-                m_t = m_t / (1. - beta_1_t_power)
-                v_t = v_t / (1. - beta_2_t_power)
+                m_t = m_t / (1.0 - beta_1_t_power)
+                v_t = v_t / (1.0 - beta_2_t_power)
             var_t = var - lr_t * m_t / (K.sqrt(v_t) + self.epsilon)
             return K.update(var, var_t)
 
@@ -90,16 +94,17 @@ class AdaFactorBase(keras.optimizers.Optimizer):
     参考实现：https://github.com/tensorflow/mesh/blob/master/mesh_tensorflow/optimize.py
     """
     def __init__(
-            self,
-            learning_rate=1e-3,  # 可以为None
-            beta1=0.0,
-            beta2=None,
-            epsilon1=1e-30,
-            epsilon2=1e-3,
-            multiply_by_parameter_scale=True,
-            clipping_threshold=1.0,
-            min_dim_size_to_factor=128,
-            **kwargs):
+        self,
+        learning_rate=1e-3,  # 可以为None
+        beta1=0.0,
+        beta2=None,
+        epsilon1=1e-30,
+        epsilon2=1e-3,
+        multiply_by_parameter_scale=True,
+        clipping_threshold=1.0,
+        min_dim_size_to_factor=128,
+        **kwargs
+    ):
         super(AdaFactorBase, self).__init__(**kwargs)
         self._learning_rate = learning_rate
         self.beta1 = beta1
@@ -122,8 +127,9 @@ class AdaFactorBase(keras.optimizers.Optimizer):
         else:
             if not hasattr(self, '__learning_rate'):
                 with K.name_scope(self.__class__.__name__):
-                    self.__learning_rate = K.variable(self._learning_rate,
-                                                      name='learning_rate')
+                    self.__learning_rate = K.variable(
+                        self._learning_rate, name='learning_rate'
+                    )
             return self.__learning_rate
 
     @property
@@ -343,13 +349,12 @@ def extend_with_weight_decay(BaseOptimizer):
             return updates
 
         def _do_weight_decay(self, w):
-            return (not string_matching(w.name,
-                                        self.exclude_from_weight_decay))
+            return (not string_matching(w.name, self.exclude_from_weight_decay))
 
         def get_config(self):
             config = {
                 'weight_decay_rate': self.weight_decay_rate,
-                'exclude_from_weight_decay': self.exclude_from_weight_decay
+                'exclude_from_weight_decay': self.exclude_from_weight_decay,
             }
             base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
@@ -384,13 +389,12 @@ def extend_with_weight_decay_v2(BaseOptimizer):
             return op
 
         def _do_weight_decay(self, w):
-            return (not string_matching(w.name,
-                                        self.exclude_from_weight_decay))
+            return (not string_matching(w.name, self.exclude_from_weight_decay))
 
         def get_config(self):
             config = {
                 'weight_decay_rate': self.weight_decay_rate,
-                'exclude_from_weight_decay': self.exclude_from_weight_decay
+                'exclude_from_weight_decay': self.exclude_from_weight_decay,
             }
             base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
@@ -424,9 +428,10 @@ def extend_with_layer_adaptation(BaseOptimizer):
                     x_norm = tf.norm(x)
                     g_norm = tf.norm(dx / lr_t)
                     ratio = K.switch(
-                        x_norm > 0.,
-                        K.switch(g_norm > K.epsilon(), x_norm / g_norm, 1.),
-                        1.)
+                        x_norm > 0.0,
+                        K.switch(g_norm > K.epsilon(), x_norm / g_norm, 1.0),
+                        1.0
+                    )
                     new_x = x + dx * ratio
                 return old_update(x, new_x)
 
@@ -437,12 +442,14 @@ def extend_with_layer_adaptation(BaseOptimizer):
             return updates
 
         def _do_layer_adaptation(self, w):
-            return (not string_matching(w.name,
-                                        self.exclude_from_layer_adaptation))
+            return (
+                not string_matching(w.name, self.exclude_from_layer_adaptation)
+            )
 
         def get_config(self):
             config = {
-                'exclude_from_layer_adaptation': self.exclude_from_layer_adaptation
+                'exclude_from_layer_adaptation':
+                    self.exclude_from_layer_adaptation,
             }
             base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
@@ -474,9 +481,10 @@ def extend_with_layer_adaptation_v2(BaseOptimizer):
                     x_norm = tf.norm(x)
                     g_norm = tf.norm(dx / lr_t)
                     ratio = K.switch(
-                        x_norm > 0.,
-                        K.switch(g_norm > K.epsilon(), x_norm / g_norm, 1.),
-                        1.)
+                        x_norm > 0.0,
+                        K.switch(g_norm > K.epsilon(), x_norm / g_norm, 1.0),
+                        1.0
+                    )
                     new_x = x + dx * ratio
                 return old_update(x, new_x)
 
@@ -487,12 +495,14 @@ def extend_with_layer_adaptation_v2(BaseOptimizer):
             return op
 
         def _do_layer_adaptation(self, w):
-            return (not string_matching(w.name,
-                                        self.exclude_from_layer_adaptation))
+            return (
+                not string_matching(w.name, self.exclude_from_layer_adaptation)
+            )
 
         def get_config(self):
             config = {
-                'exclude_from_layer_adaptation': self.exclude_from_layer_adaptation
+                'exclude_from_layer_adaptation':
+                    self.exclude_from_layer_adaptation,
             }
             base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
@@ -533,7 +543,9 @@ def extend_with_piecewise_linear_lr(BaseOptimizer):
             return updates
 
         def get_config(self):
-            config = {'lr_schedule': self.lr_schedule}
+            config = {
+                'lr_schedule': self.lr_schedule,
+            }
             base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
@@ -561,7 +573,9 @@ def extend_with_piecewise_linear_lr_v2(BaseOptimizer):
             return lr_t * K.cast(lr_multiplier, var_dtype)
 
         def get_config(self):
-            config = {'lr_schedule': self.lr_schedule}
+            config = {
+                'lr_schedule': self.lr_schedule,
+            }
             base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
@@ -595,9 +609,9 @@ def extend_with_gradient_accumulation(BaseOptimizer):
             # 获取梯度
             grads = self.get_gradients(loss, params)
             self.accum_grads = [
-                K.zeros(K.int_shape(p),
-                        dtype=K.dtype(p),
-                        name='accum_grad_%s' % i) for i, p in enumerate(params)
+                K.zeros(
+                    K.int_shape(p), dtype=K.dtype(p), name='accum_grad_%s' % i
+                ) for i, p in enumerate(params)
             ]
 
             old_update = K.update
@@ -620,7 +634,9 @@ def extend_with_gradient_accumulation(BaseOptimizer):
             return accum_updates
 
         def get_config(self):
-            config = {'grad_accum_steps': self.grad_accum_steps}
+            config = {
+                'grad_accum_steps': self.grad_accum_steps,
+            }
             base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
@@ -672,7 +688,9 @@ def extend_with_gradient_accumulation_v2(BaseOptimizer):
             return ag_t
 
         def get_config(self):
-            config = {'grad_accum_steps': self.grad_accum_steps}
+            config = {
+                'grad_accum_steps': self.grad_accum_steps,
+            }
             base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
@@ -700,9 +718,9 @@ def extend_with_lookahead(BaseOptimizer):
             k, alpha = self.steps_per_slow_update, self.slow_step_size
             cond = K.equal(self.iterations % k, 0)
             slow_vars = [
-                K.zeros(K.int_shape(p),
-                        dtype=K.dtype(p),
-                        name='slow_var_%s' % i) for i, p in enumerate(params)
+                K.zeros(
+                    K.int_shape(p), dtype=K.dtype(p), name='slow_var_%s' % i
+                ) for i, p in enumerate(params)
             ]
 
             with tf.control_dependencies(updates):
@@ -721,7 +739,7 @@ def extend_with_lookahead(BaseOptimizer):
         def get_config(self):
             config = {
                 'steps_per_slow_update': self.steps_per_slow_update,
-                'slow_step_size': self.slow_step_size
+                'slow_step_size': self.slow_step_size,
             }
             base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
@@ -757,8 +775,9 @@ def extend_with_lookahead_v2(BaseOptimizer):
             slow_var_t = slow_var + alpha * (var - slow_var)
 
             with tf.control_dependencies([op]):
-                slow_update = K.update(slow_var,
-                                       K.switch(cond, slow_var_t, slow_var))
+                slow_update = K.update(
+                    slow_var, K.switch(cond, slow_var_t, slow_var)
+                )
                 with tf.control_dependencies([slow_update]):
                     copy_update = K.update(var, K.switch(cond, slow_var, var))
 
@@ -767,7 +786,7 @@ def extend_with_lookahead_v2(BaseOptimizer):
         def get_config(self):
             config = {
                 'steps_per_slow_update': self.steps_per_slow_update,
-                'slow_step_size': self.slow_step_size
+                'slow_step_size': self.slow_step_size,
             }
             base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
@@ -805,7 +824,7 @@ def extend_with_lazy_optimization(BaseOptimizer):
             def new_update(x, new_x):
                 if is_one_of(x, params) and self._do_lazy_optimization(x):
                     g = self.grads[x]
-                    r = K.any(K.not_equal(g, 0.), axis=-1, keepdims=True)
+                    r = K.any(K.not_equal(g, 0.0), axis=-1, keepdims=True)
                     new_x = x + (new_x - x) * K.cast(r, K.floatx())
                 return old_update(x, new_x)
 
@@ -820,7 +839,8 @@ def extend_with_lazy_optimization(BaseOptimizer):
 
         def get_config(self):
             config = {
-                'include_in_lazy_optimization': self.include_in_lazy_optimization
+                'include_in_lazy_optimization':
+                    self.include_in_lazy_optimization,
             }
             base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
@@ -847,14 +867,15 @@ def extend_with_lazy_optimization_v2(BaseOptimizer):
             def new_update(x, new_x):
                 if x is var and self._do_lazy_optimization(x):
                     if indices is None:
-                        r = K.any(K.not_equal(grad, 0.),
-                                  axis=-1,
-                                  keepdims=True)
+                        r = K.any(
+                            K.not_equal(grad, 0.0), axis=-1, keepdims=True
+                        )
                         new_x = x + (new_x - x) * K.cast(r, K.floatx())
                         return old_update(x, new_x)
                     else:
                         return self._resource_scatter_add(
-                            x, indices, K.gather(new_x - x, indices))
+                            x, indices, K.gather(new_x - x, indices)
+                        )
                 return old_update(x, new_x)
 
             K.update = new_update
@@ -868,7 +889,8 @@ def extend_with_lazy_optimization_v2(BaseOptimizer):
 
         def get_config(self):
             config = {
-                'include_in_lazy_optimization': self.include_in_lazy_optimization
+                'include_in_lazy_optimization':
+                    self.include_in_lazy_optimization,
             }
             base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
@@ -903,7 +925,9 @@ def extend_with_exponential_moving_average(BaseOptimizer):
             return ema_updates
 
         def get_config(self):
-            config = {'ema_momentum': self.ema_momentum}
+            config = {
+                'ema_momentum': self.ema_momentum,
+            }
             base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
