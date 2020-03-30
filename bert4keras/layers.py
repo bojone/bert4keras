@@ -95,14 +95,16 @@ class Embedding(keras.layers.Embedding):
 class MultiHeadAttention(Layer):
     """多头注意力机制
     """
-    def __init__(self,
-                 heads,
-                 head_size,
-                 key_size=None,
-                 use_bias=True,
-                 scaled_dot_product=True,
-                 kernel_initializer='glorot_uniform',
-                 **kwargs):
+    def __init__(
+        self,
+        heads,
+        head_size,
+        key_size=None,
+        use_bias=True,
+        scaled_dot_product=True,
+        kernel_initializer='glorot_uniform',
+        **kwargs
+    ):
         super(MultiHeadAttention, self).__init__(**kwargs)
         self.heads = heads
         self.head_size = head_size
@@ -114,18 +116,26 @@ class MultiHeadAttention(Layer):
 
     def build(self, input_shape):
         super(MultiHeadAttention, self).build(input_shape)
-        self.q_dense = Dense(units=self.key_size * self.heads,
-                             use_bias=self.use_bias,
-                             kernel_initializer=self.kernel_initializer)
-        self.k_dense = Dense(units=self.key_size * self.heads,
-                             use_bias=self.use_bias,
-                             kernel_initializer=self.kernel_initializer)
-        self.v_dense = Dense(units=self.out_dim,
-                             use_bias=self.use_bias,
-                             kernel_initializer=self.kernel_initializer)
-        self.o_dense = Dense(units=self.out_dim,
-                             use_bias=self.use_bias,
-                             kernel_initializer=self.kernel_initializer)
+        self.q_dense = Dense(
+            units=self.key_size * self.heads,
+            use_bias=self.use_bias,
+            kernel_initializer=self.kernel_initializer
+        )
+        self.k_dense = Dense(
+            units=self.key_size * self.heads,
+            use_bias=self.use_bias,
+            kernel_initializer=self.kernel_initializer
+        )
+        self.v_dense = Dense(
+            units=self.out_dim,
+            use_bias=self.use_bias,
+            kernel_initializer=self.kernel_initializer
+        )
+        self.o_dense = Dense(
+            units=self.out_dim,
+            use_bias=self.use_bias,
+            kernel_initializer=self.kernel_initializer
+        )
 
     def call(self, inputs, mask=None, a_mask=None, p_bias=None):
         """实现多头注意力
@@ -190,12 +200,18 @@ class MultiHeadAttention(Layer):
 
     def get_config(self):
         config = {
-            'heads': self.heads,
-            'head_size': self.head_size,
-            'key_size': self.key_size,
-            'use_bias': self.use_bias,
-            'scaled_dot_product': self.scaled_dot_product,
-            'kernel_initializer': initializers.serialize(self.kernel_initializer),
+            'heads':
+                self.heads,
+            'head_size':
+                self.head_size,
+            'key_size':
+                self.key_size,
+            'use_bias':
+                self.use_bias,
+            'scaled_dot_product':
+                self.scaled_dot_product,
+            'kernel_initializer':
+                initializers.serialize(self.kernel_initializer),
         }
         base_config = super(MultiHeadAttention, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
@@ -205,15 +221,17 @@ class LayerNormalization(Layer):
     """(Conditional) Layer Normalization
     hidden_*系列参数仅为有条件输入时(conditional=True)使用
     """
-    def __init__(self,
-                 center=True,
-                 scale=True,
-                 epsilon=None,
-                 conditional=False,
-                 hidden_units=None,
-                 hidden_activation='linear',
-                 hidden_initializer='glorot_uniform',
-                 **kwargs):
+    def __init__(
+        self,
+        center=True,
+        scale=True,
+        epsilon=None,
+        conditional=False,
+        hidden_units=None,
+        hidden_activation='linear',
+        hidden_initializer='glorot_uniform',
+        **kwargs
+    ):
         super(LayerNormalization, self).__init__(**kwargs)
         self.center = center
         self.scale = scale
@@ -232,13 +250,13 @@ class LayerNormalization(Layer):
             shape = (input_shape[-1], )
 
         if self.center:
-            self.beta = self.add_weight(shape=shape,
-                                        initializer='zeros',
-                                        name='beta')
+            self.beta = self.add_weight(
+                shape=shape, initializer='zeros', name='beta'
+            )
         if self.scale:
-            self.gamma = self.add_weight(shape=shape,
-                                         initializer='ones',
-                                         name='gamma')
+            self.gamma = self.add_weight(
+                shape=shape, initializer='ones', name='gamma'
+            )
 
         if self.conditional:
 
@@ -247,16 +265,17 @@ class LayerNormalization(Layer):
                     units=self.hidden_units,
                     activation=self.hidden_activation,
                     use_bias=False,
-                    kernel_initializer=self.hidden_initializer)
+                    kernel_initializer=self.hidden_initializer
+                )
 
             if self.center:
-                self.beta_dense = Dense(units=shape[0],
-                                        use_bias=False,
-                                        kernel_initializer='zeros')
+                self.beta_dense = Dense(
+                    units=shape[0], use_bias=False, kernel_initializer='zeros'
+                )
             if self.scale:
-                self.gamma_dense = Dense(units=shape[0],
-                                         use_bias=False,
-                                         kernel_initializer='zeros')
+                self.gamma_dense = Dense(
+                    units=shape[0], use_bias=False, kernel_initializer='zeros'
+                )
 
     def call(self, inputs):
         """如果是条件Layer Norm，则默认以list为输入，第二个是condition
@@ -293,13 +312,20 @@ class LayerNormalization(Layer):
 
     def get_config(self):
         config = {
-            'center': self.center,
-            'scale': self.scale,
-            'epsilon': self.epsilon,
-            'conditional': self.conditional,
-            'hidden_units': self.hidden_units,
-            'hidden_activation': activations.serialize(self.hidden_activation),
-            'hidden_initializer': initializers.serialize(self.hidden_initializer),
+            'center':
+                self.center,
+            'scale':
+                self.scale,
+            'epsilon':
+                self.epsilon,
+            'conditional':
+                self.conditional,
+            'hidden_units':
+                self.hidden_units,
+            'hidden_activation':
+                activations.serialize(self.hidden_activation),
+            'hidden_initializer':
+                initializers.serialize(self.hidden_initializer),
         }
         base_config = super(LayerNormalization, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
@@ -308,12 +334,14 @@ class LayerNormalization(Layer):
 class PositionEmbedding(Layer):
     """定义位置Embedding，这里的Embedding是可训练的。
     """
-    def __init__(self,
-                 input_dim,
-                 output_dim,
-                 merge_mode='add',
-                 embeddings_initializer='zeros',
-                 **kwargs):
+    def __init__(
+        self,
+        input_dim,
+        output_dim,
+        merge_mode='add',
+        embeddings_initializer='zeros',
+        **kwargs
+    ):
         super(PositionEmbedding, self).__init__(**kwargs)
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -348,10 +376,14 @@ class PositionEmbedding(Layer):
 
     def get_config(self):
         config = {
-            'input_dim': self.input_dim,
-            'output_dim': self.output_dim,
-            'merge_mode': self.merge_mode,
-            'embeddings_initializer': initializers.serialize(self.embeddings_initializer),
+            'input_dim':
+                self.input_dim,
+            'output_dim':
+                self.output_dim,
+            'merge_mode':
+                self.merge_mode,
+            'embeddings_initializer':
+                initializers.serialize(self.embeddings_initializer),
         }
         base_config = super(PositionEmbedding, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
@@ -361,11 +393,9 @@ class RelativePositionEmbedding(Layer):
     """相对位置编码
     来自论文：https://arxiv.org/abs/1803.02155
     """
-    def __init__(self,
-                 input_dim,
-                 output_dim,
-                 embeddings_initializer='zeros',
-                 **kwargs):
+    def __init__(
+        self, input_dim, output_dim, embeddings_initializer='zeros', **kwargs
+    ):
         super(RelativePositionEmbedding, self).__init__(**kwargs)
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -405,9 +435,12 @@ class RelativePositionEmbedding(Layer):
 
     def get_config(self):
         config = {
-            'input_dim': self.input_dim,
-            'output_dim': self.output_dim,
-            'embeddings_initializer': initializers.serialize(self.embeddings_initializer),
+            'input_dim':
+                self.input_dim,
+            'output_dim':
+                self.output_dim,
+            'embeddings_initializer':
+                initializers.serialize(self.embeddings_initializer),
         }
         base_config = super(RelativePositionEmbedding, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
@@ -417,13 +450,15 @@ class RelativePositionEmbeddingT5(RelativePositionEmbedding):
     """Google T5的相对位置编码
     来自论文：https://arxiv.org/abs/1910.10683
     """
-    def __init__(self,
-                 input_dim,
-                 output_dim,
-                 max_distance=128,
-                 bidirectional=True,
-                 embeddings_initializer='zeros',
-                 **kwargs):
+    def __init__(
+        self,
+        input_dim,
+        output_dim,
+        max_distance=128,
+        bidirectional=True,
+        embeddings_initializer='zeros',
+        **kwargs
+    ):
         super(RelativePositionEmbeddingT5,
               self).__init__(input_dim, output_dim, **kwargs)
         self.max_distance = max_distance
@@ -473,12 +508,14 @@ class RelativePositionEmbeddingT5(RelativePositionEmbedding):
 class FeedForward(Layer):
     """FeedForward层，其实就是两个Dense层的叠加
     """
-    def __init__(self,
-                 units,
-                 activation='relu',
-                 use_bias=True,
-                 kernel_initializer='glorot_uniform',
-                 **kwargs):
+    def __init__(
+        self,
+        units,
+        activation='relu',
+        use_bias=True,
+        kernel_initializer='glorot_uniform',
+        **kwargs
+    ):
         super(FeedForward, self).__init__(**kwargs)
         self.units = units
         self.activation = activations.get(activation)
@@ -490,13 +527,17 @@ class FeedForward(Layer):
         super(FeedForward, self).build(input_shape)
         output_dim = input_shape[-1]
 
-        self.dense_1 = Dense(units=self.units,
-                             activation=self.activation,
-                             use_bias=self.use_bias,
-                             kernel_initializer=self.kernel_initializer)
-        self.dense_2 = Dense(units=output_dim,
-                             use_bias=self.use_bias,
-                             kernel_initializer=self.kernel_initializer)
+        self.dense_1 = Dense(
+            units=self.units,
+            activation=self.activation,
+            use_bias=self.use_bias,
+            kernel_initializer=self.kernel_initializer
+        )
+        self.dense_2 = Dense(
+            units=output_dim,
+            use_bias=self.use_bias,
+            kernel_initializer=self.kernel_initializer
+        )
 
     def call(self, inputs):
         x = inputs
@@ -506,10 +547,14 @@ class FeedForward(Layer):
 
     def get_config(self):
         config = {
-            'units': self.units,
-            'activation': activations.serialize(self.activation),
-            'use_bias': self.use_bias,
-            'kernel_initializer': initializers.serialize(self.kernel_initializer),
+            'units':
+                self.units,
+            'activation':
+                activations.serialize(self.activation),
+            'use_bias':
+                self.use_bias,
+            'kernel_initializer':
+                initializers.serialize(self.kernel_initializer),
         }
         base_config = super(FeedForward, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
@@ -519,11 +564,9 @@ class EmbeddingDense(Layer):
     """运算跟Dense一致，但kernel用Embedding层的embeddings矩阵。
     根据Embedding层的名字来搜索定位Embedding层。
     """
-    def __init__(self,
-                 embedding_name,
-                 activation='softmax',
-                 use_bias=True,
-                 **kwargs):
+    def __init__(
+        self, embedding_name, activation='softmax', use_bias=True, **kwargs
+    ):
         super(EmbeddingDense, self).__init__(**kwargs)
         self.embedding_name = embedding_name
         self.activation = activations.get(activation)
@@ -538,9 +581,9 @@ class EmbeddingDense(Layer):
             self.kernel = K.transpose(embedding_layer.embeddings)
             self.units = K.int_shape(self.kernel)[1]
             if self.use_bias:
-                self.bias = self.add_weight(name='bias',
-                                            shape=(self.units, ),
-                                            initializer='zeros')
+                self.bias = self.add_weight(
+                    name='bias', shape=(self.units, ), initializer='zeros'
+                )
 
         outputs = K.dot(inputs, self.kernel)
         if self.use_bias:
@@ -573,10 +616,12 @@ class ConditionalRandomField(Layer):
     def build(self, input_shape):
         super(ConditionalRandomField, self).build(input_shape)
         output_dim = input_shape[-1]
-        self.trans = self.add_weight(name='trans',
-                                     shape=(output_dim, output_dim),
-                                     initializer='glorot_uniform',
-                                     trainable=True)
+        self.trans = self.add_weight(
+            name='trans',
+            shape=(output_dim, output_dim),
+            initializer='glorot_uniform',
+            trainable=True
+        )
         if self.lr_multiplier != 1:
             K.set_value(self.trans, K.eval(self.trans) / self.lr_multiplier)
             self.trans = self.lr_multiplier * self.trans
@@ -595,8 +640,9 @@ class ConditionalRandomField(Layer):
         要点：逐标签得分，加上转移概率得分。
         """
         point_score = tf.einsum('bni,bni->b', y_true, y_pred)  # 逐标签得分
-        trans_score = tf.einsum('bni,ij,bnj->b', y_true[:, :-1], self.trans,
-                                y_true[:, 1:])  # 标签转移得分
+        trans_score = tf.einsum(
+            'bni,ij,bnj->b', y_true[:, :-1], self.trans, y_true[:, 1:]
+        )  # 标签转移得分
         return point_score + trans_score
 
     def log_norm_step(self, inputs, states):
@@ -606,7 +652,9 @@ class ConditionalRandomField(Layer):
         inputs, mask = inputs[:, :-1], inputs[:, -1:]
         states = K.expand_dims(states[0], 2)  # (batch_size, output_dim, 1)
         trans = K.expand_dims(self.trans, 0)  # (1, output_dim, output_dim)
-        outputs = tf.reduce_logsumexp(states + trans, 1)  # (batch_size, output_dim)
+        outputs = tf.reduce_logsumexp(
+            states + trans, 1
+        )  # (batch_size, output_dim)
         outputs = outputs + inputs
         outputs = mask * outputs + (1 - mask) * states[:, :, 0]
         return outputs, [outputs]
@@ -624,10 +672,12 @@ class ConditionalRandomField(Layer):
         init_states = [y_pred[:, 0]]
         y_pred = K.concatenate([y_pred, mask], axis=2)
         input_length = K.int_shape(y_pred[:, 1:])[1]
-        log_norm, _, _ = K.rnn(self.log_norm_step,
-                               y_pred[:, 1:],
-                               init_states,
-                               input_length=input_length)  # 最后一步的log Z向量
+        log_norm, _, _ = K.rnn(
+            self.log_norm_step,
+            y_pred[:, 1:],
+            init_states,
+            input_length=input_length
+        )  # 最后一步的log Z向量
         log_norm = tf.reduce_logsumexp(log_norm, 1)  # logsumexp得标量
         # 计算损失 -log p
         return log_norm - target_score
@@ -687,27 +737,39 @@ class MaximumEntropyMarkovModel(Layer):
         output_dim = input_shape[-1]
 
         if self.hidden_dim is None:
-            self.trans = self.add_weight(name='trans',
-                                         shape=(output_dim, output_dim),
-                                         initializer='glorot_uniform',
-                                         trainable=True)
+            self.trans = self.add_weight(
+                name='trans',
+                shape=(output_dim, output_dim),
+                initializer='glorot_uniform',
+                trainable=True
+            )
             if self.lr_multiplier != 1:
                 K.set_value(self.trans, K.eval(self.trans) / self.lr_multiplier)
                 self.trans = self.lr_multiplier * self.trans
         else:
-            self.l_trans = self.add_weight(name='l_trans',
-                                           shape=(output_dim, self.hidden_dim),
-                                           initializer='glorot_uniform',
-                                           trainable=True)
-            self.r_trans = self.add_weight(name='r_trans',
-                                           shape=(output_dim, self.hidden_dim),
-                                           initializer='glorot_uniform',
-                                           trainable=True)
+            self.l_trans = self.add_weight(
+                name='l_trans',
+                shape=(output_dim, self.hidden_dim),
+                initializer='glorot_uniform',
+                trainable=True
+            )
+            self.r_trans = self.add_weight(
+                name='r_trans',
+                shape=(output_dim, self.hidden_dim),
+                initializer='glorot_uniform',
+                trainable=True
+            )
 
             if self.lr_multiplier != 1:
-                K.set_value(self.l_trans, K.eval(self.l_trans) / self.lr_multiplier)
+                K.set_value(
+                    self.l_trans,
+                    K.eval(self.l_trans) / self.lr_multiplier
+                )
                 self.l_trans = self.lr_multiplier * self.l_trans
-                K.set_value(self.r_trans, K.eval(self.r_trans) / self.lr_multiplier)
+                K.set_value(
+                    self.r_trans,
+                    K.eval(self.r_trans) / self.lr_multiplier
+                )
                 self.r_trans = self.lr_multiplier * self.r_trans
 
     def compute_mask(self, inputs, mask=None):
@@ -724,10 +786,7 @@ class MaximumEntropyMarkovModel(Layer):
             return [x[:, ::-1] for x in inputs]
         else:
             length = K.cast(K.sum(mask, 1), 'int32')
-            return [
-                tf.reverse_sequence(x, length, seq_axis=1)
-                for x in inputs
-            ]
+            return [tf.reverse_sequence(x, length, seq_axis=1) for x in inputs]
 
     def basic_loss(self, y_true, y_pred, go_backwards=False):
         """y_true需要是整数形式（非one hot）
@@ -757,7 +816,9 @@ class MaximumEntropyMarkovModel(Layer):
         # 计算loss
         histoty = K.concatenate([y_pred[:, :1], histoty[:, :-1]], 1)
         y_pred = (y_pred + histoty) / 2
-        loss = K.sparse_categorical_crossentropy(y_true, y_pred, from_logits=True)
+        loss = K.sparse_categorical_crossentropy(
+            y_true, y_pred, from_logits=True
+        )
         return K.sum(loss * mask) / K.sum(mask)
 
     def sparse_loss(self, y_true, y_pred):
