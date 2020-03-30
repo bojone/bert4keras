@@ -43,8 +43,8 @@ exclude_from_weight_decay = ['Norm', 'bias']
 tpu_address = 'grpc://xxx.xxx.xxx.xxx:8470'  # 如果用多GPU跑，直接设为None
 which_optimizer = 'lamb'  # adam 或 lamb，均自带weight decay
 lr_schedule = {
-    num_warmup_steps * grad_accum_steps: 1.,
-    num_train_steps * grad_accum_steps: 0.,
+    num_warmup_steps * grad_accum_steps: 1.0,
+    num_train_steps * grad_accum_steps: 0.0,
 }
 floatx = K.floatx()
 
@@ -70,9 +70,9 @@ elif model == 'gpt':
 def build_transformer_model_with_mlm():
     """带mlm的bert模型
     """
-    bert = build_transformer_model(config_path,
-                                   with_mlm='linear',
-                                   return_keras_model=False)
+    bert = build_transformer_model(
+        config_path, with_mlm='linear', return_keras_model=False
+    )
     proba = bert.model.output
 
     # 辅助输入
@@ -83,9 +83,9 @@ def build_transformer_model_with_mlm():
         """计算loss的函数，需要封装为一个层
         """
         y_true, y_pred, mask = inputs
-        loss = K.sparse_categorical_crossentropy(y_true,
-                                                 y_pred,
-                                                 from_logits=True)
+        loss = K.sparse_categorical_crossentropy(
+            y_true, y_pred, from_logits=True
+        )
         loss = K.sum(loss * mask) / (K.sum(mask) + K.epsilon())
         return loss
 
@@ -101,8 +101,9 @@ def build_transformer_model_with_mlm():
     mlm_loss = Lambda(mlm_loss, name='mlm_loss')([token_ids, proba, is_masked])
     mlm_acc = Lambda(mlm_acc, name='mlm_acc')([token_ids, proba, is_masked])
 
-    train_model = Model(bert.model.inputs + [token_ids, is_masked],
-                        [mlm_loss, mlm_acc])
+    train_model = Model(
+        bert.model.inputs + [token_ids, is_masked], [mlm_loss, mlm_acc]
+    )
 
     loss = {
         'mlm_loss': lambda y_true, y_pred: y_pred,
@@ -115,10 +116,12 @@ def build_transformer_model_with_mlm():
 def build_transformer_model_with_lm():
     """带lm的bert模型
     """
-    bert = build_transformer_model(config_path,
-                                   with_mlm='linear',
-                                   application='lm',
-                                   return_keras_model=False)
+    bert = build_transformer_model(
+        config_path,
+        with_mlm='linear',
+        application='lm',
+        return_keras_model=False
+    )
     token_ids = bert.model.input[0]
     proba = bert.model.output
 
@@ -129,9 +132,9 @@ def build_transformer_model_with_lm():
         y_true, y_pred = y_true[:, 1:], y_pred[:, :-1]
         mask = search_layer(y_pred, 'Embedding-Token').output_mask
         mask = K.cast(mask[:, 1:], floatx)
-        loss = K.sparse_categorical_crossentropy(y_true,
-                                                 y_pred,
-                                                 from_logits=True)
+        loss = K.sparse_categorical_crossentropy(
+            y_true, y_pred, from_logits=True
+        )
         loss = K.sum(loss * mask) / (K.sum(mask) + K.epsilon())
         return loss
 
@@ -203,7 +206,9 @@ if tpu_address is None:
     strategy = tf.distribute.MirroredStrategy()
 else:
     # TPU模式
-    resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu=tpu_address)
+    resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
+        tpu=tpu_address
+    )
     tf.config.experimental_connect_to_host(resolver.master())
     tf.tpu.experimental.initialize_tpu_system(resolver)
     strategy = tf.distribute.experimental.TPUStrategy(resolver)

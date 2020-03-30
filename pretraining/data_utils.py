@@ -148,11 +148,9 @@ class TrainingDataset(object):
 class TrainingDatasetRoBERTa(TrainingDataset):
     """预训练数据集生成器（RoBERTa模式）
     """
-    def __init__(self,
-                 tokenizer,
-                 word_segment,
-                 mask_rate=0.15,
-                 sequence_length=512):
+    def __init__(
+        self, tokenizer, word_segment, mask_rate=0.15, sequence_length=512
+    ):
         """参数说明：
             tokenizer必须是bert4keras自带的tokenizer类；
             word_segment是任意分词函数。
@@ -204,13 +202,15 @@ class TrainingDatasetRoBERTa(TrainingDataset):
         starts = [self.token_cls_id, 0]
         ends = [self.token_sep_id, 0]
         paddings = [self.token_pad_id, 0]
-        return super(TrainingDatasetRoBERTa, self).paragraph_process(texts, starts, ends, paddings)
+        return super(TrainingDatasetRoBERTa,
+                     self).paragraph_process(texts, starts, ends, paddings)
 
     def tfrecord_serialize(self, instances):
         """给原方法补上instance_keys
         """
         instance_keys = ['token_ids', 'mask_ids']
-        return super(TrainingDatasetRoBERTa, self).tfrecord_serialize(instances, instance_keys)
+        return super(TrainingDatasetRoBERTa,
+                     self).tfrecord_serialize(instances, instance_keys)
 
     @staticmethod
     def load_tfrecord(record_names, sequence_length, batch_size):
@@ -239,7 +239,9 @@ class TrainingDatasetRoBERTa(TrainingDataset):
             }
             return x, y
 
-        return TrainingDataset.load_tfrecord(record_names, batch_size, parse_function)
+        return TrainingDataset.load_tfrecord(
+            record_names, batch_size, parse_function
+        )
 
 
 class TrainingDatasetGPT(TrainingDataset):
@@ -259,13 +261,15 @@ class TrainingDatasetGPT(TrainingDataset):
         starts = [self.token_cls_id]
         ends = [self.token_sep_id]
         paddings = [self.token_pad_id]
-        return super(TrainingDatasetGPT, self).paragraph_process(texts, starts, ends, paddings)
+        return super(TrainingDatasetGPT,
+                     self).paragraph_process(texts, starts, ends, paddings)
 
     def tfrecord_serialize(self, instances):
         """给原方法补上instance_keys
         """
         instance_keys = ['token_ids']
-        return super(TrainingDatasetGPT, self).tfrecord_serialize(instances, instance_keys)
+        return super(TrainingDatasetGPT,
+                     self).tfrecord_serialize(instances, instance_keys)
 
     @staticmethod
     def load_tfrecord(record_names, sequence_length, batch_size):
@@ -288,7 +292,9 @@ class TrainingDatasetGPT(TrainingDataset):
             }
             return x, y
 
-        return TrainingDataset.load_tfrecord(record_names, batch_size, parse_function)
+        return TrainingDataset.load_tfrecord(
+            record_names, batch_size, parse_function
+        )
 
 
 if __name__ == '__main__':
@@ -330,7 +336,9 @@ if __name__ == '__main__':
         def word_segment(text):
             return jieba.lcut(text)
 
-        TD = TrainingDatasetRoBERTa(tokenizer, word_segment, sequence_length=sequence_length)
+        TD = TrainingDatasetRoBERTa(
+            tokenizer, word_segment, sequence_length=sequence_length
+        )
 
         for i in range(10):  # 数据重复10遍
             TD.process(
