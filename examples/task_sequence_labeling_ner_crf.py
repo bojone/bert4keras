@@ -111,6 +111,7 @@ model = build_transformer_model(
 output_layer = 'Transformer-FeedForward-Norm'
 output = model.get_layer(output_layer).get_output_at(bert_layers - 1)
 """
+
 model = build_transformer_model(
     config_path,
     checkpoint_path,
