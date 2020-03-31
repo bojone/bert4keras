@@ -60,10 +60,10 @@ test_data = load_data('/root/ner/china-people-daily-ner-corpus/example.test')
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
 # 类别映射
-classes = ['PER', 'LOC', 'ORG']
-id2class = dict(enumerate(classes))
-class2id = {j: i for i, j in id2class.items()}
-num_labels = len(classes) * 2 + 1
+labels = ['PER', 'LOC', 'ORG']
+id2label = dict(enumerate(labels))
+label2id = {j: i for i, j in id2label.items()}
+num_labels = len(labels) * 2 + 1
 
 
 class data_generator(DataGenerator):
@@ -80,8 +80,8 @@ class data_generator(DataGenerator):
                     if l == 'O':
                         labels += [0] * len(w_token_ids)
                     else:
-                        B = class2id[l] * 2 + 1
-                        I = class2id[l] * 2 + 2
+                        B = label2id[l] * 2 + 1
+                        I = label2id[l] * 2 + 2
                         labels += ([B] + [I] * (len(w_token_ids) - 1))
                 else:
                     break
@@ -166,7 +166,7 @@ def named_entity_recognize(text):
         if label > 0:
             if label % 2 == 1:
                 starting = True
-                entities.append([[token], id2class[(label - 1) // 2]])
+                entities.append([[token], id2label[(label - 1) // 2]])
             elif starting:
                 entities[-1][0].append(token)
             else:
