@@ -57,7 +57,6 @@ class BasicTokenizer(object):
     def tokenize(self, text, max_length=None):
         """分词函数
         """
-
         tokens = self._tokenize(text)
         if self._token_start is not None:
             tokens.insert(0, self._token_start)
