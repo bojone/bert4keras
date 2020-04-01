@@ -76,7 +76,8 @@ class BasicTokenizer(object):
             tokens.append(self._token_end)
 
         if max_length is not None:
-            self.truncate_sequence(max_length, tokens, None, -2)
+            offset = int(self._token_end is not None) + 1
+            self.truncate_sequence(max_length, tokens, None, -offset)
 
         return tokens
 
