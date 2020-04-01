@@ -205,6 +205,7 @@ def extract_spoes(text):
     """抽取输入text所包含的三元组
     """
     tokens = tokenizer.tokenize(text, max_length=maxlen)
+    mapping = dict(enumerate(tokenizer.rematch(text, tokens)))
     token_ids, segment_ids = tokenizer.encode(text, max_length=maxlen)
     # 抽取subject
     subject_preds = subject_model.predict([[token_ids], [segment_ids]])
@@ -229,16 +230,14 @@ def extract_spoes(text):
             for _start, predicate1 in zip(*start):
                 for _end, predicate2 in zip(*end):
                     if _start <= _end and predicate1 == predicate2:
-                        spoes.append((subject, predicate1, (_start, _end)))
+                        spoes.append(
+                            ((mapping[subject[0]][0],
+                              mapping[subject[1]][-1]), predicate1,
+                             (mapping[_start][0], mapping[_end][-1]))
+                        )
                         break
-        return [(
-            tokenizer.decode(
-                token_ids[0, s[0]:s[1] + 1], tokens[s[0]:s[1] + 1]
-            ), id2predicate[p],
-            tokenizer.decode(
-                token_ids[0, o[0]:o[1] + 1], tokens[o[0]:o[1] + 1]
-            )
-        ) for s, p, o in spoes]
+        return [(text[s[0]:s[1] + 1], id2predicate[p], text[o[0]:o[1] + 1])
+                for s, p, o, in spoes]
     else:
         return []
 
