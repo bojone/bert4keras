@@ -346,18 +346,21 @@ class Tokenizer(BasicTokenizer):
     def rematch(self, text, tokens):
         """给出原始的text和tokenize后的tokens的映射关系
         """
-        if self._do_lower_case:
-            if is_py2:
-                text = unicode(text)
-            normalized_text, char_mapping = '', []
-            for i, ch in enumerate(text):
+        if is_py2:
+            text = unicode(text)
+
+        normalized_text, char_mapping = '', []
+        for i, ch in enumerate(text):
+            if self._do_lower_case:
                 ch = unicodedata.normalize('NFD', ch)
                 ch = ''.join([c for c in ch if unicodedata.category(c) != 'Mn'])
-                normalized_text += ch
-                char_mapping.extend([i] * len(ch))
-            text = normalized_text.lower()
-        else:
-            char_mapping = list(range(len(text)))
+            ch = ''.join([
+                c for c in ch
+                if not (ord(c) == 0 or ord(c) == 0xfffd or self._is_control(c))
+            ])
+            normalized_text += ch
+            char_mapping.extend([i] * len(ch))
+        text = normalized_text.lower()
 
         token_mapping, offset = [], 0
         for token in tokens:
