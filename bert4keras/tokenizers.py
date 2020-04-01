@@ -45,9 +45,7 @@ def load_vocab(dict_path, encoding='utf-8', simplified=False, startwith=None):
 class BasicTokenizer(object):
     """分词器基类
     """
-    def __init__(
-        self, token_start='[CLS]', token_end='[SEP]', do_lower_case=False
-    ):
+    def __init__(self, token_start='[CLS]', token_end='[SEP]'):
         """初始化
         """
         self._token_pad = '[PAD]'
@@ -55,19 +53,10 @@ class BasicTokenizer(object):
         self._token_mask = '[MASK]'
         self._token_start = token_start
         self._token_end = token_end
-        self._do_lower_case = do_lower_case
 
     def tokenize(self, text, max_length=None):
         """分词函数
         """
-        if self._do_lower_case:
-            if is_py2:
-                text = unicode(text)
-            text = unicodedata.normalize('NFD', text)
-            text = ''.join([
-                ch for ch in text if unicodedata.category(ch) != 'Mn'
-            ])
-            text = text.lower()
 
         tokens = self._tokenize(text)
         if self._token_start is not None:
@@ -190,13 +179,14 @@ class Tokenizer(BasicTokenizer):
     """Bert原生分词器
     纯Python实现，代码修改自keras_bert的tokenizer实现
     """
-    def __init__(self, token_dict, *args, **kwargs):
+    def __init__(self, token_dict, do_lower_case=False, *args, **kwargs):
         """初始化
         """
         super(Tokenizer, self).__init__(*args, **kwargs)
         if is_string(token_dict):
             token_dict = load_vocab(token_dict)
 
+        self._do_lower_case = do_lower_case
         self._token_dict = token_dict
         self._token_dict_inv = {v: k for k, v in token_dict.items()}
         self._vocab_size = len(token_dict)
@@ -252,6 +242,15 @@ class Tokenizer(BasicTokenizer):
     def _tokenize(self, text):
         """基本分词函数
         """
+        if self._do_lower_case:
+            if is_py2:
+                text = unicode(text)
+            text = unicodedata.normalize('NFD', text)
+            text = ''.join([
+                ch for ch in text if unicodedata.category(ch) != 'Mn'
+            ])
+            text = text.lower()
+
         spaced = ''
         for ch in text:
             if self._is_punctuation(ch) or self._is_cjk_character(ch):
