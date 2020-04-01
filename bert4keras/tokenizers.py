@@ -362,7 +362,7 @@ class Tokenizer(BasicTokenizer):
         token_mapping, offset = [], 0
         for token in tokens:
             if self._is_special(token):
-                token_mapping = []
+                token_mapping.append([])
             else:
                 token = self.stem(token)
                 start = text[offset:].index(token) + offset
