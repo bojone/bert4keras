@@ -164,15 +164,6 @@ class BasicTokenizer(object):
         """
         raise NotImplementedError
 
-    @staticmethod
-    def rematch(text, tokens):
-        """利用dtw给出原始的text和tokenize后的tokens的映射关系
-        """
-        from dtw import dtw
-        notin = lambda i, j: float(i not in j)
-        mapping = dtw(text, tokens, dist=notin)
-        return mapping[3]
-
 
 class Tokenizer(BasicTokenizer):
     """Bert原生分词器
@@ -351,6 +342,35 @@ class Tokenizer(BasicTokenizer):
         """判断是不是有特殊含义的符号
         """
         return bool(ch) and (ch[0] == '[') and (ch[-1] == ']')
+
+    def rematch(self, text, tokens):
+        """给出原始的text和tokenize后的tokens的映射关系
+        """
+        if self._do_lower_case:
+            if is_py2:
+                text = unicode(text)
+            normalized_text, char_mapping = '', []
+            for i, ch in enumerate(text):
+                ch = unicodedata.normalize('NFD', ch)
+                ch = ''.join([c for c in ch if unicodedata.category(c) != 'Mn'])
+                normalized_text += ch
+                char_mapping.extend([i] * len(ch))
+            text = normalized_text.lower()
+        else:
+            char_mapping = list(range(len(text)))
+
+        token_mapping, offset = [], 0
+        for token in tokens:
+            if self._is_special(token):
+                token_mapping = []
+            else:
+                token = self.stem(token)
+                start = text[offset:].index(token) + offset
+                end = start + len(token)
+                token_mapping.append(char_mapping[start:end])
+                offset = end
+
+        return token_mapping
 
 
 class SpTokenizer(BasicTokenizer):
