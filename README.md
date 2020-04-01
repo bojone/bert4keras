@@ -58,6 +58,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 - 注2：下载下来的ELECTRA权重，如果没有json配置文件的话，参考<a href="https://github.com/ymcui/Chinese-ELECTRA/issues/1">这里</a>自己改一个。
 
 ## 更新
+- <strong>2020.04.01</strong>: `Tokenizer`增加`rematch`方法，给出分词结果与原序列的映射关系。
 - <strong>2020.03.30</strong>: 尽量统一py文件的写法。
 - <strong>2020.03.25</strong>: 支持ELECTRA。
 - <strong>2020.03.24</strong>: 继续加强`DataGenerator`，允许传入迭代器时进行局部shuffle。
