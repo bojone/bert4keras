@@ -471,6 +471,27 @@ def delete_arguments(*arguments):
     return actual_decorator
 
 
+def groupby(iterable, key=None):
+    """类似itertools.groupby，但这里的key是iterable对象
+    """
+    if key is None:
+        key = iterable
+
+    result = []
+    for i, (k, v) in enumerate(zip(key, iterable)):
+        if i == 0:
+            result.append((k, [v]))
+            last_k = k
+        else:
+            if k == last_k:
+                result[-1][1].append(v)
+            else:
+                result.append((k, [v]))
+                last_k = k
+
+    return result
+
+
 class Hook:
     """注入uniout模块，实现import时才触发
     """
