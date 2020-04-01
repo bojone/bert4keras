@@ -26,7 +26,7 @@ def load_vocab(dict_path, encoding='utf-8', simplified=False, startwith=None):
             if t not in new_token_dict:
                 keep = True
                 if len(t) > 1:
-                    for c in (t[2:] if t[:2] == '##' else t):
+                    for c in Tokenizer.stem(t):
                         if (
                             Tokenizer._is_cjk_character(c) or
                             Tokenizer._is_punctuation(c)
@@ -290,6 +290,15 @@ class Tokenizer(BasicTokenizer):
             start = stop
 
         return tokens
+
+    @staticmethod
+    def stem(token):
+        """获取token的“词干”（如果是##开头，则自动去掉##）
+        """
+        if token[:2] == '##':
+            return token[2:]
+        else:
+            return token
 
     @staticmethod
     def _is_space(ch):
