@@ -175,6 +175,15 @@ class BasicTokenizer(object):
         """
         raise NotImplementedError
 
+    @staticmethod
+    def rematch(text, tokens):
+        """利用dtw给出原始的text和tokenize后的tokens的映射关系
+        """
+        from dtw import dtw
+        notin = lambda i, j: float(i not in j)
+        mapping = dtw(text, tokens, dist=notin)
+        return mapping[3]
+
 
 class Tokenizer(BasicTokenizer):
     """Bert原生分词器
