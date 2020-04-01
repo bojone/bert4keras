@@ -22,6 +22,7 @@ class Transformer(object):
         dropout_rate=None,  # Dropout比例
         embedding_size=None,  # 是否指定embedding_size
         attention_key_size=None,  # Attention中Q,K的head_size
+        sequence_length=None,  # 是否固定序列长度
         keep_tokens=None,  # 要保留的词ID列表
         layers=None,  # 外部传入的Keras层
         name=None,  # 模型名称
@@ -40,6 +41,7 @@ class Transformer(object):
         self.dropout_rate = dropout_rate or 0
         self.hidden_act = hidden_act
         self.embedding_size = embedding_size or hidden_size
+        self.sequence_length = sequence_length
         self.keep_tokens = keep_tokens
         self.attention_mask = None
         self.position_bias = None
@@ -270,8 +272,8 @@ class BERT(Transformer):
     def get_inputs(self):
         """BERT的输入是token_ids和segment_ids
         """
-        x_in = Input(shape=(None,), name='Input-Token')
-        s_in = Input(shape=(None,), name='Input-Segment')
+        x_in = Input(shape=(self.sequence_length,), name='Input-Token')
+        s_in = Input(shape=(self.sequence_length,), name='Input-Segment')
         return [x_in, s_in]
 
     def apply_embeddings(self, inputs):
@@ -946,7 +948,7 @@ class GPT2_ML(Transformer):
     def get_inputs(self):
         """GPT2_ML的输入是token_ids和segment_ids
         """
-        x_in = Input(shape=(None,), name='Input-Token')
+        x_in = Input(shape=(self.sequence_length,), name='Input-Token')
         return x_in
 
     def apply_embeddings(self, inputs):
@@ -1264,7 +1266,7 @@ class T5_Encoder(T5_Base):
     def get_inputs(self):
         """T5的Encoder的输入只有token_ids
         """
-        x_in = Input(shape=(None,), name='Encoder-Input-Token')
+        x_in = Input(shape=(self.sequence_length,), name='Encoder-Input-Token')
         return x_in
 
     def apply_embeddings(self, inputs):
@@ -1439,8 +1441,11 @@ class T5_Decoder(Transformer):
     def get_inputs(self):
         """T5的Decoder的输入为context序列和token_ids
         """
-        c_in = Input(shape=(None, self.hidden_size), name='Input-Context')
-        x_in = Input(shape=(None,), name='Decoder-Input-Token')
+        c_in = Input(
+            shape=(self.sequence_length, self.hidden_size),
+            name='Input-Context'
+        )
+        x_in = Input(shape=(self.sequence_length,), name='Decoder-Input-Token')
         return [c_in, x_in]
 
     def apply_embeddings(self, inputs):
