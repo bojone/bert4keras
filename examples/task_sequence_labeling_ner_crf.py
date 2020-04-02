@@ -161,7 +161,7 @@ def named_entity_recognize(text):
     segment_ids = [0] * len(token_ids)
     nodes = model.predict([[token_ids], [segment_ids]])[0]
     trans = K.eval(CRF.trans)
-    labels = viterbi_decode(nodes, trans)[1:-1]
+    labels = viterbi_decode(nodes, trans)
     entities, starting = [], False
     for i, label in enumerate(labels):
         if label > 0:
