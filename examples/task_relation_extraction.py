@@ -205,7 +205,7 @@ def extract_spoes(text):
     """抽取输入text所包含的三元组
     """
     tokens = tokenizer.tokenize(text, max_length=maxlen)
-    mapping = dict(enumerate(tokenizer.rematch(text, tokens)))
+    mapping = tokenizer.rematch(text, tokens)
     token_ids, segment_ids = tokenizer.encode(text, max_length=maxlen)
     # 抽取subject
     subject_preds = subject_model.predict([[token_ids], [segment_ids]])
