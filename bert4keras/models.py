@@ -238,6 +238,7 @@ class Transformer(object):
         """根据mapping将权重保存为checkpoint格式
         """
         mapping = mapping or self.variable_mapping()
+        mapping = {k: v for k, v in mapping.items() if k in self.layers}
 
         with tf.Graph().as_default():
             for layer, variables in mapping.items():
