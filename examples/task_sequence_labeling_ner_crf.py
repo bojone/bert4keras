@@ -175,10 +175,9 @@ def named_entity_recognize(text):
         else:
             starting = False
 
-    return {
-        text[mapping[w[0]][0]:mapping[w[-1]][-1] + 1]: l
-        for w, l in entities
-    }
+    return [
+        (text[mapping[w[0]][0]:mapping[w[-1]][-1] + 1], l) for w, l in entities
+    ]
 
 
 def evaluate(data):
