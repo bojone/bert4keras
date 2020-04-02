@@ -146,7 +146,7 @@ def word_segment(text):
     """分词函数
     """
     tokens = tokenizer.tokenize(text)
-    while len(tokens) > 512:
+    while len(tokens) > 510:
         tokens.pop(-2)
     token_ids = tokenizer.tokens_to_ids(tokens)
     segment_ids = [0] * len(token_ids)
