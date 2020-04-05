@@ -311,7 +311,7 @@ class TrainingDatasetUniLM(TrainingDatasetGPT):
             features = tf.io.parse_single_example(serialized, features)
             token_ids = features['token_ids']
             segment = K.random_uniform(
-                1, minval=1, maxval=sequence_length, dtype='int64'
+                [1], minval=1, maxval=sequence_length, dtype='int64'
             )[0]
             segment_ids = K.one_hot(segment, sequence_length)
             segment_ids = K.cast(K.cumsum(segment_ids), 'int64')
