@@ -301,7 +301,7 @@ class TrainingDatasetUniLM(TrainingDatasetGPT):
     """预训练数据集生成器（UniLM模式，Seq2Seq模型）
     """
     @staticmethod
-    def load_tfrecord(record_names, sequence_length, batch_size, sep_id):
+    def load_tfrecord(record_names, sequence_length, batch_size, token_sep_id):
         """给原方法补上parse_function
         """
         def parse_function(serialized):
@@ -316,7 +316,7 @@ class TrainingDatasetUniLM(TrainingDatasetGPT):
             segment_ids = K.one_hot(segment, sequence_length)
             segment_ids = K.cast(K.cumsum(segment_ids), 'int64')
             token_ids_1 = token_ids[:segment]
-            token_ids_2 = K.zeros_like(token_ids[:1]) + sep_id
+            token_ids_2 = K.zeros_like(token_ids[:1]) + token_sep_id
             token_ids_3 = token_ids[segment:-1]
             token_ids = K.concatenate([token_ids_1, token_ids_2, token_ids_3])
             x = {
