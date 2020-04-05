@@ -138,9 +138,9 @@ def build_transformer_model_with_lm():
         """计算loss的函数，需要封装为一个层
         """
         y_true, y_pred = inputs
-        y_true, y_pred = y_true[:, 1:], y_pred[:, :-1]
         mask = search_layer(y_pred, 'Embedding-Token').output_mask
         mask = K.cast(mask[:, 1:], floatx)
+        y_true, y_pred = y_true[:, 1:], y_pred[:, :-1]
         loss = K.sparse_categorical_crossentropy(
             y_true, y_pred, from_logits=True
         )
@@ -151,9 +151,9 @@ def build_transformer_model_with_lm():
         """计算准确率的函数，需要封装为一个层
         """
         y_true, y_pred = inputs
-        y_true, y_pred = K.cast(y_true[:, 1:], floatx), y_pred[:, :-1]
         mask = search_layer(y_pred, 'Embedding-Token').output_mask
         mask = K.cast(mask[:, 1:], floatx)
+        y_true, y_pred = K.cast(y_true[:, 1:], floatx), y_pred[:, :-1]
         acc = keras.metrics.sparse_categorical_accuracy(y_true, y_pred)
         acc = K.sum(acc * mask) / (K.sum(mask) + K.epsilon())
         return acc
@@ -187,12 +187,12 @@ def build_transformer_model_with_unilm():
         """计算loss的函数，需要封装为一个层
         """
         y_true, y_pred = inputs
-        y_true, y_pred = y_true[:, 1:], y_pred[:, :-1]
         mask1 = search_layer(y_pred, 'Embedding-Token').output_mask
         mask1 = K.cast(mask1[:, 1:], floatx)
         mask2 = search_layer(y_pred, 'Input-Segment').output
         mask2 = K.cast(mask2[:, 1:], floatx)
         mask = mask1 * mask2
+        y_true, y_pred = y_true[:, 1:], y_pred[:, :-1]
         loss = K.sparse_categorical_crossentropy(
             y_true, y_pred, from_logits=True
         )
@@ -203,12 +203,12 @@ def build_transformer_model_with_unilm():
         """计算准确率的函数，需要封装为一个层
         """
         y_true, y_pred = inputs
-        y_true, y_pred = K.cast(y_true[:, 1:], floatx), y_pred[:, :-1]
         mask1 = search_layer(y_pred, 'Embedding-Token').output_mask
         mask1 = K.cast(mask1[:, 1:], floatx)
         mask2 = search_layer(y_pred, 'Input-Segment').output
         mask2 = K.cast(mask2[:, 1:], floatx)
         mask = mask1 * mask2
+        y_true, y_pred = K.cast(y_true[:, 1:], floatx), y_pred[:, :-1]
         acc = keras.metrics.sparse_categorical_accuracy(y_true, y_pred)
         acc = K.sum(acc * mask) / (K.sum(mask) + K.epsilon())
         return acc
