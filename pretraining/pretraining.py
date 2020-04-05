@@ -66,6 +66,15 @@ elif model == 'gpt':
         batch_size=batch_size // grad_accum_steps,
     )
 
+elif model == 'unilm':
+
+    dataset = TrainingDatasetUniLM.load_tfrecord(
+        record_names=corpus_paths,
+        sequence_length=sequence_length,
+        batch_size=batch_size // grad_accum_steps,
+        token_sep_id=3,  # 这里需要自己指定[SEP]的id
+    )
+
 
 def build_transformer_model_with_mlm():
     """带mlm的bert模型
@@ -162,6 +171,61 @@ def build_transformer_model_with_lm():
     return bert, train_model, loss
 
 
+def build_transformer_model_with_unilm():
+    """带unilm的bert模型
+    """
+    bert = build_transformer_model(
+        config_path,
+        with_mlm='linear',
+        application='unilm',
+        return_keras_model=False
+    )
+    token_ids = bert.model.input[0]
+    proba = bert.model.output
+
+    def unilm_loss(inputs):
+        """计算loss的函数，需要封装为一个层
+        """
+        y_true, y_pred = inputs
+        y_true, y_pred = y_true[:, 1:], y_pred[:, :-1]
+        mask1 = search_layer(y_pred, 'Embedding-Token').output_mask
+        mask1 = K.cast(mask1[:, 1:], floatx)
+        mask2 = search_layer(y_pred, 'Input-Segment').output
+        mask2 = K.cast(mask2[:, 1:], floatx)
+        mask = mask1 * mask2
+        loss = K.sparse_categorical_crossentropy(
+            y_true, y_pred, from_logits=True
+        )
+        loss = K.sum(loss * mask) / (K.sum(mask) + K.epsilon())
+        return loss
+
+    def unilm_acc(inputs):
+        """计算准确率的函数，需要封装为一个层
+        """
+        y_true, y_pred = inputs
+        y_true, y_pred = K.cast(y_true[:, 1:], floatx), y_pred[:, :-1]
+        mask1 = search_layer(y_pred, 'Embedding-Token').output_mask
+        mask1 = K.cast(mask1[:, 1:], floatx)
+        mask2 = search_layer(y_pred, 'Input-Segment').output
+        mask2 = K.cast(mask2[:, 1:], floatx)
+        mask = mask1 * mask2
+        acc = keras.metrics.sparse_categorical_accuracy(y_true, y_pred)
+        acc = K.sum(acc * mask) / (K.sum(mask) + K.epsilon())
+        return acc
+
+    unilm_loss = Lambda(unilm_loss, name='unilm_loss')([token_ids, proba])
+    unilm_acc = Lambda(unilm_acc, name='unilm_acc')([token_ids, proba])
+
+    train_model = Model(bert.model.inputs, [unilm_loss, unilm_acc])
+
+    loss = {
+        'unilm_loss': lambda y_true, y_pred: y_pred,
+        'unilm_acc': lambda y_true, y_pred: K.stop_gradient(y_pred),
+    }
+
+    return bert, train_model, loss
+
+
 def build_transformer_model_for_pretraining():
     """构建训练模型，通用于TPU/GPU
     注意全程要用keras标准的层写法，一些比较灵活的“移花接木”式的
@@ -173,6 +237,8 @@ def build_transformer_model_for_pretraining():
         bert, train_model, loss = build_transformer_model_with_mlm()
     elif model == 'gpt':
         bert, train_model, loss = build_transformer_model_with_lm()
+    elif model == 'unilm':
+        bert, train_model, loss = build_transformer_model_with_unilm()
 
     # 优化器
     optimizer = extend_with_weight_decay(Adam)
