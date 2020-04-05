@@ -297,6 +297,43 @@ class TrainingDatasetGPT(TrainingDataset):
         )
 
 
+class TrainingDatasetUniLM(TrainingDatasetGPT):
+    """预训练数据集生成器（UniLM模式，Seq2Seq模型）
+    """
+    @staticmethod
+    def load_tfrecord(record_names, sequence_length, batch_size, sep_id):
+        """给原方法补上parse_function
+        """
+        def parse_function(serialized):
+            features = {
+                'token_ids': tf.io.FixedLenFeature([sequence_length], tf.int64),
+            }
+            features = tf.io.parse_single_example(serialized, features)
+            token_ids = features['token_ids']
+            segment = K.random_uniform(
+                1, minval=1, maxval=sequence_length + 1, dtype='int64'
+            )[0]
+            segment_ids = K.one_hot(segment, sequence_length)
+            segment_ids = K.cast(K.cumsum(segment_ids), 'int64')
+            token_ids_1 = token_ids[:segment]
+            token_ids_2 = K.zeros_like(token_ids[:1]) + sep_id
+            token_ids_3 = token_ids[segment:-1]
+            token_ids = K.concatenate([token_ids_1, token_ids_2, token_ids_3])
+            x = {
+                'Input-Token': token_ids,
+                'Input-Segment': segment_ids,
+            }
+            y = {
+                'unilm_loss': K.zeros_like(token_ids[..., 0]),
+                'unilm_acc': K.zeros_like(token_ids[..., 0]),
+            }
+            return x, y
+
+        return TrainingDataset.load_tfrecord(
+            record_names, batch_size, parse_function
+        )
+
+
 if __name__ == '__main__':
 
     from bert4keras.tokenizers import Tokenizer
