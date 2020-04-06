@@ -4,7 +4,6 @@
 import numpy as np
 import tensorflow as tf
 from bert4keras.backend import keras, K
-from bert4keras.backend import search_layer
 from bert4keras.backend import sequence_masking
 from bert4keras.backend import pool1d
 from bert4keras.backend import divisible_temporal_padding
@@ -540,51 +539,6 @@ class FeedForward(Layer):
         base_config = super(FeedForward, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
-
-class EmbeddingDense(Layer):
-    """运算跟Dense一致，但kernel用Embedding层的embeddings矩阵。
-    根据Embedding层的名字来搜索定位Embedding层。
-    """
-    def __init__(
-        self, embedding_name, activation='softmax', use_bias=True, **kwargs
-    ):
-        super(EmbeddingDense, self).__init__(**kwargs)
-        self.embedding_name = embedding_name
-        self.activation = activations.get(activation)
-        self.use_bias = use_bias
-
-    def call(self, inputs):
-        if not hasattr(self, 'kernel'):
-            embedding_layer = search_layer(inputs, self.embedding_name)
-            if embedding_layer is None:
-                raise Exception('Embedding layer not found')
-
-            self.kernel = K.transpose(embedding_layer.embeddings)
-            self.units = K.int_shape(self.kernel)[1]
-            if self.use_bias:
-                self.bias = self.add_weight(
-                    name='bias', shape=(self.units,), initializer='zeros'
-                )
-
-        outputs = K.dot(inputs, self.kernel)
-        if self.use_bias:
-            outputs = K.bias_add(outputs, self.bias)
-        outputs = self.activation(outputs)
-        return outputs
-
-    def compute_output_shape(self, input_shape):
-        return input_shape[:-1] + (self.units,)
-
-    def get_config(self):
-        config = {
-            'embedding_name': self.embedding_name,
-            'activation': activations.serialize(self.activation),
-            'use_bias': self.use_bias,
-        }
-        base_config = super(EmbeddingDense, self).get_config()
-        return dict(list(base_config.items()) + list(config.items()))
-
-
 class ConditionalRandomField(Layer):
     """纯Keras实现CRF层
     CRF层本质上是一个带训练参数的loss计算层。
@@ -880,7 +834,6 @@ custom_objects = {
     'RelativePositionEmbedding': RelativePositionEmbedding,
     'RelativePositionEmbeddingT5': RelativePositionEmbeddingT5,
     'FeedForward': FeedForward,
-    'EmbeddingDense': EmbeddingDense,
     'ConditionalRandomField': ConditionalRandomField,
     'MaximumEntropyMarkovModel': MaximumEntropyMarkovModel,
 }

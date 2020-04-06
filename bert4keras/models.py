@@ -202,10 +202,21 @@ class Transformer(object):
         mapping = {k: v for k, v in mapping.items() if k in self.layers}
 
         weight_value_pairs = []
-        for layer, variables in mapping.items():
-            layer = self.layers[layer]
+        for layer_name, variables in mapping.items():
+            layer = self.layers[layer_name]
             weights = layer.trainable_weights
-            values = [self.load_variable(checkpoint, v) for v in variables]
+            # 如果是'Proba'层，我们直接使用与'Embedding-Token'相同的参数即可
+            # 'Embedding-Token'层是将所有字符编号转成对应Embedding信号的层
+            # 'Proba'层相当于是将Embedding信号转成对应字符编号的层，所以'Proba'层可以跟'Embedding-Token'共用一套权值
+            if layer_name in ['MLM-Proba','LM-Proba','Dencoder-Output-LM-Proba']:
+                # 获得'Embedding-Token'层的权值
+                word_embeddings = self.load_variable(checkpoint, mapping['Embedding-Token'][0])
+                # transpose矩阵转置，'MLM-Proba'层参数跟'Embedding-Token'层参数行列刚好是相反的，所以这里需要转置
+                word_embeddings = K.transpose(word_embeddings)
+                values = [word_embeddings]
+            else:
+                # 其他层正常load参数就可以
+                values = [self.load_variable(checkpoint, v) for v in variables]
 
             if isinstance(layer, MultiHeadAttention):
                 """如果key_size不等于head_size，则可以通过
@@ -261,14 +272,17 @@ class BERT(Transformer):
         with_pool=False,  # 是否包含Pool部分
         with_nsp=False,  # 是否包含NSP部分
         with_mlm=False,  # 是否包含MLM部分
+        pool_activation='tanh', # pool激活函数设置
+        mlm_activation='softmax', # mlm激活函数设置
         **kwargs  # 其余参数
     ):
         super(BERT, self).__init__(**kwargs)
         self.max_position = max_position
         self.with_pool = with_pool
-        self.with_pool = with_pool
         self.with_nsp = with_nsp
         self.with_mlm = with_mlm
+        self.pool_activation = pool_activation
+        self.mlm_activation = mlm_activation
 
     def get_inputs(self):
         """BERT的输入是token_ids和segment_ids
@@ -429,7 +443,7 @@ class BERT(Transformer):
                 function=lambda x: x[:, 0],
                 name='Pooler'
             )
-            pool_activation = 'tanh' if self.with_pool is True else self.with_pool
+            pool_activation = 'tanh' if self.with_pool is True else self.pool_activation
             x = self.apply(
                 inputs=x,
                 layer=Dense,
@@ -470,11 +484,11 @@ class BERT(Transformer):
                 hidden_initializer=self.initializer,
                 name='MLM-Norm'
             )
-            mlm_activation = 'softmax' if self.with_mlm is True else self.with_mlm
+            mlm_activation = 'softmax' if self.with_mlm is True else self.mlm_activation
             x = self.apply(
                 inputs=x,
-                layer=EmbeddingDense,
-                embedding_name='Embedding-Token',
+                layer=Dense,
+                units=self.vocab_size,
                 activation=mlm_activation,
                 name='MLM-Proba'
             )
@@ -1081,12 +1095,12 @@ class GPT2_ML(Transformer):
 
         # Language Model部分
         x = self.apply(
-            inputs=x,
-            layer=EmbeddingDense,
-            embedding_name='Embedding-Token',
-            activation=self.final_activation,
-            name='LM-Proba'
-        )
+                inputs=x,
+                layer=Dense,
+                units=self.vocab_size,
+                activation=self.final_activation,
+                name='LM-Proba'
+            )
 
         return x
 
@@ -1646,10 +1660,9 @@ class T5_Decoder(Transformer):
                 )
             x = self.apply(
                 inputs=x,
-                layer=EmbeddingDense,
-                embedding_name='Embedding-Token',
+                layer=Dense,
+                units=self.vocab_size,
                 activation=self.with_lm,
-                use_bias=False,
                 name='Dencoder-Output-LM-Proba'
             )
 
