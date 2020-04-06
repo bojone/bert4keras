@@ -6,7 +6,7 @@ from bert4keras.snippets import is_string, is_py2
 from bert4keras.snippets import open
 
 
-def load_vocab(dict_path, encoding='utf-8', simplified=False, startwith=None):
+def load_vocab(dict_path, encoding='utf-8', simplified=False, startswith=None):
     """从bert的词典文件中读取词典
     """
     token_dict = {}
@@ -17,8 +17,8 @@ def load_vocab(dict_path, encoding='utf-8', simplified=False, startwith=None):
 
     if simplified:  # 过滤冗余部分token
         new_token_dict, keep_tokens = {}, []
-        startwith = startwith or []
-        for t in startwith:
+        startswith = startswith or []
+        for t in startswith:
             new_token_dict[t] = len(new_token_dict)
             keep_tokens.append(token_dict[t])
 
@@ -36,6 +36,8 @@ def load_vocab(dict_path, encoding='utf-8', simplified=False, startwith=None):
                 if keep:
                     new_token_dict[t] = len(new_token_dict)
                     keep_tokens.append(token_dict[t])
+                else:
+                    print t, [t]
 
         return new_token_dict, keep_tokens
     else:
