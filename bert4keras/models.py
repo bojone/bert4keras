@@ -1111,7 +1111,9 @@ class GPT2_ML(Transformer):
                 import tensorflow as tf
                 seq_len = K.shape(s)[1]
                 with K.name_scope('attention_mask'):
-                    ones = K.ones((1, 1, seq_len, seq_len))
+                    # 用K.ones可能会有问题
+                    # 参考 https://github.com/tensorflow/tensorflow/issues/24938
+                    ones = tf.ones((1, 1, seq_len, seq_len))
                 a_mask = tf.linalg.band_part(ones, -1, 0)
                 return a_mask
 
@@ -1664,7 +1666,9 @@ class T5_Decoder(Transformer):
                 import tensorflow as tf
                 seq_len = K.shape(s)[1]
                 with K.name_scope('attention_mask'):
-                    ones = K.ones((1, 1, seq_len, seq_len))
+                    # 用K.ones可能会有问题
+                    # 参考 https://github.com/tensorflow/tensorflow/issues/24938
+                    ones = tf.ones((1, 1, seq_len, seq_len))
                 a_mask = tf.linalg.band_part(ones, -1, 0)
                 return a_mask
 
@@ -1753,6 +1757,8 @@ def extend_with_language_model(BaseModel):
                     import tensorflow as tf
                     seq_len = K.shape(s)[1]
                     with K.name_scope('attention_mask'):
+                        # 用K.ones可能会有问题
+                        # 参考 https://github.com/tensorflow/tensorflow/issues/24938
                         ones = tf.ones((1, 1, seq_len, seq_len))
                     a_mask = tf.linalg.band_part(ones, -1, 0)
                     return a_mask
@@ -1787,11 +1793,13 @@ def extend_with_unified_language_model(BaseModel):
 
                 def unilm_mask(s):
                     import tensorflow as tf
+                    s = K.cast(s, K.floatx())
                     seq_len = K.shape(s)[1]
                     with K.name_scope('attention_mask'):
+                        # 用K.ones可能会有问题
+                        # 参考 https://github.com/tensorflow/tensorflow/issues/24938
                         ones = tf.ones((1, 1, seq_len, seq_len))
                     a_mask = tf.linalg.band_part(ones, -1, 0)
-                    s = K.cast(s, K.floatx())
                     s_ex12 = K.expand_dims(K.expand_dims(s, 1), 2)
                     s_ex13 = K.expand_dims(K.expand_dims(s, 1), 3)
                     a_mask = (1 - s_ex13) * (1 - s_ex12) + s_ex13 * a_mask
