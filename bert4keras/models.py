@@ -1791,6 +1791,7 @@ def extend_with_unified_language_model(BaseModel):
                     with K.name_scope('attention_mask'):
                         ones = tf.ones((1, 1, seq_len, seq_len))
                     a_mask = tf.linalg.band_part(ones, -1, 0)
+                    s = K.cast(s, K.floatx())
                     s_ex12 = K.expand_dims(K.expand_dims(s, 1), 2)
                     s_ex13 = K.expand_dims(K.expand_dims(s, 1), 3)
                     a_mask = (1 - s_ex13) * (1 - s_ex12) + s_ex13 * a_mask
