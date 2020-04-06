@@ -320,8 +320,8 @@ class TrainingDatasetUniLM(TrainingDatasetGPT):
             token_ids_3 = token_ids[segment:-1]
             token_ids = K.concatenate([token_ids_1, token_ids_2, token_ids_3])
             x = {
-                'Input-Token': K.cast(token_ids, dtype='float32'),
-                'Input-Segment': K.cast(segment_ids, dtype='float32'),
+                'Input-Token': token_ids,
+                'Input-Segment': segment_ids,
             }
             y = {
                 'unilm_loss': K.zeros([1]),
