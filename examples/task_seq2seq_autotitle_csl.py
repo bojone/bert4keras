@@ -45,7 +45,7 @@ test_data = load_data('/root/csl/test.tsv')
 token_dict, keep_tokens = load_vocab(
     dict_path=dict_path,
     simplified=True,
-    startwith=['[PAD]', '[UNK]', '[CLS]', '[SEP]'],
+    startswith=['[PAD]', '[UNK]', '[CLS]', '[SEP]'],
 )
 tokenizer = Tokenizer(token_dict, do_lower_case=True)
 

@@ -48,7 +48,7 @@ train_data.extend(webqa_data)  # 将SogouQA和WebQA按2:1的比例混合
 token_dict, keep_tokens = load_vocab(
     dict_path=dict_path,
     simplified=True,
-    startwith=['[PAD]', '[UNK]', '[CLS]', '[SEP]'],
+    startswith=['[PAD]', '[UNK]', '[CLS]', '[SEP]'],
 )
 tokenizer = Tokenizer(token_dict, do_lower_case=True)
 
