@@ -234,8 +234,8 @@ class TrainingDatasetRoBERTa(TrainingDataset):
                 'is_masked': K.cast(is_masked, K.floatx()),
             }
             y = {
-                'mlm_loss': K.zeros_like(token_ids[..., 0]),
-                'mlm_acc': K.zeros_like(token_ids[..., 0]),
+                'mlm_loss': K.zeros([1]),
+                'mlm_acc': K.zeros([1]),
             }
             return x, y
 
@@ -287,8 +287,8 @@ class TrainingDatasetGPT(TrainingDataset):
                 'Input-Segment': segment_ids,
             }
             y = {
-                'lm_loss': K.zeros_like(token_ids[..., 0]),
-                'lm_acc': K.zeros_like(token_ids[..., 0]),
+                'lm_loss': K.zeros([1]),
+                'lm_acc': K.zeros([1]),
             }
             return x, y
 
@@ -311,21 +311,21 @@ class TrainingDatasetUniLM(TrainingDatasetGPT):
             features = tf.io.parse_single_example(serialized, features)
             token_ids = features['token_ids']
             segment = K.random_uniform(
-                [1], minval=1, maxval=sequence_length, dtype='int64'
+                shape=[1], minval=1, maxval=sequence_length - 1, dtype='int64'
             )[0]
-            segment_ids = K.one_hot(segment, sequence_length)
+            segment_ids = K.one_hot(segment + 1, sequence_length)
             segment_ids = K.cast(K.cumsum(segment_ids), 'int64')
             token_ids_1 = token_ids[:segment]
-            token_ids_2 = K.zeros_like(token_ids[:1], dtype='int64') + token_sep_id
+            token_ids_2 = K.zeros([1], dtype='int64') + token_sep_id
             token_ids_3 = token_ids[segment:-1]
             token_ids = K.concatenate([token_ids_1, token_ids_2, token_ids_3])
             x = {
-                'Input-Token': token_ids,
-                'Input-Segment': segment_ids,
+                'Input-Token': K.cast(token_ids, dtype='float32'),
+                'Input-Segment': K.cast(segment_ids, dtype='float32'),
             }
             y = {
-                'unilm_loss': K.zeros_like(token_ids[..., 0]),
-                'unilm_acc': K.zeros_like(token_ids[..., 0]),
+                'unilm_loss': K.zeros([1]),
+                'unilm_acc': K.zeros([1]),
             }
             return x, y
 
@@ -388,6 +388,17 @@ if __name__ == '__main__':
     elif model == 'gpt':
 
         TD = TrainingDatasetGPT(tokenizer, sequence_length=sequence_length)
+
+        TD.process(
+            corpus=tqdm(some_texts()),
+            record_name='../corpus_tfrecord/corpus.tfrecord',
+            workers=workers,
+            max_queue_size=max_queue_size,
+        )
+
+    elif model == 'unilm':
+
+        TD = TrainingDatasetUniLM(tokenizer, sequence_length=sequence_length)
 
         TD.process(
             corpus=tqdm(some_texts()),
