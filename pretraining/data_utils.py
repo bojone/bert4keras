@@ -363,7 +363,7 @@ if __name__ == '__main__':
         if texts:
             yield texts
 
-    assert model in ['roberta', 'gpt']  # 判断是否支持的模型类型
+    assert model in ['roberta', 'gpt', 'unilm']  # 判断是否支持的模型类型
 
     if model == 'roberta':
 
