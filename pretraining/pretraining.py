@@ -131,29 +131,37 @@ def build_transformer_model_with_lm():
         application='lm',
         return_keras_model=False
     )
-    token_ids = bert.model.input[0]
+    token_ids = bert.model.inputs[0]
     proba = bert.model.output
 
-    def lm_loss(inputs):
+    def lm_loss(inputs, mask=None):
         """计算loss的函数，需要封装为一个层
         """
         y_true, y_pred = inputs
-        mask = search_layer(y_pred, 'Embedding-Token').output_mask
-        mask = K.cast(mask[:, 1:], floatx)
         y_true, y_pred = y_true[:, 1:], y_pred[:, :-1]
+
+        if mask is None:
+            mask = 1.0
+        else:
+            mask = K.cast(mask[1][:, 1:], floatx)
+
         loss = K.sparse_categorical_crossentropy(
             y_true, y_pred, from_logits=True
         )
         loss = K.sum(loss * mask) / (K.sum(mask) + K.epsilon())
         return loss
 
-    def lm_acc(inputs):
+    def lm_acc(inputs, mask=None):
         """计算准确率的函数，需要封装为一个层
         """
         y_true, y_pred = inputs
-        mask = search_layer(y_pred, 'Embedding-Token').output_mask
-        mask = K.cast(mask[:, 1:], floatx)
         y_true, y_pred = K.cast(y_true[:, 1:], floatx), y_pred[:, :-1]
+
+        if mask is None:
+            mask = 1.0
+        else:
+            mask = K.cast(mask[1][:, 1:], floatx)
+
         acc = keras.metrics.sparse_categorical_accuracy(y_true, y_pred)
         acc = K.sum(acc * mask) / (K.sum(mask) + K.epsilon())
         return acc
@@ -180,41 +188,52 @@ def build_transformer_model_with_unilm():
         application='unilm',
         return_keras_model=False
     )
-    token_ids = bert.model.input[0]
+    token_ids = bert.model.inputs[0]
+    segment_ids = bert.model.inputs[1]
     proba = bert.model.output
 
-    def unilm_loss(inputs):
+    def unilm_loss(inputs, mask=None):
         """计算loss的函数，需要封装为一个层
         """
-        y_true, y_pred = inputs
-        mask1 = search_layer(y_pred, 'Embedding-Token').output_mask
-        mask1 = K.cast(mask1[:, 1:], floatx)
-        mask2 = search_layer(y_pred, 'Input-Segment').output
-        mask2 = K.cast(mask2[:, 1:], floatx)
-        mask = mask1 * mask2
+        y_true, y_pred, segment_ids = inputs
         y_true, y_pred = y_true[:, 1:], y_pred[:, :-1]
+
+        if mask is None:
+            mask = 1.0
+        else:
+            mask = K.cast(mask[1][:, 1:], floatx)
+
+        segment_ids = K.cast(segment_ids, floatx)
+        mask = mask * segment_ids[:, 1:]
+
         loss = K.sparse_categorical_crossentropy(
             y_true, y_pred, from_logits=True
         )
         loss = K.sum(loss * mask) / (K.sum(mask) + K.epsilon())
         return loss
 
-    def unilm_acc(inputs):
+    def unilm_acc(inputs, mask=None):
         """计算准确率的函数，需要封装为一个层
         """
-        y_true, y_pred = inputs
-        mask1 = search_layer(y_pred, 'Embedding-Token').output_mask
-        mask1 = K.cast(mask1[:, 1:], floatx)
-        mask2 = search_layer(y_pred, 'Input-Segment').output
-        mask2 = K.cast(mask2[:, 1:], floatx)
-        mask = mask1 * mask2
+        y_true, y_pred, segment_ids = inputs
         y_true, y_pred = K.cast(y_true[:, 1:], floatx), y_pred[:, :-1]
+
+        if mask is None:
+            mask = 1.0
+        else:
+            mask = K.cast(mask[1][:, 1:], floatx)
+
+        segment_ids = K.cast(segment_ids, floatx)
+        mask = mask * segment_ids[:, 1:]
+
         acc = keras.metrics.sparse_categorical_accuracy(y_true, y_pred)
         acc = K.sum(acc * mask) / (K.sum(mask) + K.epsilon())
         return acc
 
-    unilm_loss = Lambda(unilm_loss, name='unilm_loss')([token_ids, proba])
-    unilm_acc = Lambda(unilm_acc, name='unilm_acc')([token_ids, proba])
+    unilm_loss = Lambda(unilm_loss,
+                        name='unilm_loss')([token_ids, proba, segment_ids])
+    unilm_acc = Lambda(unilm_acc,
+                       name='unilm_acc')([token_ids, proba, segment_ids])
 
     train_model = Model(bert.model.inputs, [unilm_loss, unilm_acc])
 
