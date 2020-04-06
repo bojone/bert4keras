@@ -230,10 +230,9 @@ def build_transformer_model_with_unilm():
         acc = K.sum(acc * mask) / (K.sum(mask) + K.epsilon())
         return acc
 
-    unilm_loss = Lambda(unilm_loss,
-                        name='unilm_loss')([token_ids, proba, segment_ids])
-    unilm_acc = Lambda(unilm_acc,
-                       name='unilm_acc')([token_ids, proba, segment_ids])
+    token_proba_segment = [token_ids, proba, segment_ids]
+    unilm_loss = Lambda(unilm_loss, name='unilm_loss')(token_proba_segment)
+    unilm_acc = Lambda(unilm_acc, name='unilm_acc')(token_proba_segment)
 
     train_model = Model(bert.model.inputs, [unilm_loss, unilm_acc])
 
