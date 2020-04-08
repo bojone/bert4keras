@@ -2,6 +2,7 @@
 - Our light reimplement of bert for keras
 - 更清晰、更轻量级的keras版bert
 - 个人博客：https://kexue.fm/
+- 在线文档：http://bert4keras.spaces.ac.cn/ （还在构建中）
 
 ## 说明
 这是笔者重新实现的keras版的bert，致力于用尽可能清爽的代码来实现结合bert和keras。
