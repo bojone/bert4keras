@@ -36,8 +36,6 @@ def load_vocab(dict_path, encoding='utf-8', simplified=False, startswith=None):
                 if keep:
                     new_token_dict[t] = len(new_token_dict)
                     keep_tokens.append(token_dict[t])
-                else:
-                    print t, [t]
 
         return new_token_dict, keep_tokens
     else:
