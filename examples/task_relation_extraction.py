@@ -114,14 +114,9 @@ class data_generator(DataGenerator):
                 if len(batch_token_ids) == self.batch_size or is_end:
                     batch_token_ids = sequence_padding(batch_token_ids)
                     batch_segment_ids = sequence_padding(batch_segment_ids)
-                    batch_subject_labels = sequence_padding(
-                        batch_subject_labels, padding=np.zeros(2)
-                    )
+                    batch_subject_labels = sequence_padding(batch_subject_labels)
                     batch_subject_ids = np.array(batch_subject_ids)
-                    batch_object_labels = sequence_padding(
-                        batch_object_labels,
-                        padding=np.zeros((len(predicate2id), 2))
-                    )
+                    batch_object_labels = sequence_padding(batch_object_labels)
                     yield [
                         batch_token_ids, batch_segment_ids,
                         batch_subject_labels, batch_subject_ids,
