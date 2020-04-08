@@ -266,7 +266,6 @@ class BERT(Transformer):
         super(BERT, self).__init__(**kwargs)
         self.max_position = max_position
         self.with_pool = with_pool
-        self.with_pool = with_pool
         self.with_nsp = with_nsp
         self.with_mlm = with_mlm
 
