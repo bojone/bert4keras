@@ -147,7 +147,7 @@ def viterbi_decode(nodes, trans):
         idxs = M.argmax(0)
         scores = M.max(0).reshape((-1, 1))
         paths = np.concatenate([paths[:, idxs], labels], 0)
-    return paths[:, scores[0].argmax()]
+    return paths[:, scores[:, 0].argmax()]
 
 
 def named_entity_recognize(text):
