@@ -208,12 +208,15 @@ def sequence_padding(inputs, length=None, padding=0):
     if length is None:
         length = max([len(x) for x in inputs])
 
-    outputs = np.array([
-        np.concatenate([x, [padding] *
-                        (length - len(x))]) if len(x) < length else x[:length]
-        for x in inputs
-    ])
-    return outputs
+    pad_width = [(0, 0) for _ in np.shape(inputs[0])]
+    outputs = []
+    for x in inputs:
+        x = x[:length]
+        pad_width[0] = (0, length - len(x))
+        x = np.pad(x, pad_width, 'constant', constant_values=padding)
+        outputs.append(x)
+
+    return np.array(outputs)
 
 
 def is_one_of(x, ys):
