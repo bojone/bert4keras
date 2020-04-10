@@ -946,6 +946,24 @@ def extend_with_exponential_moving_average(BaseOptimizer):
     return NewOptimizer
 
 
+@export_to_custom_objects
+def extend_with_gradient_centralization(BaseOptimizer):
+    """返回新的优化器类，将梯度零中心化
+    """
+    class NewOptimizer(BaseOptimizer):
+        """带梯度零中心化的优化器
+        """
+        def get_gradients(self, loss, params):
+            grads = super(NewOptimizer, self).get_gradients(loss, params)
+            grads = [
+                K.mean(g, axis=range(1, K.ndim(g)), keepdims=True)
+                if K.ndim(g) > 1 else g for g in grads
+            ]
+            return grads
+
+    return NewOptimizer
+
+
 if is_tf_keras:
     extend_with_weight_decay = extend_with_weight_decay_v2
     extend_with_layer_adaptation = extend_with_layer_adaptation_v2
