@@ -954,11 +954,14 @@ def extend_with_gradient_centralization(BaseOptimizer):
         """带梯度零中心化的优化器
         """
         def get_gradients(self, loss, params):
-            grads = super(NewOptimizer, self).get_gradients(loss, params)
-            grads = [
-                K.mean(g, axis=range(1, K.ndim(g)), keepdims=True)
-                if K.ndim(g) > 1 else g for g in grads
-            ]
+            grads = []
+            for g in super(NewOptimizer, self).get_gradients(loss, params):
+                if isinstance(g, tf.IndexedSlices):
+                    g = tf.convert_to_tensor(g)
+                if K.ndim(g) > 1:
+                    g = g - K.mean(g, axis=range(1, K.ndim(g)), keepdims=True)
+                grads.append(g)
+
             return grads
 
     return NewOptimizer
