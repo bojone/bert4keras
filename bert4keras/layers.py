@@ -305,6 +305,12 @@ class LayerNormalization(Layer):
 
         return outputs
 
+    def compute_output_shape(self, input_shape):
+        if self.conditional:
+            return input_shape[0]
+        else:
+            return input_shape
+
     def get_config(self):
         config = {
             'center': self.center,
