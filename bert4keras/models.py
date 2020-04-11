@@ -261,6 +261,7 @@ class BERT(Transformer):
         with_pool=False,  # 是否包含Pool部分
         with_nsp=False,  # 是否包含NSP部分
         with_mlm=False,  # 是否包含MLM部分
+        custom_position_ids=False,  # 是否自行传入位置id
         **kwargs  # 其余参数
     ):
         super(BERT, self).__init__(**kwargs)
@@ -268,19 +269,30 @@ class BERT(Transformer):
         self.with_pool = with_pool
         self.with_nsp = with_nsp
         self.with_mlm = with_mlm
+        self.custom_position_ids = custom_position_ids
 
     def get_inputs(self):
         """BERT的输入是token_ids和segment_ids
+        （但允许自行传入位置id，以实现一些特殊需求）
         """
         x_in = Input(shape=(self.sequence_length,), name='Input-Token')
         s_in = Input(shape=(self.sequence_length,), name='Input-Segment')
-        return [x_in, s_in]
+
+        if self.custom_position_ids:
+            p_in = Input(shape=(self.sequence_length,), name='Input-Position')
+            return [x_in, s_in, p_in]
+        else:
+            return [x_in, s_in]
 
     def apply_embeddings(self, inputs):
         """BERT的embedding是token、position、segment三者embedding之和
         """
-        x, s = inputs
+        x, s = inputs[:2]
         z = self.layer_norm_conds[0]
+        if self.custom_position_ids:
+            p = inputs[2]
+        else:
+            p = None
 
         x = self.apply(
             inputs=x,
@@ -301,12 +313,13 @@ class BERT(Transformer):
         )
         x = self.apply(inputs=[x, s], layer=Add, name='Embedding-Token-Segment')
         x = self.apply(
-            inputs=x,
+            inputs=self.simplify([x, p]),
             layer=PositionEmbedding,
             input_dim=self.max_position,
             output_dim=self.embedding_size,
             merge_mode='add',
             embeddings_initializer=self.initializer,
+            custom_position_ids=self.custom_position_ids,
             name='Embedding-Position'
         )
         x = self.apply(
