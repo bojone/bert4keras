@@ -358,6 +358,8 @@ class PositionEmbedding(Layer):
         """
         if self.custom_position_ids:
             inputs, position_ids = inputs
+            if K.dtype(position_ids) != 'int32':
+                position_ids = K.cast(position_ids, 'int32')
             pos_embeddings = K.gather(self.embeddings, position_ids)
         else:
             input_shape = K.shape(inputs)
