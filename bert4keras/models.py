@@ -482,13 +482,19 @@ class BERT(Transformer):
                 hidden_initializer=self.initializer,
                 name='MLM-Norm'
             )
+            x = self.apply(
+                inputs=x,
+                layer=Embedding,
+                arguments={'mode': 'dense'},
+                name='Embedding-Token'
+            )
+            x = self.apply(inputs=x, layer=BiasAdd, name='MLM-Bias')
             mlm_activation = 'softmax' if self.with_mlm is True else self.with_mlm
             x = self.apply(
                 inputs=x,
-                layer=EmbeddingDense,
-                embedding_name='Embedding-Token',
+                layer=Activation,
                 activation=mlm_activation,
-                name='MLM-Proba'
+                name='MLM-Activation'
             )
             outputs.append(x)
 
@@ -556,7 +562,7 @@ class BERT(Transformer):
                 'cls/predictions/transform/LayerNorm/beta',
                 'cls/predictions/transform/LayerNorm/gamma',
             ],
-            'MLM-Proba': ['cls/predictions/output_bias'],
+            'MLM-Bias': ['cls/predictions/output_bias'],
         }
 
         for i in range(self.num_hidden_layers):
@@ -1094,10 +1100,15 @@ class GPT2_ML(Transformer):
         # Language Model部分
         x = self.apply(
             inputs=x,
-            layer=EmbeddingDense,
-            embedding_name='Embedding-Token',
+            layer=Embedding,
+            arguments={'mode': 'dense'},
+            name='Embedding-Token'
+        )
+        x = self.apply(
+            inputs=x,
+            layer=Activation,
             activation=self.final_activation,
-            name='LM-Proba'
+            name='LM-Activation'
         )
 
         return x
@@ -1660,11 +1671,16 @@ class T5_Decoder(Transformer):
                 )
             x = self.apply(
                 inputs=x,
-                layer=EmbeddingDense,
-                embedding_name='Embedding-Token',
-                activation=self.with_lm,
-                use_bias=False,
-                name='Dencoder-Output-LM-Proba'
+                layer=Embedding,
+                arguments={'mode': 'dense'},
+                name='Embedding-Token'
+            )
+            lm_activation = 'softmax' if self.with_lm is True else self.with_lm
+            x = self.apply(
+                inputs=x,
+                layer=Activation,
+                activation=lm_activation,
+                name='Dencoder-Output-LM-Activation'
             )
 
         return x
