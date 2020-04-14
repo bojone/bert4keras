@@ -80,16 +80,51 @@ else:
 
 
 class Embedding(keras.layers.Embedding):
-    """为了适配T5，对Embedding的Mask做特殊处理
+    """拓展Embedding层
     """
     def compute_mask(self, inputs, mask=None):
-        """保证第一个token不被mask
+        """为了适配T5，保证第一个token不被mask
         """
         mask = super(Embedding, self).compute_mask(inputs, mask)
         if mask is not None:
             mask1 = K.ones_like(mask[:, :1], dtype='bool')
             mask2 = mask[:, 1:]
             return K.concatenate([mask1, mask2], 1)
+
+    def call(self, inputs, mode='embedding'):
+        """新增mode参数，可以为embedding或dense。如果为embedding，
+        则等价于普通Embedding层；如果为dense，则等价于无bias的Dense层。
+        """
+        self._current_mode = mode
+        if mode == 'embedding':
+            return super(Embedding, self).call(inputs)
+        else:
+            kernel = K.transpose(self.embeddings)
+            return K.dot(inputs, kernel)
+
+    def compute_output_shape(self, input_shape):
+        if self._current_mode == 'embedding':
+            return super(Embedding, self).compute_output_shape(input_shape)
+        else:
+            return input_shape[:2] + (K.int_shape(self.embeddings)[0],)
+
+
+class BiasAdd(Layer):
+    """加上偏置项
+    """
+    @integerize_shape
+    def build(self, input_shape):
+        super(BiasAdd, self).build(input_shape)
+        output_dim = input_shape[-1]
+        self.bias = self.add_weight(
+            name='bias',
+            shape=(output_dim,),
+            initializer='zeros',
+            trainable=True
+        )
+
+    def call(self, inputs):
+        return K.bias_add(inputs, self.bias)
 
 
 class MultiHeadAttention(Layer):
@@ -562,50 +597,6 @@ class FeedForward(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
-class EmbeddingDense(Layer):
-    """运算跟Dense一致，但kernel用Embedding层的embeddings矩阵。
-    根据Embedding层的名字来搜索定位Embedding层。
-    """
-    def __init__(
-        self, embedding_name, activation='softmax', use_bias=True, **kwargs
-    ):
-        super(EmbeddingDense, self).__init__(**kwargs)
-        self.embedding_name = embedding_name
-        self.activation = activations.get(activation)
-        self.use_bias = use_bias
-
-    def call(self, inputs):
-        if not hasattr(self, 'kernel'):
-            embedding_layer = search_layer(inputs, self.embedding_name)
-            if embedding_layer is None:
-                raise Exception('Embedding layer not found')
-
-            self.kernel = K.transpose(embedding_layer.embeddings)
-            self.units = K.int_shape(self.kernel)[1]
-            if self.use_bias:
-                self.bias = self.add_weight(
-                    name='bias', shape=(self.units,), initializer='zeros'
-                )
-
-        outputs = K.dot(inputs, self.kernel)
-        if self.use_bias:
-            outputs = K.bias_add(outputs, self.bias)
-        outputs = self.activation(outputs)
-        return outputs
-
-    def compute_output_shape(self, input_shape):
-        return input_shape[:-1] + (self.units,)
-
-    def get_config(self):
-        config = {
-            'embedding_name': self.embedding_name,
-            'activation': activations.serialize(self.activation),
-            'use_bias': self.use_bias,
-        }
-        base_config = super(EmbeddingDense, self).get_config()
-        return dict(list(base_config.items()) + list(config.items()))
-
-
 class ConditionalRandomField(Layer):
     """纯Keras实现CRF层
     CRF层本质上是一个带训练参数的loss计算层。
@@ -895,13 +886,13 @@ class MaximumEntropyMarkovModel(Layer):
 
 custom_objects = {
     'Embedding': Embedding,
+    'BiasAdd': BiasAdd,
     'MultiHeadAttention': MultiHeadAttention,
     'LayerNormalization': LayerNormalization,
     'PositionEmbedding': PositionEmbedding,
     'RelativePositionEmbedding': RelativePositionEmbedding,
     'RelativePositionEmbeddingT5': RelativePositionEmbeddingT5,
     'FeedForward': FeedForward,
-    'EmbeddingDense': EmbeddingDense,
     'ConditionalRandomField': ConditionalRandomField,
     'MaximumEntropyMarkovModel': MaximumEntropyMarkovModel,
 }
