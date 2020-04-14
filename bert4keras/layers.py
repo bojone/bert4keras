@@ -85,11 +85,14 @@ class Embedding(keras.layers.Embedding):
     def compute_mask(self, inputs, mask=None):
         """为了适配T5，保证第一个token不被mask
         """
-        mask = super(Embedding, self).compute_mask(inputs, mask)
-        if mask is not None:
-            mask1 = K.ones_like(mask[:, :1], dtype='bool')
-            mask2 = mask[:, 1:]
-            return K.concatenate([mask1, mask2], 1)
+        if self._current_mode == 'embedding':
+            mask = super(Embedding, self).compute_mask(inputs, mask)
+            if mask is not None:
+                mask1 = K.ones_like(mask[:, :1], dtype='bool')
+                mask2 = mask[:, 1:]
+                return K.concatenate([mask1, mask2], 1)
+        else:
+            return mask
 
     def call(self, inputs, mode='embedding'):
         """新增mode参数，可以为embedding或dense。如果为embedding，
