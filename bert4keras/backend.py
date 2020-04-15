@@ -6,6 +6,16 @@ import os, sys
 from distutils.util import strtobool
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.framework import ops
+
+# 判断是否启用动态图模式
+# 建议关闭。珍惜生命，远离eager。
+is_tf_eager = strtobool(os.environ.get('TF_EAGER', '0'))
+
+if is_tf_eager:
+    ops.eable_eager_execution()
+else:
+    ops.disable_eager_execution()
 
 # 判断是tf.keras还是纯keras的标记
 is_tf_keras = strtobool(os.environ.get('TF_KERAS', '0'))
