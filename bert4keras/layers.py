@@ -887,6 +887,38 @@ class MaximumEntropyMarkovModel(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
+class Loss(Layer):
+    """特殊的层，用来定义复杂loss
+    """
+    def __init__(self, output_axis=None, **kwargs):
+        super(Loss, self).__init__(**kwargs)
+        self.output_axis = output_axis
+
+    def call(self, inputs, mask=None):
+        loss = self.compute_loss(inputs, mask)
+        self.add_loss(loss)
+        if self.output_axis is None:
+            return inputs
+        else:
+            return inputs[self.output_axis]
+
+    def compute_loss(self, inputs, mask=None):
+        raise NotImplementedError
+
+    def compute_output_shape(self, input_shape):
+        if self.output_axis is None:
+            return input_shape
+        else:
+            return input_shape[self.output_axis]
+
+    def get_config(self):
+        config = {
+            'output_axis': self.output_axis,
+        }
+        base_config = super(Loss, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+
 custom_objects = {
     'Embedding': Embedding,
     'BiasAdd': BiasAdd,
@@ -898,6 +930,7 @@ custom_objects = {
     'FeedForward': FeedForward,
     'ConditionalRandomField': ConditionalRandomField,
     'MaximumEntropyMarkovModel': MaximumEntropyMarkovModel,
+    'Loss': Loss,
 }
 
 keras.utils.get_custom_objects().update(custom_objects)
