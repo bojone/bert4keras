@@ -6,11 +6,13 @@ import glob, re
 import numpy as np
 from tqdm import tqdm
 from bert4keras.backend import keras, K
+from bert4keras.layers import Loss
 from bert4keras.models import build_transformer_model
 from bert4keras.tokenizers import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, open
 from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
+from keras.models import Model
 
 maxlen = 256
 batch_size = 16
@@ -84,6 +86,22 @@ class data_generator(DataGenerator):
                 batch_token_ids, batch_segment_ids = [], []
 
 
+class CrossEntropy(Loss):
+    """交叉熵作为loss，并mask掉padding部分
+    """
+    def compute_loss(self, inputs, mask=None):
+        y_true, y_pred = inputs
+        if mask[1] is None:
+            y_mask = 1.0
+        else:
+            y_mask = K.cast(mask[1], K.floatx())[:, 1:]
+        y_true = y_true[:, 1:]  # 目标token_ids
+        y_pred = y_pred[:, :-1]  # 预测序列，错开一位
+        loss = K.sparse_categorical_crossentropy(y_true, y_pred)
+        loss = K.sum(loss * y_mask) / K.sum(y_mask)
+        return loss
+
+
 model = build_transformer_model(
     config_path,
     checkpoint_path,
@@ -91,18 +109,11 @@ model = build_transformer_model(
     keep_tokens=keep_tokens,  # 只保留keep_tokens中的字，精简原字表
 )
 
-model.summary()
+output = CrossEntropy(1)([model.inputs[0], model.outputs[0]])
 
-# 交叉熵作为loss，并mask掉输入部分的预测
-y_true = model.input[0][:, 1:]  # 目标tokens
-y_mask = model.get_layer('Embedding-Token').output_mask[:, 1:]  # 目标mask
-y_mask = K.cast(y_mask, K.floatx())  # 转为浮点型
-y_pred = model.output[:, :-1]  # 预测tokens，预测与目标错开一位
-cross_entropy = K.sparse_categorical_crossentropy(y_true, y_pred)
-cross_entropy = K.sum(cross_entropy * y_mask) / K.sum(y_mask)
-
-model.add_loss(cross_entropy)
+model = Model(model.inputs, output)
 model.compile(optimizer=Adam(1e-5))
+model.summary()
 
 
 class StoryCompletion(AutoRegressiveDecoder):
