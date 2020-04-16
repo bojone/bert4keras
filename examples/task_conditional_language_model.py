@@ -7,6 +7,7 @@ from __future__ import print_function
 import re
 import numpy as np
 from bert4keras.backend import keras, K
+from bert4keras.layers import Loss
 from bert4keras.models import build_transformer_model
 from bert4keras.tokenizers import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
@@ -14,6 +15,7 @@ from bert4keras.snippets import sequence_padding, open
 from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
 from bert4keras.snippets import uniout  # 打印中文
 from keras.layers import Input, Embedding, Reshape
+from keras.models import Model
 
 # 模型配置
 maxlen = 128
@@ -81,6 +83,22 @@ class data_generator(DataGenerator):
                 batch_token_ids, batch_segment_ids, batch_labels = [], [], []
 
 
+class CrossEntropy(Loss):
+    """交叉熵作为loss，并mask掉padding部分
+    """
+    def compute_loss(self, inputs, mask=None):
+        y_true, y_pred = inputs
+        if mask[1] is None:
+            y_mask = 1.0
+        else:
+            y_mask = K.cast(mask[1], K.floatx())[:, 1:]
+        y_true = y_true[:, 1:]  # 目标token_ids
+        y_pred = y_pred[:, :-1]  # 预测序列，错开一位
+        loss = K.sparse_categorical_crossentropy(y_true, y_pred)
+        loss = K.sum(loss * y_mask) / K.sum(y_mask)
+        return loss
+
+
 c_in = Input(shape=(1,))
 c = Embedding(2, 128)(c_in)
 c = Reshape((128,))(c)
@@ -95,18 +113,11 @@ model = build_transformer_model(
     additional_input_layers=c_in,
 )
 
-model.summary()
+output = CrossEntropy(1)([model.inputs[0], model.outputs[0]])
 
-# 交叉熵作为loss，并mask掉输入部分的预测
-y_true = model.input[0][:, 1:]  # 目标tokens
-y_mask = model.get_layer('Embedding-Token').output_mask[:, 1:]  # 目标mask
-y_mask = K.cast(y_mask, K.floatx())  # 转为浮点型
-y_pred = model.output[:, :-1]  # 预测tokens，预测与目标错开一位
-cross_entropy = K.sparse_categorical_crossentropy(y_true, y_pred)
-cross_entropy = K.sum(cross_entropy * y_mask) / K.sum(y_mask)
-
-model.add_loss(cross_entropy)
+model = Model(model.inputs, output)
 model.compile(optimizer=Adam(1e-5))
+model.summary()
 
 
 class RandomSentiment(AutoRegressiveDecoder):
@@ -171,7 +182,7 @@ else:
     u'外观时尚、漂亮、性价比高。',
     u'外观漂亮，配置均衡，比较满意，性价比高，外观漂亮，性能较高。',
     u'我是在大学的时候看到这本书的，所以一直在买。书中的作者是林静蕾，她用自己的口吻写出了一个孩子成长中的心路历程，让我看到了她们成长中的不同之处，以及她们成长过程中的不同境界。让我很欣赏！',
-    u'我想这是一本能够告诉读者什么是坏的，而不是教你怎样说话，告诉我什么是错。这里我推荐了《我要讲故事》，这本书是我很喜欢的一本书，我认为它的理由很多，但是，我相信我。如果你从 中得到一些改进，或者你已经有了一个明智的决定。',
+    u'我想这是一本能够告诉读者什么是坏的，而不是教你怎样说话，告诉我什么是错。这里我推荐了《我要讲故事》，这本书是我很喜欢的一本书，我认为它的理由很多，但是，我相信我。如果你从 中得到一些改进，或者你已经 有了一个明智的决定。',
     u'我们一家五口住的是标间，大床房，大床的床很舒服；而我们在携程网上订了两套大床房，这个酒店的价格还是比较合理的；但是房间的隔音效果不太理想，有点响的声音；酒店门口的地铁在施工中，不方便；但是酒店的门口的出租车不知道是哪个车的，打车不是很方便；酒店外面的停'
 ]
 
