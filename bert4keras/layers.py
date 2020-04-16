@@ -899,6 +899,8 @@ class Loss(Layer):
         self.add_loss(loss)
         if self.output_axis is None:
             return inputs
+        elif isinstance(self.output_axis, list):
+            return [inputs[i] for i in self.output_axis]
         else:
             return inputs[self.output_axis]
 
@@ -908,6 +910,8 @@ class Loss(Layer):
     def compute_output_shape(self, input_shape):
         if self.output_axis is None:
             return input_shape
+        elif isinstance(self.output_axis, list):
+            return [input_shape[i] for i in self.output_axis]
         else:
             return input_shape[self.output_axis]
 
