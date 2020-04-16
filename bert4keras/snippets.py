@@ -45,55 +45,56 @@ def string_matching(s, keywords):
     return False
 
 
-def convert_to_unicode(text, encoding='utf-8'):
+def convert_to_unicode(text, encoding='utf-8', errors='ignore'):
     """字符串转换为unicode格式（假设输入为utf-8格式）
     """
     if is_py2:
         if isinstance(text, str):
-            text = text.decode(encoding, 'ignore')
+            text = text.decode(encoding, errors=errors)
     else:
         if isinstance(text, bytes):
-            text = text.decode(encoding, 'ignore')
+            text = text.decode(encoding, errors=errors)
     return text
 
 
-def convert_to_str(text, encoding='utf-8'):
+def convert_to_str(text, encoding='utf-8', errors='ignore'):
     """字符串转换为str格式（假设输入为utf-8格式）
     """
     if is_py2:
         if isinstance(text, unicode):
-            text = text.encode(encoding, 'ignore')
+            text = text.encode(encoding, errors=errors)
     else:
         if isinstance(text, bytes):
-            text = text.decode(encoding, 'ignore')
+            text = text.decode(encoding, errors=errors)
     return text
 
 
 class open:
     """模仿python自带的open函数，主要是为了同时兼容py2和py3
     """
-    def __init__(self, name, mode='r', encoding=None):
+    def __init__(self, name, mode='r', encoding=None, errors='ignore'):
         if is_py2:
             self.file = _open_(name, mode)
         else:
-            self.file = _open_(name, mode, encoding=encoding)
+            self.file = _open_(name, mode, encoding=encoding, errors=errors)
         self.encoding = encoding
+        self.errors = errors
 
     def __iter__(self):
         for l in self.file:
             if self.encoding:
-                l = convert_to_unicode(l, self.encoding)
+                l = convert_to_unicode(l, self.encoding, self.errors)
             yield l
 
     def read(self):
         text = self.file.read()
         if self.encoding:
-            text = convert_to_unicode(text, self.encoding)
+            text = convert_to_unicode(text, self.encoding, self.errors)
         return text
 
     def write(self, text):
         if self.encoding:
-            text = convert_to_str(text, self.encoding)
+            text = convert_to_str(text, self.encoding, self.errors)
         self.file.write(text)
 
     def flush(self):
