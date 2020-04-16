@@ -8,6 +8,7 @@
 import json
 import numpy as np
 from bert4keras.backend import keras, K, batch_gather
+from bert4keras.layers import Loss
 from bert4keras.layers import LayerNormalization
 from bert4keras.tokenizers import Tokenizer
 from bert4keras.models import build_transformer_model
@@ -114,7 +115,9 @@ class data_generator(DataGenerator):
                 if len(batch_token_ids) == self.batch_size or is_end:
                     batch_token_ids = sequence_padding(batch_token_ids)
                     batch_segment_ids = sequence_padding(batch_segment_ids)
-                    batch_subject_labels = sequence_padding(batch_subject_labels)
+                    batch_subject_labels = sequence_padding(
+                        batch_subject_labels
+                    )
                     batch_subject_ids = np.array(batch_subject_ids)
                     batch_object_labels = sequence_padding(batch_object_labels)
                     yield [
@@ -172,24 +175,39 @@ object_preds = Reshape((-1, len(predicate2id), 2))(output)
 
 object_model = Model(bert.model.inputs + [subject_ids], object_preds)
 
+
+class TotalLoss(Loss):
+    """subject_loss与object_loss之和，都是二分类交叉熵
+    """
+    def compute_loss(self, inputs, mask=None):
+        subject_labels, object_labels = inputs[:2]
+        subject_preds, object_preds, _ = inputs[2:]
+        if mask[4] is None:
+            mask = 1.0
+        else:
+            mask = K.cast(mask[4], K.floatx())
+        # sujuect部分loss
+        subject_loss = K.binary_crossentropy(subject_labels, subject_preds)
+        subject_loss = K.mean(subject_loss, 2)
+        subject_loss = K.sum(subject_loss * mask) / K.sum(mask)
+        # object部分loss
+        object_loss = K.binary_crossentropy(object_labels, object_preds)
+        object_loss = K.sum(K.mean(object_loss, 3), 2)
+        object_loss = K.sum(object_loss * mask) / K.sum(mask)
+        # 总的loss
+        return subject_loss + object_loss
+
+
+subject_preds, object_preds = TotalLoss([2, 3])([
+    subject_labels, object_labels, subject_preds, object_preds,
+    bert.model.output
+])
+
 # 训练模型
 train_model = Model(
     bert.model.inputs + [subject_labels, subject_ids, object_labels],
     [subject_preds, object_preds]
 )
-
-mask = bert.model.get_layer('Embedding-Token').output_mask
-mask = K.cast(mask, K.floatx())
-
-subject_loss = K.binary_crossentropy(subject_labels, subject_preds)
-subject_loss = K.mean(subject_loss, 2)
-subject_loss = K.sum(subject_loss * mask) / K.sum(mask)
-
-object_loss = K.binary_crossentropy(object_labels, object_preds)
-object_loss = K.sum(K.mean(object_loss, 3), 2)
-object_loss = K.sum(object_loss * mask) / K.sum(mask)
-
-train_model.add_loss(subject_loss + object_loss)
 
 AdamEMA = extend_with_exponential_moving_average(Adam, name='AdamEMA')
 optimizer = AdamEMA(learning_rate=1e-5)
