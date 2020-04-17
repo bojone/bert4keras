@@ -1131,14 +1131,11 @@ class GPT2_ML(Transformer):
         if self.attention_mask is None:
 
             def lm_mask(s):
-                import tensorflow as tf
-                seq_len = K.shape(s)[1]
-                with K.name_scope('attention_mask'):
-                    # 用K.ones可能会有问题
-                    # 参考 https://github.com/tensorflow/tensorflow/issues/24938
-                    ones = tf.ones((1, 1, seq_len, seq_len))
-                a_mask = tf.linalg.band_part(ones, -1, 0)
-                return a_mask
+                seq_len = K.shape(s)[0]
+                idxs = K.arange(seq_len)
+                mask = idxs[None, :] <= idxs[:, None]
+                mask = K.cast(mask, K.floatx())
+                return mask[None, None]
 
             self.attention_mask = self.apply(
                 inputs=self.inputs[0],
@@ -1691,14 +1688,11 @@ class T5_Decoder(Transformer):
         if self.attention_mask is None:
 
             def lm_mask(s):
-                import tensorflow as tf
-                seq_len = K.shape(s)[1]
-                with K.name_scope('attention_mask'):
-                    # 用K.ones可能会有问题
-                    # 参考 https://github.com/tensorflow/tensorflow/issues/24938
-                    ones = tf.ones((1, 1, seq_len, seq_len))
-                a_mask = tf.linalg.band_part(ones, -1, 0)
-                return a_mask
+                seq_len = K.shape(s)[0]
+                idxs = K.arange(seq_len)
+                mask = idxs[None, :] <= idxs[:, None]
+                mask = K.cast(mask, K.floatx())
+                return mask[None, None]
 
             self.attention_mask = self.apply(
                 inputs=self.inputs[1],
@@ -1782,14 +1776,11 @@ def extend_with_language_model(BaseModel):
             if self.attention_mask is None:
 
                 def lm_mask(s):
-                    import tensorflow as tf
-                    seq_len = K.shape(s)[1]
-                    with K.name_scope('attention_mask'):
-                        # 用K.ones可能会有问题
-                        # 参考 https://github.com/tensorflow/tensorflow/issues/24938
-                        ones = tf.ones((1, 1, seq_len, seq_len))
-                    a_mask = tf.linalg.band_part(ones, -1, 0)
-                    return a_mask
+                    seq_len = K.shape(s)[0]
+                    idxs = K.arange(seq_len)
+                    mask = idxs[None, :] <= idxs[:, None]
+                    mask = K.cast(mask, K.floatx())
+                    return mask[None, None]
 
                 self.attention_mask = self.apply(
                     inputs=self.inputs[1],
@@ -1820,18 +1811,11 @@ def extend_with_unified_language_model(BaseModel):
             if self.attention_mask is None:
 
                 def unilm_mask(s):
-                    import tensorflow as tf
-                    s = K.cast(s, K.floatx())
-                    seq_len = K.shape(s)[1]
-                    with K.name_scope('attention_mask'):
-                        # 用K.ones可能会有问题
-                        # 参考 https://github.com/tensorflow/tensorflow/issues/24938
-                        ones = tf.ones((1, 1, seq_len, seq_len))
-                    a_mask = tf.linalg.band_part(ones, -1, 0)
-                    s_ex12 = K.expand_dims(K.expand_dims(s, 1), 2)
-                    s_ex13 = K.expand_dims(K.expand_dims(s, 1), 3)
-                    a_mask = (1 - s_ex13) * (1 - s_ex12) + s_ex13 * a_mask
-                    return a_mask
+                    seq_len = K.shape(s)[0]
+                    idxs = K.cumsum(s, axis=1)
+                    mask = idxs[:, None, :] <= idxs[:, :, None]
+                    mask = K.cast(mask, K.floatx())
+                    return mask[:, None]
 
                 self.attention_mask = self.apply(
                     inputs=self.inputs[1],
