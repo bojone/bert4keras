@@ -1131,7 +1131,7 @@ class GPT2_ML(Transformer):
         if self.attention_mask is None:
 
             def lm_mask(s):
-                seq_len = K.shape(s)[0]
+                seq_len = K.shape(s)[1]
                 idxs = K.arange(seq_len)
                 mask = idxs[None, :] <= idxs[:, None]
                 mask = K.cast(mask, K.floatx())
@@ -1688,7 +1688,7 @@ class T5_Decoder(Transformer):
         if self.attention_mask is None:
 
             def lm_mask(s):
-                seq_len = K.shape(s)[0]
+                seq_len = K.shape(s)[1]
                 idxs = K.arange(seq_len)
                 mask = idxs[None, :] <= idxs[:, None]
                 mask = K.cast(mask, K.floatx())
@@ -1776,7 +1776,7 @@ def extend_with_language_model(BaseModel):
             if self.attention_mask is None:
 
                 def lm_mask(s):
-                    seq_len = K.shape(s)[0]
+                    seq_len = K.shape(s)[1]
                     idxs = K.arange(seq_len)
                     mask = idxs[None, :] <= idxs[:, None]
                     mask = K.cast(mask, K.floatx())
@@ -1811,7 +1811,6 @@ def extend_with_unified_language_model(BaseModel):
             if self.attention_mask is None:
 
                 def unilm_mask(s):
-                    seq_len = K.shape(s)[0]
                     idxs = K.cumsum(s, axis=1)
                     mask = idxs[:, None, :] <= idxs[:, :, None]
                     mask = K.cast(mask, K.floatx())
