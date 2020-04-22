@@ -5,6 +5,7 @@
 - 你使用的Python版本: 
 - 你使用的Tensorflow版本: 
 - 你使用的Keras版本: 
+- 你使用的bert4keras版本: 
 - 你使用纯keras还是tf.keras: 
 
 ### 核心代码
