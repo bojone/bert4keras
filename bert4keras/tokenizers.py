@@ -42,6 +42,14 @@ def load_vocab(dict_path, encoding='utf-8', simplified=False, startswith=None):
         return token_dict
 
 
+def save_vocab(dict_path, token_dict, encoding='utf-8'):
+    """将词典（比如精简过的）保存为文件
+    """
+    with open(dict_path, 'w', encoding=encoding) as writer:
+        for k, v in sorted(token_dict.items(), key=lambda s: s[1]):
+            writer.write(k + '\n')
+
+
 class BasicTokenizer(object):
     """分词器基类
     """
