@@ -189,8 +189,8 @@ class Evaluate(keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         trans = K.eval(CRF.trans)
-        WordSegmenter.trans = trans
-        print(WordSegmenter.trans)
+        segmenter.trans = trans
+        print(segmenter.trans)
         acc = simple_evaluate(valid_data)
         # 保存最优
         if acc >= self.best_val_acc:
