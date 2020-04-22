@@ -1,12 +1,12 @@
 提问时请尽可能提供如下信息：
 
 ### 基本信息
-- 你使用的操作系统: 
-- 你使用的Python版本: 
-- 你使用的Tensorflow版本: 
-- 你使用的Keras版本: 
-- 你使用的bert4keras版本: 
-- 你使用纯keras还是tf.keras: 
+- 你使用的**操作系统**: 
+- 你使用的**Python**版本: 
+- 你使用的**Tensorflow**版本: 
+- 你使用的**Keras**版本: 
+- 你使用的**bert4keras**版本: 
+- 你使用纯**keras**还是**tf.keras**: 
 
 ### 核心代码
 ```python
