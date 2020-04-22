@@ -130,7 +130,7 @@ class WordSegmenter(ViterbiDecoder):
     """
     def tokenize(self, text):
         tokens = tokenizer.tokenize(text)
-        while len(tokens) > 510:
+        while len(tokens) > 512:
             tokens.pop(-2)
         mapping = tokenizer.rematch(text, tokens)
         token_ids = tokenizer.tokens_to_ids(tokens)
