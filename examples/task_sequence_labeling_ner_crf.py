@@ -9,7 +9,7 @@ from bert4keras.models import build_transformer_model
 from bert4keras.tokenizers import Tokenizer
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, DataGenerator
-from bert4keras.snippets import open
+from bert4keras.snippets import open, ViterbiDecoder
 from bert4keras.layers import ConditionalRandomField
 from keras.layers import Dense
 from keras.models import Model
@@ -133,51 +133,36 @@ model.compile(
 )
 
 
-def viterbi_decode(nodes, trans):
-    """Viterbi算法求最优路径
-    其中nodes.shape=[seq_len, num_labels],
-        trans.shape=[num_labels, num_labels].
+class NamedEntityRecognizer(ViterbiDecoder):
+    """命名实体识别器
     """
-    labels = np.arange(num_labels).reshape((1, -1))
-    scores = nodes[0].reshape((-1, 1))
-    scores[1:] -= np.inf  # 第一个标签必然是0
-    paths = labels
-    for l in range(1, len(nodes)):
-        M = scores + trans + nodes[l].reshape((1, -1))
-        idxs = M.argmax(0)
-        scores = M.max(0).reshape((-1, 1))
-        paths = np.concatenate([paths[:, idxs], labels], 0)
-    return paths[:, scores[:, 0].argmax()]
-
-
-def named_entity_recognize(text):
-    """命名实体识别函数
-    """
-    tokens = tokenizer.tokenize(text)
-    while len(tokens) > 512:
-        tokens.pop(-2)
-    mapping = tokenizer.rematch(text, tokens)
-    token_ids = tokenizer.tokens_to_ids(tokens)
-    segment_ids = [0] * len(token_ids)
-    nodes = model.predict([[token_ids], [segment_ids]])[0]
-    trans = K.eval(CRF.trans)
-    labels = viterbi_decode(nodes, trans)
-    entities, starting = [], False
-    for i, label in enumerate(labels):
-        if label > 0:
-            if label % 2 == 1:
-                starting = True
-                entities.append([[i], id2label[(label - 1) // 2]])
-            elif starting:
-                entities[-1][0].append(i)
+    def recognize(self, text):
+        tokens = tokenizer.tokenize(text)
+        while len(tokens) > 512:
+            tokens.pop(-2)
+        mapping = tokenizer.rematch(text, tokens)
+        token_ids = tokenizer.tokens_to_ids(tokens)
+        segment_ids = [0] * len(token_ids)
+        nodes = model.predict([[token_ids], [segment_ids]])[0]
+        labels = self.decode(nodes)
+        entities, starting = [], False
+        for i, label in enumerate(labels):
+            if label > 0:
+                if label % 2 == 1:
+                    starting = True
+                    entities.append([[i], id2label[(label - 1) // 2]])
+                elif starting:
+                    entities[-1][0].append(i)
+                else:
+                    starting = False
             else:
                 starting = False
-        else:
-            starting = False
 
-    return [
-        (text[mapping[w[0]][0]:mapping[w[-1]][-1] + 1], l) for w, l in entities
-    ]
+        return [(text[mapping[w[0]][0]:mapping[w[-1]][-1] + 1], l)
+                for w, l in entities]
+
+
+NER = NamedEntityRecognizer(trans=K.eval(CRF.trans), starts=[0], ends=[0])
 
 
 def evaluate(data):
@@ -186,7 +171,7 @@ def evaluate(data):
     X, Y, Z = 1e-10, 1e-10, 1e-10
     for d in tqdm(data):
         text = ''.join([i[0] for i in d])
-        R = set(named_entity_recognize(text))
+        R = set(NER.recognize(text))
         T = set([tuple(i) for i in d if i[1] != 'O'])
         X += len(R & T)
         Y += len(R)
@@ -201,7 +186,8 @@ class Evaluate(keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         trans = K.eval(CRF.trans)
-        print(trans)
+        NER.trans = trans
+        print(NER.trans)
         f1, precision, recall = evaluate(valid_data)
         # 保存最优
         if f1 >= self.best_val_f1:
