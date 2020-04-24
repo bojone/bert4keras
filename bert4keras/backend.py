@@ -13,7 +13,7 @@ from tensorflow.python.framework import ops
 is_tf_eager = strtobool(os.environ.get('TF_EAGER', '0'))
 
 if tf.__version__.startswith('2.'):
-    if is_tf_eager and :
+    if is_tf_eager:
         ops.eable_eager_execution()
     else:
         ops.disable_eager_execution()
