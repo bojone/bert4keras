@@ -8,16 +8,6 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.framework import ops
 
-# 判断是否启用动态图模式，仅在TF 2.x下可用。
-# 建议关闭。珍惜生命，远离eager。
-is_tf_eager = strtobool(os.environ.get('TF_EAGER', '0'))
-
-if tf.__version__.startswith('2.'):
-    if is_tf_eager:
-        ops.eable_eager_execution()
-    else:
-        ops.disable_eager_execution()
-
 # 判断是tf.keras还是纯keras的标记
 is_tf_keras = strtobool(os.environ.get('TF_KERAS', '0'))
 
@@ -29,6 +19,15 @@ else:
     import keras
     import keras.backend as K
 
+# 判断是否启用动态图模式，仅在TF 2.x下可用。
+# 建议关闭。珍惜生命，远离eager。
+is_tf_eager = strtobool(os.environ.get('TF_EAGER', '0'))
+
+if tf.__version__.startswith('2.') and is_tf_keras:
+    if is_tf_eager:
+        ops.eable_eager_execution()
+    else:
+        ops.disable_eager_execution()
 
 def gelu_erf(x):
     """基于Erf直接计算的gelu函数
