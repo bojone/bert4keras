@@ -24,9 +24,7 @@ else:
 is_tf_eager = strtobool(os.environ.get('TF_EAGER', '0'))
 
 if tf.__version__.startswith('2.') and is_tf_keras:
-    if is_tf_eager:
-        ops.eable_eager_execution()
-    else:
+    if not is_tf_eager:
         ops.disable_eager_execution()
 
 
