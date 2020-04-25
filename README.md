@@ -59,7 +59,8 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 - 注2：下载下来的ELECTRA权重，如果没有json配置文件的话，参考<a href="https://github.com/ymcui/Chinese-ELECTRA/issues/3">这里</a>自己改一个。
 
 ## 更新
-- <strong>2020.04.16</strong>: 所有example均适配tensorflow 2.0
+- <strong>2020.04.25</strong>: 优化tf2下的表现。
+- <strong>2020.04.16</strong>: 所有example均适配tensorflow 2.0。
 - <strong>2020.04.06</strong>: 增加UniLM预训练模式（测试中）。
 - <strong>2020.04.06</strong>: 完善`rematch`方法。
 - <strong>2020.04.01</strong>: `Tokenizer`增加`rematch`方法，给出分词结果与原序列的映射关系。
