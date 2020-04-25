@@ -29,6 +29,7 @@ if tf.__version__.startswith('2.') and is_tf_keras:
     else:
         ops.disable_eager_execution()
 
+
 def gelu_erf(x):
     """基于Erf直接计算的gelu函数
     """
