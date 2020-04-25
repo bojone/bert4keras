@@ -6,7 +6,6 @@ import os, sys
 from distutils.util import strtobool
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.framework import ops
 
 # 判断是tf.keras还是纯keras的标记
 is_tf_keras = strtobool(os.environ.get('TF_KERAS', '0'))
@@ -25,7 +24,8 @@ is_tf_eager = strtobool(os.environ.get('TF_EAGER', '0'))
 
 if tf.__version__.startswith('2.') and is_tf_keras:
     if not is_tf_eager:
-        ops.disable_eager_execution()
+        tf.compat.v1.disable_eager_execution()
+        tf.compat.v1.experimental.output_all_intermediates(True)
 
 
 def gelu_erf(x):
