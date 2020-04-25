@@ -1132,7 +1132,7 @@ class GPT2_ML(Transformer):
 
             def lm_mask(s):
                 seq_len = K.shape(s)[1]
-                idxs = K.arange(seq_len)
+                idxs = K.arange(0, seq_len)
                 mask = idxs[None, :] <= idxs[:, None]
                 mask = K.cast(mask, K.floatx())
                 return mask[None, None]
@@ -1689,7 +1689,7 @@ class T5_Decoder(Transformer):
 
             def lm_mask(s):
                 seq_len = K.shape(s)[1]
-                idxs = K.arange(seq_len)
+                idxs = K.arange(0, seq_len)
                 mask = idxs[None, :] <= idxs[:, None]
                 mask = K.cast(mask, K.floatx())
                 return mask[None, None]
@@ -1777,7 +1777,7 @@ def extend_with_language_model(BaseModel):
 
                 def lm_mask(s):
                     seq_len = K.shape(s)[1]
-                    idxs = K.arange(seq_len)
+                    idxs = K.arange(0, seq_len)
                     mask = idxs[None, :] <= idxs[:, None]
                     mask = K.cast(mask, K.floatx())
                     return mask[None, None]
