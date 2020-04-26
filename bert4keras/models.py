@@ -609,7 +609,7 @@ class ALBERT(BERT):
 
         attention_name = 'Transformer-MultiHeadSelfAttention'
         feed_forward_name = 'Transformer-FeedForward'
-        attention_mask = self.compute_attention_mask(0)
+        attention_mask = self.compute_attention_mask()
 
         # Self Attention
         xi, x, arguments = x, [x, x, x], {'a_mask': None}
