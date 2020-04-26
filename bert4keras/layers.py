@@ -139,7 +139,7 @@ class MultiHeadAttention(Layer):
         head_size,
         key_size=None,
         use_bias=True,
-        scaled_dot_product=True,
+        attention_scale=True,
         kernel_initializer='glorot_uniform',
         **kwargs
     ):
@@ -149,7 +149,7 @@ class MultiHeadAttention(Layer):
         self.out_dim = heads * head_size
         self.key_size = key_size or head_size
         self.use_bias = use_bias
-        self.scaled_dot_product = scaled_dot_product
+        self.attention_scale = attention_scale
         self.kernel_initializer = initializers.get(kernel_initializer)
 
     def build(self, input_shape):
@@ -214,7 +214,7 @@ class MultiHeadAttention(Layer):
             pos_embeddings = K.permute_dimensions(inputs[n], (2, 0, 1))
             a = a + K.expand_dims(pos_embeddings, 0)
         # Attention（续）
-        if self.scaled_dot_product:
+        if self.attention_scale:
             a = a / self.key_size**0.5
         a = sequence_masking(a, v_mask, 1, -1)
         if a_mask is not None:
@@ -242,7 +242,7 @@ class MultiHeadAttention(Layer):
             'head_size': self.head_size,
             'key_size': self.key_size,
             'use_bias': self.use_bias,
-            'scaled_dot_product': self.scaled_dot_product,
+            'attention_scale': self.attention_scale,
             'kernel_initializer':
                 initializers.serialize(self.kernel_initializer),
         }
