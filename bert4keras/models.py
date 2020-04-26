@@ -218,7 +218,7 @@ class Transformer(object):
                 head_size = self.attention_head_size
                 key_size = self.attention_key_size
                 W = np.linalg.qr(np.random.randn(key_size, head_size))[0].T
-                if layer.scaled_dot_product:
+                if layer.attention_scale:
                     W = W * key_size**0.25 / head_size**0.25
                 for i in range(count):
                     w, v = weights[i], values[i]
@@ -1357,7 +1357,7 @@ class T5_Encoder(T5_Base):
             head_size=self.attention_head_size,
             key_size=self.attention_key_size,
             use_bias=False,
-            scaled_dot_product=False,
+            attention_scale=False,
             kernel_initializer=self.initializer,
             name=attention_name
         )
@@ -1540,7 +1540,7 @@ class T5_Decoder(Transformer):
             head_size=self.attention_head_size,
             key_size=self.attention_key_size,
             use_bias=False,
-            scaled_dot_product=False,
+            attention_scale=False,
             kernel_initializer=self.initializer,
             name=self_attention_name
         )
@@ -1578,7 +1578,7 @@ class T5_Decoder(Transformer):
             head_size=self.attention_head_size,
             key_size=self.attention_key_size,
             use_bias=False,
-            scaled_dot_product=False,
+            attention_scale=False,
             kernel_initializer=self.initializer,
             name=cross_attention_name
         )
