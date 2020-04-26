@@ -357,7 +357,7 @@ class BERT(Transformer):
 
         attention_name = 'Transformer-%d-MultiHeadSelfAttention' % index
         feed_forward_name = 'Transformer-%d-FeedForward' % index
-        attention_mask = self.compute_attention_mask()
+        attention_mask = self.compute_attention_mask(index)
 
         # Self Attention
         xi, x, arguments = x, [x, x, x], {'a_mask': None}
@@ -609,7 +609,7 @@ class ALBERT(BERT):
 
         attention_name = 'Transformer-MultiHeadSelfAttention'
         feed_forward_name = 'Transformer-FeedForward'
-        attention_mask = self.compute_attention_mask()
+        attention_mask = self.compute_attention_mask(index)
 
         # Self Attention
         xi, x, arguments = x, [x, x, x], {'a_mask': None}
@@ -816,7 +816,7 @@ class NEZHA(BERT):
 
         attention_name = 'Transformer-%d-MultiHeadSelfAttention' % index
         feed_forward_name = 'Transformer-%d-FeedForward' % index
-        attention_mask = self.compute_attention_mask()
+        attention_mask = self.compute_attention_mask(index)
         position_bias = self.compute_position_bias(x)
 
         # Self Attention
@@ -1024,7 +1024,7 @@ class GPT2_ML(Transformer):
 
         attention_name = 'Transformer-%d-MultiHeadSelfAttention' % index
         feed_forward_name = 'Transformer-%d-FeedForward' % index
-        attention_mask = self.compute_attention_mask()
+        attention_mask = self.compute_attention_mask(index)
 
         # Self Attention
         xi, x, arguments = x, [x, x, x, attention_mask], {'a_mask': True}
@@ -1333,7 +1333,7 @@ class T5_Encoder(T5_Base):
 
         attention_name = 'Encoder-Transformer-%d-MultiHeadSelfAttention' % index
         feed_forward_name = 'Encoder-Transformer-%d-FeedForward' % index
-        attention_mask = self.compute_attention_mask()
+        attention_mask = self.compute_attention_mask(index)
         position_bias = self.compute_position_bias(x)
 
         # Self Attention
@@ -1513,7 +1513,7 @@ class T5_Decoder(Transformer):
         self_attention_name = 'Decoder-Transformer-%d-MultiHeadSelfAttention' % index
         cross_attention_name = 'Decoder-Transformer-%d-MultiHeadCrossAttention' % index
         feed_forward_name = 'Decoder-Transformer-%d-FeedForward' % index
-        attention_mask = self.compute_attention_mask()
+        attention_mask = self.compute_attention_mask(index)
         position_bias = self.compute_position_bias([x, c])
 
         # Self Attention
