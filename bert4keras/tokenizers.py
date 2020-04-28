@@ -353,6 +353,14 @@ class Tokenizer(BasicTokenizer):
     @staticmethod
     def _is_special(ch):
         """判断是不是有特殊含义的符号
+
+        这句话的意思是, 字符串不为空并且开头结尾是[]
+        其中, bool()的含义是判断字符串是否为空
+        Example:
+        >>> x = 'GeeksforGeeks'
+        >>> print(bool(x))
+        True
+        https://www.geeksforgeeks.org/bool-in-python/
         """
         return bool(ch) and (ch[0] == '[') and (ch[-1] == ']')
 
