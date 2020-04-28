@@ -7,7 +7,7 @@ os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
 import tensorflow as tf
 from data_utils import *
 from bert4keras.models import build_transformer_model
-from bert4keras.backend import keras, K, search_layer
+from bert4keras.backend import keras, K
 from bert4keras.optimizers import Adam
 from bert4keras.optimizers import extend_with_weight_decay
 from bert4keras.optimizers import extend_with_layer_adaptation
