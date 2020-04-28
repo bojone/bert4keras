@@ -317,6 +317,18 @@ class Tokenizer(BasicTokenizer):
         提醒：unicodedata.category这个函数在py2和py3下的
         表现可能不一样，比如u'§'字符，在py2下的结果为'So'，
         在py3下的结果是'Po'。
+
+        ASCII码中:
+        33-47: !"#$%&'()*+,-./
+        58-64: :;<=>?@
+        91-96: [\]^_`
+        123-126: {|}~
+
+        unicodedata.category(ch).startswith('P')的含义详见:
+        https://en.wikipedia.org/wiki/Unicode_character_property
+        Unicode character property
+            -> General Category
+                -> Punctuation (P)
         """
         code = ord(ch)
         return 33 <= code <= 47 or \
