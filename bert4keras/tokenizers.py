@@ -182,22 +182,27 @@ class Tokenizer(BasicTokenizer):
         """
         super(Tokenizer, self).__init__(*args, **kwargs)
         if is_string(token_dict):
-            token_dict = load_vocab(token_dict)
+            token_dict = load_vocab(token_dict) # 返回一个字典d, d[token] = id
 
         self._do_lower_case = do_lower_case
         self._token_dict = token_dict
-        self._token_dict_inv = {v: k for k, v in token_dict.items()}
+        self._token_dict_inv = {v: k for k, v in token_dict.items()} # inverse的字典,原来是key: value, 变成value: key
         self._vocab_size = len(token_dict)
 
         for token in ['pad', 'unk', 'mask', 'start', 'end']:
             try:
+                # getattr(object, name[, default]) -> value, get attribute
+                # getattr(x, 'y') is equivalent to x.y
                 _token_id = token_dict[getattr(self, '_token_%s' % token)]
+                # setattr(x, 'y', v) is equivalent to 'x.y = v', set attribute
                 setattr(self, '_token_%s_id' % token, _token_id)
             except:
                 pass
 
     def token_to_id(self, token):
         """token转换为对应的id
+        使用dict.get(key)而不用dict[key]的原因是get方法在key不存在时返回预设的默认值
+        https://stackoverflow.com/questions/11041405/why-dict-getkey-instead-of-dictkey
         """
         return self._token_dict.get(token, self._token_unk_id)
 
