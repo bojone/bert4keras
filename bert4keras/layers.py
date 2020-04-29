@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow as tf
 from bert4keras.backend import keras, K
 from bert4keras.backend import sequence_masking
+from bert4keras.backend import recompute_grad
 from keras import initializers, activations
 from keras.layers import *
 
@@ -171,6 +172,7 @@ class MultiHeadAttention(Layer):
             kernel_initializer=self.kernel_initializer
         )
 
+    @recompute_grad
     def call(self, inputs, mask=None, a_mask=None, p_bias=None):
         """实现多头注意力
         q_mask: 对输入的query序列的mask。
@@ -306,6 +308,7 @@ class LayerNormalization(Layer):
                     units=shape[0], use_bias=False, kernel_initializer='zeros'
                 )
 
+    @recompute_grad
     def call(self, inputs):
         """如果是条件Layer Norm，则默认以list为输入，第二个是condition
         """
@@ -578,6 +581,7 @@ class FeedForward(Layer):
             kernel_initializer=self.kernel_initializer
         )
 
+    @recompute_grad
     def call(self, inputs):
         x = inputs
         x = self.dense_1(x)
