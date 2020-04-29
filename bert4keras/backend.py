@@ -6,7 +6,7 @@ import os, sys
 from distutils.util import strtobool
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.util import nest
+from tensorflow.python.util import nest, tf_inspect
 from tensorflow.python.eager import tape
 from tensorflow.python.ops.custom_gradient import _graph_mode_decorator
 
@@ -218,8 +218,9 @@ def recompute_grad(call):
         """定义需要求梯度的函数以及重新定义求梯度过程
         （参考自官方自带的tf.recompute_grad函数）
         """
+        call_args = tf_inspect.getfullargspec(call).args
         for key in ['mask', 'training']:
-            if not has_arg(call, key) and key in kwargs:
+            if key not in call_args and key in kwargs:
                 del kwargs[key]
 
         inputs, args = args[0], args[1:]
