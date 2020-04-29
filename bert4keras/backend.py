@@ -210,6 +210,7 @@ def graph_mode_decorator(f, *args, **kwargs):
 
 def recompute_grad(call):
     """重计算装饰器（用来装饰Keras层的call函数）
+    关于重计算，请参考：https://arxiv.org/abs/1604.06174
     """
     if not do_recompute:
         return call
