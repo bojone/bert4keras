@@ -215,22 +215,20 @@ def recompute_grad(call):
     if not do_recompute:
         return call
 
-    def inner(self, *args, **kwargs):
+    def inner(self, inputs, **kwargs):
         """定义需要求梯度的函数以及重新定义求梯度过程
         （参考自官方自带的tf.recompute_grad函数）
         """
+        flat_inputs = nest.flatten(inputs)
         call_args = tf_inspect.getfullargspec(call).args
         for key in ['mask', 'training']:
             if key not in call_args and key in kwargs:
                 del kwargs[key]
 
-        inputs, args = args[0], args[1:]
-        flat_inputs = nest.flatten(inputs)
-
         def kernel_call():
             """定义前向计算
             """
-            return call(self, inputs, *args, **kwargs)
+            return call(self, inputs, **kwargs)
 
         def call_and_grad(*inputs):
             """定义前向计算和反向计算
