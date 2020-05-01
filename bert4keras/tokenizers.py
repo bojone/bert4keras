@@ -362,13 +362,15 @@ class Tokenizer(BasicTokenizer):
             if self._do_lower_case:
                 ch = unicodedata.normalize('NFD', ch)
                 ch = ''.join([c for c in ch if unicodedata.category(c) != 'Mn'])
-                ch = ch.lower()
             ch = ''.join([
                 c for c in ch
                 if not (ord(c) == 0 or ord(c) == 0xfffd or self._is_control(c))
             ])
             normalized_text += ch
             char_mapping.extend([i] * len(ch))
+
+        if self._do_lower_case:
+            normalized_text = normalized_text.lower()
 
         text, token_mapping, offset = normalized_text, [], 0
         for token in tokens:
