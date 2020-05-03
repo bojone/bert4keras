@@ -272,6 +272,16 @@ class LayerNormalization(Layer):
         self.hidden_initializer = initializers.get(hidden_initializer)
         self.epsilon = epsilon or 1e-12
 
+    def compute_mask(self, inputs, mask=None):
+        if self.conditional:
+            masks = [K.expand_dims(m, 0) for m in mask if m is not None]
+            if len(masks) == 0:
+                return None
+            else:
+                return K.all(K.concatenate(masks, axis=0), axis=0)
+        else:
+            return mask
+
     def build(self, input_shape):
         super(LayerNormalization, self).build(input_shape)
 
