@@ -622,15 +622,17 @@ class ConditionalRandomField(Layer):
     def build(self, input_shape):
         super(ConditionalRandomField, self).build(input_shape)
         output_dim = input_shape[-1]
-        self.trans = self.add_weight(
+        self._trans = self.add_weight(
             name='trans',
             shape=(output_dim, output_dim),
             initializer='glorot_uniform',
             trainable=True
         )
         if self.lr_multiplier != 1:
-            K.set_value(self.trans, K.eval(self.trans) / self.lr_multiplier)
-            self.trans = self.lr_multiplier * self.trans
+            K.set_value(self._trans, K.eval(self._trans) / self.lr_multiplier)
+            self.trans = self.lr_multiplier * self._trans
+        else:
+            self.trans = self._trans
 
     def compute_mask(self, inputs, mask=None):
         return None
@@ -743,23 +745,28 @@ class MaximumEntropyMarkovModel(Layer):
         output_dim = input_shape[-1]
 
         if self.hidden_dim is None:
-            self.trans = self.add_weight(
+            self._trans = self.add_weight(
                 name='trans',
                 shape=(output_dim, output_dim),
                 initializer='glorot_uniform',
                 trainable=True
             )
             if self.lr_multiplier != 1:
-                K.set_value(self.trans, K.eval(self.trans) / self.lr_multiplier)
-                self.trans = self.lr_multiplier * self.trans
+                K.set_value(
+                    self._trans,
+                    K.eval(self._trans) / self.lr_multiplier
+                )
+                self.trans = self.lr_multiplier * self._trans
+            else:
+                self.trans = self._trans
         else:
-            self.l_trans = self.add_weight(
+            self._l_trans = self.add_weight(
                 name='l_trans',
                 shape=(output_dim, self.hidden_dim),
                 initializer='glorot_uniform',
                 trainable=True
             )
-            self.r_trans = self.add_weight(
+            self._r_trans = self.add_weight(
                 name='r_trans',
                 shape=(output_dim, self.hidden_dim),
                 initializer='glorot_uniform',
@@ -768,15 +775,17 @@ class MaximumEntropyMarkovModel(Layer):
 
             if self.lr_multiplier != 1:
                 K.set_value(
-                    self.l_trans,
-                    K.eval(self.l_trans) / self.lr_multiplier
+                    self._l_trans,
+                    K.eval(self._l_trans) / self.lr_multiplier
                 )
-                self.l_trans = self.lr_multiplier * self.l_trans
+                self.l_trans = self.lr_multiplier * self._l_trans
                 K.set_value(
-                    self.r_trans,
-                    K.eval(self.r_trans) / self.lr_multiplier
+                    self._r_trans,
+                    K.eval(self._r_trans) / self.lr_multiplier
                 )
-                self.r_trans = self.lr_multiplier * self.r_trans
+                self.r_trans = self.lr_multiplier * self._r_trans
+            else:
+                self.l_trans, self.r_trans = self._l_trans, self._r_trans
 
     def compute_mask(self, inputs, mask=None):
         return None
