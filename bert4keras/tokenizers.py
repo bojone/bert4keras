@@ -243,11 +243,11 @@ class Tokenizer(BasicTokenizer):
         if self._do_lower_case:
             if is_py2:
                 text = unicode(text)
+            text = text.lower()
             text = unicodedata.normalize('NFD', text)
             text = ''.join([
                 ch for ch in text if unicodedata.category(ch) != 'Mn'
             ])
-            text = text.lower()
 
         spaced = ''
         for ch in text:
