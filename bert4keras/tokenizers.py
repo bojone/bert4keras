@@ -357,6 +357,9 @@ class Tokenizer(BasicTokenizer):
         if is_py2:
             text = unicode(text)
 
+        if self._do_lower_case:
+            text = text.lower()
+
         normalized_text, char_mapping = '', []
         for i, ch in enumerate(text):
             if self._do_lower_case:
@@ -368,9 +371,6 @@ class Tokenizer(BasicTokenizer):
             ])
             normalized_text += ch
             char_mapping.extend([i] * len(ch))
-
-        if self._do_lower_case:
-            normalized_text = normalized_text.lower()
 
         text, token_mapping, offset = normalized_text, [], 0
         for token in tokens:
