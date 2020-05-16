@@ -220,6 +220,28 @@ def sequence_padding(inputs, length=None, padding=0):
     return np.array(outputs)
 
 
+def text_segmentate(text, maxlen, seps='\n', strips=None):
+    """将文本按照标点符号划分为若干个短句
+    """
+    text = text.strip().strip(strips)
+    if seps and len(text) > maxlen:
+        pieces = text.split(seps[0])
+        text, texts = '', []
+        for i, p in enumerate(pieces):
+            if text and p and len(text) + len(p) > maxlen - 1:
+                texts.extend(text_segmentate(text, maxlen, seps[1:], strips))
+                text = ''
+            if i + 1 == len(pieces):
+                text = text + p
+            else:
+                text = text + p + seps[0]
+        if text:
+            texts.extend(text_segmentate(text, maxlen, seps[1:], strips))
+        return texts
+    else:
+        return [text]
+
+
 def is_one_of(x, ys):
     """判断x是否在ys之中
     等价于x in ys，但有些情况下x in ys会报错
