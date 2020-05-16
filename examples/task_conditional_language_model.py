@@ -39,7 +39,7 @@ tokenizer = Tokenizer(token_dict, do_lower_case=True)
 
 
 def load_data(filenames):
-    """划分为额定长度的句子
+    """加载数据，并尽量划分为不超过maxlen的句子
     """
     D = []
     seps, strips = u'\n。！？!?；;，, ', u'；;，, '
