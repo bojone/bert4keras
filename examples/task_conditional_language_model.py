@@ -12,6 +12,7 @@ from bert4keras.models import build_transformer_model
 from bert4keras.tokenizers import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, open
+from bert4keras.snippets import text_segmentate
 from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
 from bert4keras.snippets import uniout  # 打印中文
 from keras.layers import Input, Embedding, Reshape
@@ -38,22 +39,16 @@ tokenizer = Tokenizer(token_dict, do_lower_case=True)
 
 
 def load_data(filenames):
+    """划分为额定长度的句子
+    """
     D = []
+    seps, strips = u'\n。！？!?；;，, ', u'；;，, '
     for filename in filenames:
         with open(filename, encoding='utf-8') as f:
             for l in f:
                 text, label = l.strip().split('\t')
-                if len(text) <= maxlen - 2:
-                    D.append((text, int(label)))
-                else:
-                    tmp = ''
-                    for t in re.findall(u'.*?[。！\n]', text):
-                        if tmp and len(tmp) + len(t) > maxlen - 2:
-                            D.append((tmp, int(label)))
-                            tmp = ''
-                        tmp += t
-                    if tmp:
-                        D.append((tmp, int(label)))
+                for t in text_segmentate(text, maxlen - 2, seps, strips):
+                    D.append((t, int(label)))
     return D
 
 
