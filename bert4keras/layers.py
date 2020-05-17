@@ -630,9 +630,13 @@ class ConditionalRandomField(Layer):
         )
         if self.lr_multiplier != 1:
             K.set_value(self._trans, K.eval(self._trans) / self.lr_multiplier)
-            self.trans = self.lr_multiplier * self._trans
+
+    @property
+    def trans(self):
+        if self.lr_multiplier != 1:
+            return self.lr_multiplier * self._trans
         else:
-            self.trans = self._trans
+            return self._trans
 
     def compute_mask(self, inputs, mask=None):
         return None
@@ -756,9 +760,6 @@ class MaximumEntropyMarkovModel(Layer):
                     self._trans,
                     K.eval(self._trans) / self.lr_multiplier
                 )
-                self.trans = self.lr_multiplier * self._trans
-            else:
-                self.trans = self._trans
         else:
             self._l_trans = self.add_weight(
                 name='l_trans',
@@ -778,14 +779,31 @@ class MaximumEntropyMarkovModel(Layer):
                     self._l_trans,
                     K.eval(self._l_trans) / self.lr_multiplier
                 )
-                self.l_trans = self.lr_multiplier * self._l_trans
                 K.set_value(
                     self._r_trans,
                     K.eval(self._r_trans) / self.lr_multiplier
                 )
-                self.r_trans = self.lr_multiplier * self._r_trans
-            else:
-                self.l_trans, self.r_trans = self._l_trans, self._r_trans
+
+    @property
+    def trans(self):
+        if self.lr_multiplier != 1:
+            return self.lr_multiplier * self._trans
+        else:
+            return self._trans
+
+    @property
+    def l_trans(self):
+        if self.lr_multiplier != 1:
+            return self.lr_multiplier * self._l_trans
+        else:
+            return self._l_trans
+
+    @property
+    def r_trans(self):
+        if self.lr_multiplier != 1:
+            return self.lr_multiplier * self._r_trans
+        else:
+            return self._r_trans
 
     def compute_mask(self, inputs, mask=None):
         return None
