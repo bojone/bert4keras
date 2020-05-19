@@ -979,6 +979,7 @@ else:
     Adam = keras.optimizers.Adam
     AdaFactor = AdaFactorV1
 
+AdaFactor.__name__ = 'AdaFactor'
 custom_objects = {
     'Adam': Adam,
     'AdaFactor': AdaFactor,
