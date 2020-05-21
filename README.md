@@ -46,7 +46,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 - <strong>Google原版albert</strong><sup><a href="https://github.com/bojone/bert4keras/issues/29#issuecomment-552188981">[例子]</a></sup>: https://github.com/google-research/ALBERT
 - <strong>brightmart版albert</strong>: https://github.com/brightmart/albert_zh
 - <strong>转换后的albert</strong>: https://github.com/bojone/albert_zh
-- <strong>华为的NEZHA</strong>: https://github.com/huawei-noah/Pretrained-Language-Model/tree/master/NEZHA
+- <strong>华为的NEZHA</strong>: https://github.com/huawei-noah/Pretrained-Language-Model/tree/master/NEZHA-TensorFlow
 - <strong>自研语言模型</strong>: https://github.com/ZhuiyiTechnology/pretrained-models
 - <strong>T5模型</strong>: https://github.com/google-research/text-to-text-transfer-transformer
 - <strong>GPT2_ML</strong>: https://github.com/imcaspar/gpt2-ml
