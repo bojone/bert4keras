@@ -231,8 +231,9 @@ class MultiHeadAttention(Layer):
     def compute_output_shape(self, input_shape):
         return (input_shape[0][0], input_shape[0][1], self.out_dim)
 
-    def compute_mask(self, inputs, mask):
-        return mask[0]
+    def compute_mask(self, inputs, mask=None):
+        if mask is not None:
+            return mask[0]
 
     def get_config(self):
         config = {
