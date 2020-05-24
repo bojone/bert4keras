@@ -1828,6 +1828,54 @@ def extend_with_unified_language_model(BaseModel):
     return UnifiedLanguageModel
 
 
+def extend_with_parallel_unified_language_model(BaseModel):
+    """添加并行式UniLM的Attention Mask（Seq2Seq用）
+    注：用于加速一对多的Seq2Seq任务的训练过程。
+    """
+    class ParallelUnifiedLanguageModel(BaseModel):
+        """带并行式UniLM的Attention Mask的派生模型
+        UniLM: https://arxiv.org/abs/1905.03197
+        """
+        def __init__(self, *args, **kwargs):
+            super(ParallelUnifiedLanguageModel, self).__init__(*args, **kwargs)
+            self.with_mlm = self.with_mlm or True
+            self.custom_position_ids = True
+
+        def compute_attention_mask(self, inputs=None):
+            """重载此函数即可
+            """
+            if self.attention_mask is None:
+
+                def punilm_mask(inputs):
+                    s, p = inputs
+
+                    s_idxs = K.cumsum(s, axis=1)
+                    s_mask = s_idxs[:, None, :] <= s_idxs[:, :, None]
+                    s_mask = K.cast(s_mask, K.floatx())
+
+                    p = K.less(p[:, 1:] - p[:, :-1], 0)
+                    p = K.cast(p, K.floatx())
+                    p = K.concatenate([K.zeros_like(p[:, :1]), p], axis=1)
+                    p_idxs = K.cumsum(p, axis=1) + s
+                    p_mask = K.equal(p_idxs[:, None, :], p_idxs[:, :, None])
+                    p_mask = K.cast(p_mask, K.floatx())
+
+                    s = s[:, None]
+                    mask = s_mask * (1 - s) + p_mask * s_mask * s
+                    return mask[:, None]
+
+                self.attention_mask = self.apply(
+                    inputs=self.inputs[1:],
+                    layer=Lambda,
+                    function=punilm_mask,
+                    name='Attention-PUniLM-Mask'
+                )
+
+            return self.attention_mask
+
+    return ParallelUnifiedLanguageModel
+
+
 def build_transformer_model(
     config_path=None,
     checkpoint_path=None,
@@ -1865,6 +1913,8 @@ def build_transformer_model(
             MODEL = extend_with_language_model(MODEL)
         elif application == 'unilm':
             MODEL = extend_with_unified_language_model(MODEL)
+        elif application == 'punilm':
+            MODEL = extend_with_parallel_unified_language_model(MODEL)
 
     transformer = MODEL(**configs)
     transformer.build(**configs)
