@@ -1865,7 +1865,7 @@ def extend_with_parallel_unified_language_model(BaseModel):
                     return mask[:, None]
 
                 self.attention_mask = self.apply(
-                    inputs=self.inputs[1:],
+                    inputs=self.inputs[1:3],
                     layer=Lambda,
                     function=punilm_mask,
                     name='Attention-PUniLM-Mask'
