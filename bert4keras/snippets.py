@@ -441,6 +441,56 @@ class AutoRegressiveDecoder(object):
         # 达到长度直接输出
         return output_ids[output_scores.argmax()]
 
+    def nucleus_sample(self, inputs, n, p=0.95, temperature=None, topk=None, min_k=1):
+        inputs = [np.array([i]) for i in inputs]
+        output_ids = self.first_output_ids
+        results = []
+        for step in range(self.maxlen):
+            probas = self.predict(inputs, output_ids, step, 'probas')  # 计算当前概率
+            if step == 0:  # 第1步预测后将结果重复n次
+                probas = np.repeat(probas, n, axis=0)
+                inputs = [np.repeat(i, n, axis=0) for i in inputs]
+                output_ids = np.repeat(output_ids, n, axis=0)
+
+            indices = (-probas).argsort(axis=1)
+            probas = np.take_along_axis(probas, indices, axis=1)
+
+            if temperature and isinstance(temperature, (int, float)):
+                probas = probas / temperature
+                probas = probas - np.max(probas, axis=1, keepdims=True)
+                probas = np.exp(probas)
+                probas = probas / np.sum(probas, axis=1, keepdims=True)
+
+            x = np.cumsum(probas, axis=1)
+            m = (x < p) * 1.0
+            m[:, :min_k] = 1.0
+            probas = np.multiply(probas, m)
+            if topk is not None:
+                probas = probas[:, :topk]
+
+            probas /= probas.sum(axis=1, keepdims=True)  # 重新归一化
+            # probas /= (1.0 + 1e-4) * probas.sum(axis=1, keepdims=True)  # 重新归一化
+            sample_func = lambda _p: np.random.choice(len(_p), p=_p)  # 按概率采样函数
+            sample_ids = np.apply_along_axis(sample_func, 1, probas)  # 执行采样
+            sample_ids = sample_ids.reshape((-1, 1))  # 对齐形状
+            sample_ids = np.take_along_axis(indices, sample_ids, axis=1)  # 对齐原id
+
+            output_ids = np.concatenate([output_ids, sample_ids], 1)  # 更新输出
+            flag = (sample_ids[:, 0] == self.end_id)  # 标记已完成序列
+            if flag.any():  # 如果有已完成的
+                for ids in output_ids[flag]:  # 存好已完成序列
+                    results.append(ids)
+                flag = (flag == False)  # 标记未完成序列
+                inputs = [i[flag] for i in inputs]  # 只保留未完成部分输入
+                output_ids = output_ids[flag]  # 只保留未完成部分候选集
+                if len(output_ids) == 0:
+                    break
+        # 如果还有未完成序列，直接放入结果
+        for ids in output_ids:
+            results.append(ids)
+        # 返回结果
+        return results
+
     def random_sample(self, inputs, n, topk=None, topp=None):
         """随机采样n个结果
         说明：非None的topk表示每一步只从概率最高的topk个中采样；而非None的topp
