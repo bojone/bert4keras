@@ -512,8 +512,7 @@ def longest_common_substring(source, target):
     返回：子串长度, 所在区间（四元组）
     注意：最长公共子串可能不止一个，所返回的区间只代表其中一个。
     """
-    c = defaultdict(int)
-    l, span = 0, (0, 0, 0, 0)
+    c, l, span = defaultdict(int), 0, (0, 0, 0, 0)
     for i, si in enumerate(source, 1):
         for j, tj in enumerate(target, 1):
             if si == tj:
