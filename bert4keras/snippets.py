@@ -528,6 +528,7 @@ def longest_common_subsequence(source, target):
     返回：子序列长度, 映射关系（映射对组成的list）
     注意：最长公共子序列可能不止一个，所返回的映射只代表其中一个。
     """
+    i, j = 0, 0
     c, p = defaultdict(int), defaultdict(list)
     for i, si in enumerate(source, 1):
         for j, tj in enumerate(target, 1):
