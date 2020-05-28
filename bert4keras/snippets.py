@@ -528,20 +528,26 @@ def longest_common_subsequence(source, target):
     返回：子序列长度, 映射关系（映射对组成的list）
     注意：最长公共子序列可能不止一个，所返回的映射只代表其中一个。
     """
-    i, j = 0, 0
-    c, p = defaultdict(int), defaultdict(list)
+    c = defaultdict(int)
     for i, si in enumerate(source, 1):
         for j, tj in enumerate(target, 1):
             if si == tj:
                 c[i, j] = c[i - 1, j - 1] + 1
-                p[i, j] = p[i - 1, j - 1] + [(i - 1, j - 1)]
             elif c[i, j - 1] > c[i - 1, j]:
                 c[i, j] = c[i, j - 1]
-                p[i, j] = p[i, j - 1]
             else:
                 c[i, j] = c[i - 1, j]
-                p[i, j] = p[i - 1, j]
-    return c[i, j], p[i, j]
+    l, mapping = c[len(source), len(target)], []
+    i, j = len(source) - 1, len(target) - 1
+    while len(mapping) < l:
+        if source[i] == target[j]:
+            mapping.append((i, j))
+            i, j = i - 1, j - 1
+        elif c[i + 1, j] > c[i, j + 1]:
+            j = j - 1
+        else:
+            i = i - 1
+    return l , mapping[::-1]
 
 
 class Hook:
