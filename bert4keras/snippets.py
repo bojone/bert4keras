@@ -110,35 +110,6 @@ class open:
         self.close()
 
 
-class Progress:
-    """显示进度，自己简单封装，比tqdm更可控一些
-    iterable: 可迭代的对象；
-    period: 显示进度的周期；
-    steps: iterable可迭代的总步数，相当于len(iterable)
-    """
-    def __init__(self, iterable, period=1, steps=None, desc=None):
-        self.iterable = iterable
-        self.period = period
-        if hasattr(iterable, '__len__'):
-            self.steps = len(iterable)
-        else:
-            self.steps = steps
-        self.desc = desc
-        if self.steps:
-            self._format_ = u'%s/%s passed' % ('%s', self.steps)
-        else:
-            self._format_ = u'%s passed'
-        if self.desc:
-            self._format_ = self.desc + ' - ' + self._format_
-        self.logger = logging.getLogger()
-
-    def __iter__(self):
-        for i, j in enumerate(self.iterable):
-            if (i + 1) % self.period == 0:
-                self.logger.info(self._format_ % (i + 1))
-            yield j
-
-
 def parallel_apply(
     func, iterable, workers, max_queue_size, callback=None, dummy=False
 ):
@@ -533,27 +504,6 @@ def delete_arguments(*arguments):
         return new_func
 
     return actual_decorator
-
-
-def groupby(iterable, key=None):
-    """类似itertools.groupby，但这里的key是iterable对象
-    """
-    if key is None:
-        key = iterable
-
-    result = []
-    for i, (k, v) in enumerate(zip(key, iterable)):
-        if i == 0:
-            result.append((k, [v]))
-            last_k = k
-        else:
-            if k == last_k:
-                result[-1][1].append(v)
-            else:
-                result.append((k, [v]))
-                last_k = k
-
-    return result
 
 
 class Hook:
