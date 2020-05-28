@@ -6,6 +6,7 @@ import logging
 import numpy as np
 import re
 import sys
+from collections import defaultdict
 
 _open_ = open
 is_py2 = six.PY2
@@ -504,6 +505,43 @@ def delete_arguments(*arguments):
         return new_func
 
     return actual_decorator
+
+
+def longest_common_substring(source, target):
+    """最长公共子串（source和target的最长公共切片区间）
+    返回：子串长度, 所在区间（四元组）
+    注意：最长公共子串可能不止一个，所返回的区间只代表其中一个。
+    """
+    c = defaultdict(int)
+    l, span = 0, (0, 0, 0, 0)
+    for i, si in enumerate(source, 1):
+        for j, tj in enumerate(target, 1):
+            if si == tj:
+                c[i, j] = c[i - 1, j - 1]  + 1
+                if c[i, j] > l:
+                    l = c[i, j]
+                    span = (i - l, i, j - l, j)
+    return l, span
+
+
+def longest_common_subsequence(source, target):
+    """最长公共子序列（source和target的最长非连续子序列）
+    返回：子序列长度, 映射关系（映射对组成的list）
+    注意：最长公共子序列可能不止一个，所返回的映射只代表其中一个。
+    """
+    c, p = defaultdict(int), defaultdict(list)
+    for i, si in enumerate(source, 1):
+        for j, tj in enumerate(target, 1):
+            if si == tj:
+                c[i, j] = c[i - 1, j - 1] + 1
+                p[i, j] = p[i - 1, j - 1] + [(i - 1, j - 1)]
+            elif c[i, j - 1] > c[i - 1, j]:
+                c[i, j] = c[i, j - 1]
+                p[i, j] = p[i, j - 1]
+            else:
+                c[i, j] = c[i - 1, j]
+                p[i, j] = p[i - 1, j]
+    return c[i, j], p[i, j]
 
 
 class Hook:
