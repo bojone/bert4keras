@@ -270,6 +270,8 @@ class BERT(Transformer):
         self.with_nsp = with_nsp
         self.with_mlm = with_mlm
         self.custom_position_ids = custom_position_ids
+        if self.with_nsp and not self.with_pool:
+            self.with_pool = True
 
     def get_inputs(self):
         """BERT的输入是token_ids和segment_ids
@@ -432,7 +434,7 @@ class BERT(Transformer):
         z = self.layer_norm_conds[0]
         outputs = [x]
 
-        if self.with_pool or self.with_nsp:
+        if self.with_pool:
             # Pooler部分（提取CLS向量）
             x = outputs[0]
             x = self.apply(
