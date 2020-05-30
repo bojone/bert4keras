@@ -4,6 +4,7 @@
 import numpy as np
 from bert4keras.layers import *
 from bert4keras.snippets import delete_arguments
+from bert4keras.snippets import is_string
 from keras.models import Model
 import json
 
