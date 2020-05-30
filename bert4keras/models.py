@@ -1897,8 +1897,6 @@ def build_transformer_model(
     if 'dropout_rate' not in configs:
         configs['dropout_rate'] = configs.get('hidden_dropout_prob')
 
-    model, application = model.lower(), application.lower()
-
     models = {
         'bert': BERT,
         'albert': ALBERT,
@@ -1908,8 +1906,14 @@ def build_transformer_model(
         'gpt2_ml': GPT2_ML,
         't5': T5,
     }
-    MODEL = models[model]
 
+    if is_string(model):
+        model = model.lower()
+        MODEL = models[model]
+    else:
+        MODEL = model
+
+    application = application.lower()
     if model != 't5':
         if application == 'lm':
             MODEL = extend_with_language_model(MODEL)
