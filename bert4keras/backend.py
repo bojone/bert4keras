@@ -143,7 +143,7 @@ def batch_gather(params, indices):
     """同tf旧版本的batch_gather
     """
     try:
-        return tf.gather(params, indices, batch_dims=-1)
+        return tf.gather(params, indices, batch_dims=K.ndim(indices) - 1)
     except Exception as e1:
         try:
             return tf.batch_gather(params, indices)
