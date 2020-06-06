@@ -62,7 +62,7 @@ class BasicTokenizer(object):
         self._token_start = token_start
         self._token_end = token_end
 
-    def tokenize(self, text, max_length=None):
+    def tokenize(self, text, maxlen=None):
         """分词函数
         """
         tokens = self._tokenize(text)
@@ -71,9 +71,9 @@ class BasicTokenizer(object):
         if self._token_end is not None:
             tokens.append(self._token_end)
 
-        if max_length is not None:
+        if maxlen is not None:
             index = int(self._token_end is not None) + 1
-            self.truncate_sequence(max_length, tokens, None, -index)
+            self.truncate_sequence(maxlen, tokens, None, -index)
 
         return tokens
 
@@ -88,7 +88,7 @@ class BasicTokenizer(object):
         return [self.token_to_id(token) for token in tokens]
 
     def truncate_sequence(
-        self, max_length, first_sequence, second_sequence=None, pop_index=-1
+        self, maxlen, first_sequence, second_sequence=None, pop_index=-1
     ):
         """截断总长度
         """
@@ -97,7 +97,7 @@ class BasicTokenizer(object):
 
         while True:
             total_length = len(first_sequence) + len(second_sequence)
-            if total_length <= max_length:
+            if total_length <= maxlen:
                 break
             elif len(first_sequence) > len(second_sequence):
                 first_sequence.pop(pop_index)
@@ -105,17 +105,12 @@ class BasicTokenizer(object):
                 second_sequence.pop(pop_index)
 
     def encode(
-        self,
-        first_text,
-        second_text=None,
-        max_length=None,
-        first_length=None,
-        second_length=None
+        self, first_text, second_text=None, maxlen=None, max_length=None
     ):
         """输出文本对应token id和segment id
-        如果传入first_length，则强行padding第一个句子到指定长度；
-        同理，如果传入second_length，则强行padding第二个句子到指定长度。
         """
+        maxlen = maxlen or max_length  # 向后兼容
+
         if is_string(first_text):
             first_tokens = self.tokenize(first_text)
         else:
@@ -129,24 +124,15 @@ class BasicTokenizer(object):
         else:
             second_tokens = second_text
 
-        if max_length is not None:
-            self.truncate_sequence(max_length, first_tokens, second_tokens, -2)
+        if maxlen is not None:
+            self.truncate_sequence(maxlen, first_tokens, second_tokens, -2)
 
         first_token_ids = self.tokens_to_ids(first_tokens)
-        if first_length is not None:
-            first_token_ids = first_token_ids[:first_length]
-            first_token_ids.extend([self._token_pad_id] *
-                                   (first_length - len(first_token_ids)))
         first_segment_ids = [0] * len(first_token_ids)
 
         if second_text is not None:
             second_token_ids = self.tokens_to_ids(second_tokens)
-            if second_length is not None:
-                second_token_ids = second_token_ids[:second_length]
-                second_token_ids.extend([self._token_pad_id] *
-                                        (second_length - len(second_token_ids)))
             second_segment_ids = [1] * len(second_token_ids)
-
             first_token_ids.extend(second_token_ids)
             first_segment_ids.extend(second_segment_ids)
 
