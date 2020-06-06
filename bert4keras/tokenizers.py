@@ -62,9 +62,16 @@ class BasicTokenizer(object):
         self._token_start = token_start
         self._token_end = token_end
 
-    def tokenize(self, text, maxlen=None):
+    def tokenize(self, text, maxlen=None, max_length=None):
         """分词函数
         """
+        # 向后兼容
+        if maxlen is None and max_length is not None:
+            print(
+                'From tokenizers.py: The argument max_length is deprecated. Please use maxlen instead.'
+            )
+        maxlen = maxlen or max_length
+
         tokens = self._tokenize(text)
         if self._token_start is not None:
             tokens.insert(0, self._token_start)
@@ -109,7 +116,12 @@ class BasicTokenizer(object):
     ):
         """输出文本对应token id和segment id
         """
-        maxlen = maxlen or max_length  # 向后兼容
+        # 向后兼容
+        if maxlen is None and max_length is not None:
+            print(
+                'From tokenizers.py: The argument max_length is deprecated. Please use maxlen instead.'
+            )
+        maxlen = maxlen or max_length
 
         if is_string(first_text):
             first_tokens = self.tokenize(first_text)
