@@ -75,10 +75,10 @@ class data_generator(DataGenerator):
                     final_answer = answer.replace(' ', ',')
                     break
             qa_token_ids, qa_segment_ids = tokenizer.encode(
-                question, final_answer, max_length=max_qa_len + 1
+                question, final_answer, maxlen=max_qa_len + 1
             )
             p_token_ids, p_segment_ids = tokenizer.encode(
-                passage, max_length=max_p_len
+                passage, maxlen=max_p_len
             )
             token_ids = p_token_ids + qa_token_ids[1:]
             segment_ids = p_segment_ids + qa_segment_ids[1:]
@@ -196,9 +196,8 @@ class ReadingComprehension(AutoRegressiveDecoder):
         token_ids = []
         for passage in passages:
             passage = re.sub(u' |、|；|，', ',', passage)
-            p_token_ids = tokenizer.encode(passage, max_length=max_p_len)[0]
-            q_token_ids = tokenizer.encode(question,
-                                           max_length=max_q_len + 1)[0]
+            p_token_ids = tokenizer.encode(passage, maxlen=max_p_len)[0]
+            q_token_ids = tokenizer.encode(question, maxlen=max_q_len + 1)[0]
             token_ids.append(p_token_ids + q_token_ids[1:])
         output_ids = self.beam_search(token_ids, topk)  # 基于beam search
         return tokenizer.decode(output_ids)

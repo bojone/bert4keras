@@ -75,9 +75,7 @@ class data_generator(DataGenerator):
         batch_token_ids, batch_segment_ids = [], []
         batch_subject_labels, batch_subject_ids, batch_object_labels = [], [], []
         for is_end, d in self.sample(random):
-            token_ids, segment_ids = tokenizer.encode(
-                d['text'], max_length=maxlen
-            )
+            token_ids, segment_ids = tokenizer.encode(d['text'], maxlen=maxlen)
             # 整理三元组 {s: [(o, p)]}
             spoes = {}
             for s, p, o in d['spo_list']:
@@ -117,7 +115,9 @@ class data_generator(DataGenerator):
                 if len(batch_token_ids) == self.batch_size or is_end:
                     batch_token_ids = sequence_padding(batch_token_ids)
                     batch_segment_ids = sequence_padding(batch_segment_ids)
-                    batch_subject_labels = sequence_padding(batch_subject_labels)
+                    batch_subject_labels = sequence_padding(
+                        batch_subject_labels
+                    )
                     batch_subject_ids = np.array(batch_subject_ids)
                     batch_object_labels = sequence_padding(batch_object_labels)
                     yield [
@@ -217,9 +217,9 @@ train_model.compile(optimizer=optimizer)
 def extract_spoes(text):
     """抽取输入text所包含的三元组
     """
-    tokens = tokenizer.tokenize(text, max_length=maxlen)
+    tokens = tokenizer.tokenize(text, maxlen=maxlen)
     mapping = tokenizer.rematch(text, tokens)
-    token_ids, segment_ids = tokenizer.encode(text, max_length=maxlen)
+    token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
     # 抽取subject
     subject_preds = subject_model.predict([[token_ids], [segment_ids]])
     start = np.where(subject_preds[0, :, 0] > 0.6)[0]

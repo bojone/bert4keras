@@ -95,9 +95,7 @@ class data_generator(DataGenerator):
         for is_end, D in self.sample(random):
             img = '/root/caption/coco/train2014/%s' % D['image_id']
             caption = np.random.choice(D['caption'])
-            token_ids, segment_ids = tokenizer.encode(
-                caption, max_length=maxlen
-            )
+            token_ids, segment_ids = tokenizer.encode(caption, maxlen=maxlen)
             batch_images.append(read_image(img))
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)

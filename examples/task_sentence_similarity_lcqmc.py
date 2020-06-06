@@ -45,7 +45,7 @@ class data_generator(DataGenerator):
         batch_token_ids, batch_segment_ids, batch_labels = [], [], []
         for is_end, (text1, text2, label) in self.sample(random):
             token_ids, segment_ids = tokenizer.encode(
-                text1, text2, max_length=maxlen
+                text1, text2, maxlen=maxlen
             )
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)

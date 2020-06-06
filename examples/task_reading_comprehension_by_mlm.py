@@ -76,12 +76,10 @@ class data_generator(DataGenerator):
                     final_answer = answer.replace(' ', ',')
                     break
             a_token_ids, _ = tokenizer.encode(
-                final_answer, max_length=max_a_len + 1
+                final_answer, maxlen=max_a_len + 1
             )
-            q_token_ids, _ = tokenizer.encode(
-                question, max_length=max_q_len + 1
-            )
-            p_token_ids, _ = tokenizer.encode(passage, max_length=max_p_len + 1)
+            q_token_ids, _ = tokenizer.encode(question, maxlen=max_q_len + 1)
+            p_token_ids, _ = tokenizer.encode(passage, maxlen=max_p_len + 1)
             token_ids = [tokenizer._token_start_id]
             token_ids += ([tokenizer._token_mask_id] * max_a_len)
             token_ids += [tokenizer._token_end_id]
@@ -143,8 +141,8 @@ def gen_answer(question, passages):
     all_p_token_ids, token_ids, segment_ids = [], [], []
     for passage in passages:
         passage = re.sub(u' |、|；|，', ',', passage)
-        p_token_ids, _ = tokenizer.encode(passage, max_length=max_p_len + 1)
-        q_token_ids, _ = tokenizer.encode(question, max_length=max_q_len + 1)
+        p_token_ids, _ = tokenizer.encode(passage, maxlen=max_p_len + 1)
+        q_token_ids, _ = tokenizer.encode(question, maxlen=max_q_len + 1)
         all_p_token_ids.append(p_token_ids[1:])
         token_ids.append([tokenizer._token_start_id])
         token_ids[-1] += ([tokenizer._token_mask_id] * max_a_len)

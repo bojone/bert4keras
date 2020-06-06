@@ -59,7 +59,7 @@ class data_generator(DataGenerator):
         batch_token_ids, batch_segment_ids = [], []
         for is_end, (title, content) in self.sample(random):
             token_ids, segment_ids = tokenizer.encode(
-                content, title, max_length=maxlen
+                content, title, maxlen=maxlen
             )
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
@@ -109,7 +109,7 @@ class AutoTitle(AutoRegressiveDecoder):
 
     def generate(self, text, topk=1):
         max_c_len = maxlen - self.maxlen
-        token_ids, segment_ids = tokenizer.encode(text, max_length=max_c_len)
+        token_ids, segment_ids = tokenizer.encode(text, maxlen=max_c_len)
         output_ids = self.beam_search([token_ids, segment_ids],
                                       topk)  # 基于beam search
         return tokenizer.decode(output_ids)

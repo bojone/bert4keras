@@ -52,7 +52,7 @@ class data_generator(DataGenerator):
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids, batch_labels = [], [], []
         for is_end, (text, label) in self.sample(random):
-            token_ids, segment_ids = tokenizer.encode(text, max_length=maxlen)
+            token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
             batch_labels.append([label])
@@ -173,7 +173,7 @@ def predict_to_file(in_file, out_file):
         for l in tqdm(fr):
             l = json.loads(l)
             text = l['sentence']
-            token_ids, segment_ids = tokenizer.encode(text, max_length=maxlen)
+            token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
             label = model.predict([[token_ids], [segment_ids]])[0].argmax()
             l = json.dumps({'id': str(l['id']), 'label': str(label)})
             fw.write(l + '\n')
