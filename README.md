@@ -59,6 +59,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 - 注2：下载下来的ELECTRA权重，如果没有json配置文件的话，参考<a href="https://github.com/ymcui/Chinese-ELECTRA/issues/3">这里</a>自己改一个。
 
 ## 更新
+- <strong>2020.04.29</strong>: 强迫症作祟：将`Tokenizer`原来的`max_length`参数重命名为`maxlen`，同时保留向后兼容性，建议大家用新参数名。
 - <strong>2020.04.29</strong>: 增加重计算（参考<a href="https://github.com/bojone/keras_recompute">keras_recompute</a>），可以通过时间换空间，通过设置环境变量`RECOMPUTE=1`启用。
 - <strong>2020.04.25</strong>: 优化tf2下的表现。
 - <strong>2020.04.16</strong>: 所有example均适配tensorflow 2.0。
