@@ -379,7 +379,7 @@ class AutoRegressiveDecoder(object):
         """
         raise NotImplementedError
 
-    def beam_search(self, inputs, topk):
+    def beam_search(self, inputs, topk, min_ends=1):
         """beam search解码
         说明：这里的topk即beam size；
         返回：最优解码序列。
@@ -399,21 +399,23 @@ class AutoRegressiveDecoder(object):
             output_scores = np.take_along_axis(
                 scores, indices, axis=None
             )  # 更新得分
+            end_counts = (output_ids == self.end_id).sum(1)  # 统计出现的end标记
             if output_ids.shape[1] >= self.minlen:  # 最短长度判断
                 best_one = output_scores.argmax()  # 得分最大的那个
-                if indices_2[best_one, 0] == self.end_id:  # 如果已经终止
+                if end_counts[best_one] == min_ends:  # 如果已经终止
                     return output_ids[best_one]  # 直接输出
                 else:  # 否则，只保留未完成部分
-                    flag = (indices_2[:, 0] != self.end_id)  # 标记未完成序列
+                    flag = (end_counts < min_ends)  # 标记未完成序列
                     if not flag.all():  # 如果有已完成的
                         inputs = [i[flag] for i in inputs]  # 扔掉已完成序列
                         output_ids = output_ids[flag]  # 扔掉已完成序列
                         output_scores = output_scores[flag]  # 扔掉已完成序列
+                        end_counts = end_counts[flag]  # 扔掉已完成end计数
                         topk = flag.sum()  # topk相应变化
         # 达到长度直接输出
         return output_ids[output_scores.argmax()]
 
-    def random_sample(self, inputs, n, topk=None, topp=None):
+    def random_sample(self, inputs, n, topk=None, topp=None, min_ends=1):
         """随机采样n个结果
         说明：非None的topk表示每一步只从概率最高的topk个中采样；而非None的topp
              表示每一步只从概率最高的且概率之和刚好达到topp的若干个token中采样。
@@ -454,14 +456,16 @@ class AutoRegressiveDecoder(object):
                     k_indices, sample_ids, axis=1
                 )  # 对齐原id
             output_ids = np.concatenate([output_ids, sample_ids], 1)  # 更新输出
+            end_counts = (output_ids == self.end_id).sum(1)  # 统计出现的end标记
             if output_ids.shape[1] >= self.minlen:  # 最短长度判断
-                flag = (sample_ids[:, 0] == self.end_id)  # 标记已完成序列
+                flag = (end_counts == min_ends)  # 标记已完成序列
                 if flag.any():  # 如果有已完成的
                     for ids in output_ids[flag]:  # 存好已完成序列
                         results.append(ids)
                     flag = (flag == False)  # 标记未完成序列
                     inputs = [i[flag] for i in inputs]  # 只保留未完成部分输入
                     output_ids = output_ids[flag]  # 只保留未完成部分候选集
+                    end_counts = end_counts[flag]  # 只保留未完成部分end计数
                     if len(output_ids) == 0:
                         break
         # 如果还有未完成序列，直接放入结果
