@@ -247,7 +247,7 @@ if __name__ == '__main__':
 
     model.fit_generator(
         train_generator.forfit(),
-        steps_per_epoch=len(train_generator) * 0 + 200,
+        steps_per_epoch=len(train_generator),
         epochs=epochs,
         callbacks=[evaluator]
     )
