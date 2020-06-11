@@ -118,8 +118,8 @@ model.summary()
 class RandomSentiment(AutoRegressiveDecoder):
     """根据情感标签（0:负，1:正）随机生成一批句子
     """
-    @AutoRegressiveDecoder.set_rtype('probas')
-    def predict(self, inputs, output_ids, step):
+    @AutoRegressiveDecoder.wraps(default_rtype='probas')
+    def predict(self, inputs, output_ids, states):
         token_ids = output_ids
         segment_ids = np.zeros_like(token_ids)
         return model.predict([token_ids, segment_ids, inputs[0]])[:, -1]

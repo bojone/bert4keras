@@ -161,8 +161,8 @@ model.summary()
 class AutoCaption(AutoRegressiveDecoder):
     """img2seq解码器
     """
-    @AutoRegressiveDecoder.set_rtype('probas')
-    def predict(self, inputs, output_ids, step):
+    @AutoRegressiveDecoder.wraps(default_rtype='probas')
+    def predict(self, inputs, output_ids, states):
         image = inputs[0]
         token_ids = output_ids
         segment_ids = np.zeros_like(token_ids)

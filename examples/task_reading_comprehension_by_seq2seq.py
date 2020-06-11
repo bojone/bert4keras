@@ -140,15 +140,15 @@ class ReadingComprehension(AutoRegressiveDecoder):
             result[k[:-1]].add(k[-1])
         return result
 
-    @AutoRegressiveDecoder.set_rtype('probas')
-    def predict(self, inputs, output_ids, step):
+    @AutoRegressiveDecoder.wraps(default_rtype='probas', use_states=True)
+    def predict(self, inputs, output_ids, states):
         inputs = [i for i in inputs if i[0, 0] > -1]  # 过滤掉无答案篇章
         topk = len(inputs[0])
         all_token_ids, all_segment_ids = [], []
         for token_ids in inputs:  # inputs里每个元素都代表一个篇章
             token_ids = np.concatenate([token_ids, output_ids], 1)
             segment_ids = np.zeros_like(token_ids)
-            if step > 0:
+            if states > 0:
                 segment_ids[:, -output_ids.shape[1]:] = 1
             all_token_ids.extend(token_ids)
             all_segment_ids.extend(segment_ids)
@@ -159,7 +159,7 @@ class ReadingComprehension(AutoRegressiveDecoder):
             probas[i, len(ids) - 1] for i, ids in enumerate(all_token_ids)
         ]
         probas = np.array(probas).reshape((len(inputs), topk, -1))
-        if step == 0:
+        if states == 0:
             # 这一步主要是排除没有答案的篇章
             # 如果一开始最大值就为end_id，那说明该篇章没有答案
             argmax = probas[:, 0].argmax(axis=1)
@@ -167,7 +167,7 @@ class ReadingComprehension(AutoRegressiveDecoder):
             if len(available_idxs) == 0:
                 scores = np.zeros_like(probas[0])
                 scores[:, self.end_id] = 1
-                return scores
+                return scores, states + 1
             else:
                 for i in np.where(argmax == self.end_id)[0]:
                     inputs[i][:, 0] = -1  # 无答案篇章首位标记为-1
@@ -182,7 +182,7 @@ class ReadingComprehension(AutoRegressiveDecoder):
                 token_ids = token_ids[0]
                 sep_idx = np.where(token_ids == tokenizer._token_end_id)[0][0]
                 p_token_ids = token_ids[1:sep_idx]
-                for k, v in self.get_ngram_set(p_token_ids, step + 1).items():
+                for k, v in self.get_ngram_set(p_token_ids, states + 1).items():
                     ngrams[k] = ngrams.get(k, set()) | v
             for i, ids in enumerate(output_ids):
                 available_idxs = ngrams.get(tuple(ids), set())
@@ -190,7 +190,7 @@ class ReadingComprehension(AutoRegressiveDecoder):
                 available_idxs = list(available_idxs)
                 new_probas[:, i, available_idxs] = probas[:, i, available_idxs]
             probas = new_probas
-        return (probas**2).sum(0) / (probas.sum(0) + 1)  # 某种平均投票方式
+        return (probas**2).sum(0) / (probas.sum(0) + 1), states + 1  # 某种平均投票方式
 
     def answer(self, question, passages, topk=1):
         token_ids = []
@@ -199,7 +199,9 @@ class ReadingComprehension(AutoRegressiveDecoder):
             p_token_ids = tokenizer.encode(passage, maxlen=max_p_len)[0]
             q_token_ids = tokenizer.encode(question, maxlen=max_q_len + 1)[0]
             token_ids.append(p_token_ids + q_token_ids[1:])
-        output_ids = self.beam_search(token_ids, topk)  # 基于beam search
+        output_ids = self.beam_search(
+            token_ids, topk, states=0
+        )  # 基于beam search
         return tokenizer.decode(output_ids)
 
 
@@ -245,7 +247,7 @@ if __name__ == '__main__':
 
     model.fit_generator(
         train_generator.forfit(),
-        steps_per_epoch=len(train_generator),
+        steps_per_epoch=len(train_generator) * 0 + 200,
         epochs=epochs,
         callbacks=[evaluator]
     )

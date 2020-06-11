@@ -119,8 +119,8 @@ model.summary()
 class StoryCompletion(AutoRegressiveDecoder):
     """基于随机采样的故事续写
     """
-    @AutoRegressiveDecoder.set_rtype('probas')
-    def predict(self, inputs, output_ids, step):
+    @AutoRegressiveDecoder.wraps(default_rtype='probas')
+    def predict(self, inputs, output_ids, states):
         token_ids = inputs[0]
         token_ids = np.concatenate([token_ids, output_ids], 1)
         segment_ids = np.zeros_like(token_ids)
