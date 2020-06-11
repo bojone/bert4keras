@@ -349,37 +349,44 @@ class AutoRegressiveDecoder(object):
             self.first_output_ids = np.array([[self.start_id]])
 
     @staticmethod
-    def set_rtype(default='probas'):
-        """用来给predict方法加上rtype参数，并作相应的处理
+    def wraps(default_rtype='probas', use_states=False):
+        """用来进一步完善predict函数
+        目前包含：1. 设置rtype参数，并做相应处理；
+                  2. 确定states的使用，并做相应处理。
         """
         def actual_decorator(predict):
-            def new_predict(self, inputs, output_ids, step, rtype=default):
+            def new_predict(
+                self, inputs, output_ids, states, rtype=default_rtype
+            ):
                 assert rtype in ['probas', 'logits']
-                result = predict(self, inputs, output_ids, step)
-                if default == 'probas':
+                prediction = predict(self, inputs, output_ids, states)
+                if not use_states:
+                    prediction = [prediction, None]
+                if default_rtype == 'probas':
                     if rtype == 'probas':
-                        return result
+                        return prediction
                     else:
-                        return np.log(result + 1e-12)
+                        return np.log(prediction[0] + 1e-12), prediction[1]
                 else:
                     if rtype == 'probas':
-                        return softmax(result, -1)
+                        return softmax(prediction[0], -1), prediction[1]
                     else:
-                        return result
+                        return prediction
 
             return new_predict
 
         return actual_decorator
 
-    def predict(self, inputs, output_ids, step, rtype='logits'):
+    def predict(self, inputs, output_ids, states=None, rtype='logits'):
         """用户需自定义递归预测函数
-        rtype为字符串logits或probas，用户定义的时候，应当根据rtype来
-        返回不同的结果，rtype=probas时返回归一化的概率，rtype=logits时
-        则返回softmax前的结果或者概率对数。
+        说明：rtype为字符串logits或probas，用户定义的时候，应当根据rtype来
+              返回不同的结果，rtype=probas时返回归一化的概率，rtype=logits时
+              则返回softmax前的结果或者概率对数。
+        返回：二元组 (得分或概率, states)
         """
         raise NotImplementedError
 
-    def beam_search(self, inputs, topk, min_ends=1):
+    def beam_search(self, inputs, topk, states=None, min_ends=1):
         """beam search解码
         说明：这里的topk即beam size；
         返回：最优解码序列。
@@ -387,7 +394,9 @@ class AutoRegressiveDecoder(object):
         inputs = [np.array([i]) for i in inputs]
         output_ids, output_scores = self.first_output_ids, np.zeros(1)
         for step in range(self.maxlen):
-            scores = self.predict(inputs, output_ids, step, 'logits')  # 计算当前得分
+            scores, states = self.predict(
+                inputs, output_ids, states, 'logits'
+            )  # 计算当前得分
             if step == 0:  # 第1步预测后将输入重复topk次
                 inputs = [np.repeat(i, topk, axis=0) for i in inputs]
             scores = output_scores.reshape((-1, 1)) + scores  # 综合累积得分
@@ -415,7 +424,9 @@ class AutoRegressiveDecoder(object):
         # 达到长度直接输出
         return output_ids[output_scores.argmax()]
 
-    def random_sample(self, inputs, n, topk=None, topp=None, min_ends=1):
+    def random_sample(
+        self, inputs, n, topk=None, topp=None, states=None, min_ends=1
+    ):
         """随机采样n个结果
         说明：非None的topk表示每一步只从概率最高的topk个中采样；而非None的topp
              表示每一步只从概率最高的且概率之和刚好达到topp的若干个token中采样。
@@ -425,7 +436,9 @@ class AutoRegressiveDecoder(object):
         output_ids = self.first_output_ids
         results = []
         for step in range(self.maxlen):
-            probas = self.predict(inputs, output_ids, step, 'probas')  # 计算当前概率
+            probas, states = self.predict(
+                inputs, output_ids, states, 'probas'
+            )  # 计算当前概率
             probas /= probas.sum(axis=1, keepdims=True)  # 确保归一化
             if step == 0:  # 第1步预测后将结果重复n次
                 probas = np.repeat(probas, n, axis=0)
