@@ -1915,18 +1915,18 @@ def build_transformer_model(
         MODEL = model
 
     application = application.lower()
-    if model not in ['electra', 't5']:
-        if application == 'lm':
-            MODEL = extend_with_language_model(MODEL)
-        elif application == 'unilm':
-            MODEL = extend_with_unified_language_model(MODEL)
-        elif application == 'punilm':
-            MODEL = extend_with_parallel_unified_language_model(MODEL)
-    else:
+    if application in ['lm', 'unilm', 'punilm'] and model in ['electra', 't5']:
         raise ValueError(
             '"%s" model can not be used as "%s" application.\n' %
             (model, application)
         )
+
+    if application == 'lm':
+        MODEL = extend_with_language_model(MODEL)
+    elif application == 'unilm':
+        MODEL = extend_with_unified_language_model(MODEL)
+    elif application == 'punilm':
+        MODEL = extend_with_parallel_unified_language_model(MODEL)
 
     transformer = MODEL(**configs)
     transformer.build(**configs)
