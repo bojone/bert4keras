@@ -48,7 +48,8 @@ label = np.argmax(preds[0])
 pred_grads = []
 n = 20
 for i in range(n):
-    # 让embedding层从零渐变到原始值，以实现路径变化
+    # nlp任务中参照背景通常直接选零向量，所以这里
+    # 让embedding层从零渐变到原始值，以实现路径变换。
     alpha = 1.0 * i / (n - 1)
     K.set_value(embeddings, alpha * values)
     pred_grad = grad_model.predict([[token_ids], [segment_ids], [[label]]])[0]
