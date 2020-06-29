@@ -1459,10 +1459,7 @@ class T5_Decoder(Transformer):
     """
     def __init__(self, with_lm=True, **kwargs):
         super(T5_Decoder, self).__init__(**kwargs)
-        if with_lm is True:
-            self.with_lm = 'softmax'
-        else:
-            self.with_lm = with_lm
+        self.with_lm = with_lm
 
     def get_inputs(self):
         """T5的Decoder的输入为context序列和token_ids
