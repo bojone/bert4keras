@@ -1906,6 +1906,8 @@ def build_transformer_model(
         'electra': ELECTRA,
         'gpt2_ml': GPT2_ML,
         't5': T5,
+        't5_encoder': T5_Encoder,
+        't5_decoder': T5_Decoder,
     }
 
     if is_string(model):
