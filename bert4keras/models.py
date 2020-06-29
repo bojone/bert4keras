@@ -1454,7 +1454,7 @@ class T5_Encoder(T5_Base):
         return self.position_bias
 
 
-class T5_Decoder(Transformer):
+class T5_Decoder(T5_Base):
     """Google的T5模型（Decoder）
     """
     def __init__(self, with_lm=True, **kwargs):
