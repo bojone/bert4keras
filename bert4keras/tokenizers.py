@@ -119,7 +119,9 @@ class BasicTokenizer(object):
         elif is_string(second_text):
             if pattern == 'S*E*E':
                 idx = int(bool(self._token_start))
-            second_tokens = self.tokenize(second_text)[idx:]
+                second_tokens = self.tokenize(second_text)[idx:]
+            elif pattern == 'S*ES*E':
+                second_tokens = self.tokenize(second_text)
         else:
             second_tokens = second_text
 
