@@ -905,7 +905,7 @@ def extend_with_exponential_moving_average(BaseOptimizer):
     class NewOptimizer(BaseOptimizer):
         """带EMA（权重滑动平均）的优化器
         """
-        @insert_arguments(ema_momentum=0.999, ema_bias_correction=True)
+        @insert_arguments(ema_momentum=0.999)
         def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
 
@@ -914,14 +914,8 @@ def extend_with_exponential_moving_average(BaseOptimizer):
             self.model_weights = params
             self.ema_weights = [K.zeros(K.shape(w)) for w in params]
             self.old_weights = K.batch_get_value(params)
-            K.batch_set_value(zip(self.ema_weights, self.old_weights))
 
             ema_updates, ema_momentum = [], self.ema_momentum
-            if self.ema_bias_correction:
-                iterations = K.cast(self.iterations + 1, K.floatx())
-                scale = K.pow(ema_momentum, iterations)
-                ema_momentum = (ema_momentum - scale) / (1.0 - scale)
-
             with tf.control_dependencies(updates):
                 for w1, w2 in zip(self.ema_weights, params):
                     new_w = ema_momentum * w1 + (1 - ema_momentum) * w2
@@ -936,11 +930,15 @@ def extend_with_exponential_moving_average(BaseOptimizer):
             base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-        def apply_ema_weights(self):
+        def apply_ema_weights(self, bias_correction=True):
             """备份原模型权重，然后将平均权重应用到模型上去。
             """
             self.old_weights = K.batch_get_value(self.model_weights)
             ema_weights = K.batch_get_value(self.ema_weights)
+            if bias_correction:
+                iterations = K.eval(self.iterations)
+                scale = 1.0 - np.power(self.ema_momentum, iterations)
+                ema_weights = [weight / scale for weight in ema_weights]
             K.batch_set_value(zip(self.model_weights, ema_weights))
 
         def reset_old_weights(self):
