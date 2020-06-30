@@ -935,10 +935,12 @@ def extend_with_exponential_moving_average(BaseOptimizer):
             """
             self.old_weights = K.batch_get_value(self.model_weights)
             ema_weights = K.batch_get_value(self.ema_weights)
+
             if bias_correction:
                 iterations = K.eval(self.iterations)
                 scale = 1.0 - np.power(self.ema_momentum, iterations)
                 ema_weights = [weight / scale for weight in ema_weights]
+
             K.batch_set_value(zip(self.model_weights, ema_weights))
 
         def reset_old_weights(self):
