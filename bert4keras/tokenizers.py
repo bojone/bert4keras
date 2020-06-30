@@ -62,16 +62,9 @@ class BasicTokenizer(object):
         self._token_start = token_start
         self._token_end = token_end
 
-    def tokenize(self, text, maxlen=None, max_length=None):
+    def tokenize(self, text, maxlen=None):
         """分词函数
         """
-        # 向后兼容
-        if maxlen is None and max_length is not None:
-            print(
-                'From tokenizers.py: The argument max_length is deprecated. Please use maxlen instead.'
-            )
-        maxlen = maxlen or max_length
-
         tokens = self._tokenize(text)
         if self._token_start is not None:
             tokens.insert(0, self._token_start)
@@ -112,17 +105,10 @@ class BasicTokenizer(object):
                 second_sequence.pop(pop_index)
 
     def encode(
-        self, first_text, second_text=None, maxlen=None, max_length=None
+        self, first_text, second_text=None, maxlen=None, pattern='S*E*E'
     ):
         """输出文本对应token id和segment id
         """
-        # 向后兼容
-        if maxlen is None and max_length is not None:
-            print(
-                'From tokenizers.py: The argument max_length is deprecated. Please use maxlen instead.'
-            )
-        maxlen = maxlen or max_length
-
         if is_string(first_text):
             first_tokens = self.tokenize(first_text)
         else:
@@ -131,7 +117,8 @@ class BasicTokenizer(object):
         if second_text is None:
             second_tokens = None
         elif is_string(second_text):
-            idx = int(bool(self._token_start))
+            if pattern == 'S*E*E':
+                idx = int(bool(self._token_start))
             second_tokens = self.tokenize(second_text)[idx:]
         else:
             second_tokens = second_text
