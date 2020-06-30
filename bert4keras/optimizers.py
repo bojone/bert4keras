@@ -905,7 +905,7 @@ def extend_with_exponential_moving_average(BaseOptimizer):
     class NewOptimizer(BaseOptimizer):
         """带EMA（权重滑动平均）的优化器
         """
-        @insert_arguments(ema_momentum=0.999)
+        @insert_arguments(ema_momentum=0.999, ema_bias_correction=True)
         def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
 
@@ -917,6 +917,11 @@ def extend_with_exponential_moving_average(BaseOptimizer):
             K.batch_set_value(zip(self.ema_weights, self.old_weights))
 
             ema_updates, ema_momentum = [], self.ema_momentum
+            if self.ema_bias_correction:
+                iterations = K.cast(self.iterations + 1, K.floatx())
+                scale = K.pow(ema_momentum, iterations)
+                ema_momentum = (ema_momentum - scale) / (1.0 - scale)
+
             with tf.control_dependencies(updates):
                 for w1, w2 in zip(self.ema_weights, params):
                     new_w = ema_momentum * w1 + (1 - ema_momentum) * w2
