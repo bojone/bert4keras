@@ -1899,6 +1899,7 @@ def build_transformer_model(
         'bert': BERT,
         'albert': ALBERT,
         'albert_unshared': ALBERT_Unshared,
+        'roberta': BERT,
         'nezha': NEZHA,
         'electra': ELECTRA,
         'gpt2_ml': GPT2_ML,
