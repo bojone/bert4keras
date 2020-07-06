@@ -951,6 +951,71 @@ def extend_with_exponential_moving_average(BaseOptimizer):
     return NewOptimizer
 
 
+@export_to_custom_objects
+def extend_with_exponential_moving_average_v2(BaseOptimizer):
+    """返回新的优化器类，加入EMA（权重滑动平均）
+    """
+    class NewOptimizer(BaseOptimizer):
+        """带EMA（权重滑动平均）的优化器
+        """
+        @insert_arguments(ema_momentum=0.999)
+        def __init__(self, *args, **kwargs):
+            super(NewOptimizer, self).__init__(*args, **kwargs)
+
+        def _create_slots(self, var_list):
+            super(NewOptimizer, self)._create_slots(var_list)
+            self.model_weights = var_list
+            self.ema_weights = []
+            for var in var_list:
+                self.ema_weights.append(self.add_slot(var, 'ema'))
+
+        def _resource_apply_dense(self, grad, var):
+            op = super(NewOptimizer, self)._resource_apply_dense(grad, var)
+            ema = self.get_slot(var, 'ema')
+            ema_momentum = self.ema_momentum
+            with tf.control_dependencies([op]):
+                return K.update(
+                    ema, ema * ema_momentum + var * (1.0 - ema_momentum)
+                )
+
+        def _resource_apply_sparse(self, grad, var, indices):
+            op = super(NewOptimizer,
+                       self)._resource_apply_sparse(grad, var, indices)
+            ema = self.get_slot(var, 'ema')
+            ema_momentum = self.ema_momentum
+            with tf.control_dependencies([op]):
+                return K.update(
+                    ema, ema * ema_momentum + var * (1.0 - ema_momentum)
+                )
+
+        def get_config(self):
+            config = {
+                'ema_momentum': self.ema_momentum,
+            }
+            base_config = super(NewOptimizer, self).get_config()
+            return dict(list(base_config.items()) + list(config.items()))
+
+        def apply_ema_weights(self, bias_correction=True):
+            """备份原模型权重，然后将平均权重应用到模型上去。
+            """
+            self.old_weights = K.batch_get_value(self.model_weights)
+            ema_weights = K.batch_get_value(self.ema_weights)
+
+            if bias_correction:
+                iterations = K.eval(self.iterations)
+                scale = 1.0 - np.power(self.ema_momentum, iterations)
+                ema_weights = [weight / scale for weight in ema_weights]
+
+            K.batch_set_value(zip(self.model_weights, ema_weights))
+
+        def reset_old_weights(self):
+            """恢复模型到旧权重。
+            """
+            K.batch_set_value(zip(self.model_weights, self.old_weights))
+
+    return NewOptimizer
+
+
 if is_tf_keras:
     extend_with_weight_decay = extend_with_weight_decay_v2
     extend_with_layer_adaptation = extend_with_layer_adaptation_v2
@@ -958,6 +1023,7 @@ if is_tf_keras:
     extend_with_gradient_accumulation = extend_with_gradient_accumulation_v2
     extend_with_lookahead = extend_with_lookahead_v2
     extend_with_lazy_optimization = extend_with_lazy_optimization_v2
+    extend_with_exponential_moving_average = extend_with_exponential_moving_average_v2
     AdaFactor = AdaFactorV2
 else:
     Adam = keras.optimizers.Adam
