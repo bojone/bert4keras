@@ -145,7 +145,7 @@ class AdaFactorBase(keras.optimizers.Optimizer):
             return None
         shape = np.array(shape)
         indices = shape.argpartition(-2)
-        if indices[-2] < self.min_dim_size_to_factor:
+        if shape[indices[-2]] < self.min_dim_size_to_factor:
             return None
         shape1, shape2 = np.array(shape), np.array(shape)
         shape1[indices[-1]] = 1
