@@ -14,6 +14,16 @@ is_py2 = six.PY2
 if not is_py2:
     basestring = str
 
+    
+def to_array(*args):
+    """批量转numpy的array
+    """
+    results = [np.array(a) for a in args]
+    if len(args) == 1:
+        return results[0]
+    else:
+        return results
+
 
 def is_string(s):
     """判断是否是字符串
