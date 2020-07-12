@@ -133,7 +133,6 @@ def extract_subject(inputs):
     """根据subject_ids从output中取出subject的向量表征
     """
     output, subject_ids = inputs
-    subject_ids = K.cast(subject_ids, 'int32')
     start = batch_gather(output, subject_ids[:, :1])
     end = batch_gather(output, subject_ids[:, 1:])
     subject = K.concatenate([start, end], 2)
