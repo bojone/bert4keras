@@ -142,6 +142,9 @@ def sequence_masking(x, mask, mode=0, axis=None):
 def batch_gather(params, indices):
     """同tf旧版本的batch_gather
     """
+    if K.dtype(indices)[:3] != 'int':
+        indices = K.cast(indices, 'int32')
+
     try:
         return tf.gather(params, indices, batch_dims=K.ndim(indices) - 1)
     except Exception as e1:
