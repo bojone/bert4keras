@@ -20,7 +20,6 @@ class Gradient(Layer):
         self.supports_masking = True
     def call(self, input):
         input, output, label = input
-        label = K.cast(label, 'int32')
         output = batch_gather(output, label)
         return K.gradients(output, [input])[0] * input
     def compute_output_shape(self, input_shape):
