@@ -179,7 +179,7 @@ def predict_to_file(in_file, out_file):
         for l in tqdm(fr):
             l = l.strip()
             if l:
-                l = ' '.join(word_segment(l))
+                l = ' '.join(segmenter.tokenize(l))
             fw.write(l + '\n')
     fw.close()
 
