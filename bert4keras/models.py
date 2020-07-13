@@ -26,6 +26,7 @@ class Transformer(object):
         sequence_length=None,  # 是否固定序列长度
         keep_tokens=None,  # 要保留的词ID列表
         layers=None,  # 外部传入的Keras层
+        prefix=None,  # 层名前缀
         name=None,  # 模型名称
         **kwargs
     ):
@@ -47,6 +48,7 @@ class Transformer(object):
         self.attention_mask = None
         self.position_bias = None
         self.layers = {} if layers is None else layers
+        self.prefix = prefix or ''
         self.name = name
         self.built = False
 
@@ -92,6 +94,12 @@ class Transformer(object):
         outputs = self.apply_final_layers(outputs)
         return outputs
 
+    def prefixed(self, name):
+        """给名字加前缀
+        """
+        if name is not None:
+            return self.prefix + name
+
     def apply(self, inputs, layer=None, arguments=None, **kwargs):
         """通过apply调用层会自动重用同名层
         inputs: 上一层的输出；
@@ -103,7 +111,8 @@ class Transformer(object):
             return inputs
 
         arguments = arguments or {}
-        name = kwargs.get('name')
+        name = self.prefixed(kwargs.get('name'))
+        kwargs['name'] = name
         if name not in self.layers:
             layer = layer(**kwargs)
             name = layer.name
@@ -200,6 +209,7 @@ class Transformer(object):
         """根据mapping从checkpoint加载权重
         """
         mapping = mapping or self.variable_mapping()
+        mapping = {self.prefixed(k): v for k, v in mapping.items()}
         mapping = {k: v for k, v in mapping.items() if k in self.layers}
 
         weight_value_pairs = []
@@ -239,6 +249,7 @@ class Transformer(object):
         """根据mapping将权重保存为checkpoint格式
         """
         mapping = mapping or self.variable_mapping()
+        mapping = {self.prefixed(k): v for k, v in mapping.items()}
         mapping = {k: v for k, v in mapping.items() if k in self.layers}
 
         with tf.Graph().as_default():
