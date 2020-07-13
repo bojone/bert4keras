@@ -370,18 +370,17 @@ class AutoRegressiveDecoder(object):
             ):
                 assert rtype in ['probas', 'logits']
                 prediction = predict(self, inputs, output_ids, states)
+
                 if not use_states:
-                    prediction = [prediction, None]
-                if default_rtype == 'probas':
-                    if rtype == 'probas':
-                        return prediction
-                    else:
-                        return np.log(prediction[0] + 1e-12), prediction[1]
+                    prediction = (prediction, None)
+
+                if default_rtype == 'logits':
+                    prediction = (softmax(prediction[0]), prediction[1])
+
+                if rtype == 'probas':
+                    return prediction
                 else:
-                    if rtype == 'probas':
-                        return softmax(prediction[0], -1), prediction[1]
-                    else:
-                        return prediction
+                    return np.log(prediction[0] + 1e-12), prediction[1]
 
             return new_predict
 
