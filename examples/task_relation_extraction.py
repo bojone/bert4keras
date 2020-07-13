@@ -16,7 +16,7 @@ from bert4keras.tokenizers import Tokenizer
 from bert4keras.models import build_transformer_model
 from bert4keras.optimizers import Adam, extend_with_exponential_moving_average
 from bert4keras.snippets import sequence_padding, DataGenerator
-from bert4keras.snippets import open
+from bert4keras.snippets import open, to_array
 from keras.layers import Input, Dense, Lambda, Reshape
 from keras.models import Model
 from tqdm import tqdm
@@ -219,8 +219,9 @@ def extract_spoes(text):
     tokens = tokenizer.tokenize(text, maxlen=maxlen)
     mapping = tokenizer.rematch(text, tokens)
     token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
+    token_ids, segment_ids = to_array([token_ids], [segment_ids])
     # 抽取subject
-    subject_preds = subject_model.predict([[token_ids], [segment_ids]])
+    subject_preds = subject_model.predict([token_ids, segment_ids])
     start = np.where(subject_preds[0, :, 0] > 0.6)[0]
     end = np.where(subject_preds[0, :, 1] > 0.5)[0]
     subjects = []
@@ -231,8 +232,8 @@ def extract_spoes(text):
             subjects.append((i, j))
     if subjects:
         spoes = []
-        token_ids = np.repeat([token_ids], len(subjects), 0)
-        segment_ids = np.repeat([segment_ids], len(subjects), 0)
+        token_ids = np.repeat(token_ids, len(subjects), 0)
+        segment_ids = np.repeat(segment_ids, len(subjects), 0)
         subjects = np.array(subjects)
         # 传入subject，抽取object和predicate
         object_preds = object_model.predict([token_ids, segment_ids, subjects])

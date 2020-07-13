@@ -9,7 +9,7 @@ from bert4keras.models import build_transformer_model
 from bert4keras.tokenizers import Tokenizer
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, DataGenerator
-from bert4keras.snippets import open, ViterbiDecoder
+from bert4keras.snippets import open, ViterbiDecoder, to_array
 from bert4keras.layers import ConditionalRandomField
 from keras.layers import Dense
 from keras.models import Model
@@ -143,7 +143,8 @@ class NamedEntityRecognizer(ViterbiDecoder):
         mapping = tokenizer.rematch(text, tokens)
         token_ids = tokenizer.tokens_to_ids(tokens)
         segment_ids = [0] * len(token_ids)
-        nodes = model.predict([[token_ids], [segment_ids]])[0]
+        token_ids, segment_ids = to_array([token_ids], [segment_ids])
+        nodes = model.predict([token_ids, segment_ids])[0]
         labels = self.decode(nodes)
         entities, starting = [], False
         for i, label in enumerate(labels):
