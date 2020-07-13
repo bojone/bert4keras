@@ -140,7 +140,7 @@ class WordSegmenter(ViterbiDecoder):
         labels = self.decode(nodes)
         words = []
         for i, label in enumerate(labels[1:-1]):
-            if label < 2:
+            if label < 2 or len(words) == 0:
                 words.append([i + 1])
             else:
                 words[-1].append(i + 1)
