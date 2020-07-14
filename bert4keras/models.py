@@ -100,7 +100,7 @@ class Transformer(object):
         if name is not None:
             return self.prefix + name
 
-    def apply(self, inputs, layer=None, arguments=None, **kwargs):
+    def apply(self, inputs=None, layer=None, arguments=None, **kwargs):
         """通过apply调用层会自动重用同名层
         inputs: 上一层的输出；
         layer: 要调用的层类名；
@@ -118,7 +118,10 @@ class Transformer(object):
             name = layer.name
             self.layers[name] = layer
 
-        return self.layers[name](inputs, **arguments)
+        if inputs is None:
+            return self.layers[name]
+        else:
+            return self.layers[name](inputs, **arguments)
 
     def get_inputs(self):
         raise NotImplementedError
@@ -289,11 +292,19 @@ class BERT(Transformer):
         """BERT的输入是token_ids和segment_ids
         （但允许自行传入位置id，以实现一些特殊需求）
         """
-        x_in = Input(shape=(self.sequence_length,), name='Input-Token')
-        s_in = Input(shape=(self.sequence_length,), name='Input-Segment')
+        x_in = self.apply(
+            layer=Input, shape=(self.sequence_length,), name='Input-Token'
+        )
+        s_in = self.apply(
+            layer=Input, shape=(self.sequence_length,), name='Input-Segment'
+        )
 
         if self.custom_position_ids:
-            p_in = Input(shape=(self.sequence_length,), name='Input-Position')
+            p_in = self.apply(
+                layer=Input,
+                shape=(self.sequence_length,),
+                name='Input-Position'
+            )
             return [x_in, s_in, p_in]
         else:
             return [x_in, s_in]
@@ -981,7 +992,9 @@ class GPT2_ML(Transformer):
     def get_inputs(self):
         """GPT2_ML的输入是token_ids和segment_ids
         """
-        x_in = Input(shape=(self.sequence_length,), name='Input-Token')
+        x_in = self.apply(
+            layer=Input, shape=(self.sequence_length,), name='Input-Token'
+        )
         return x_in
 
     def apply_embeddings(self, inputs):
@@ -1303,7 +1316,11 @@ class T5_Encoder(T5_Base):
     def get_inputs(self):
         """T5的Encoder的输入只有token_ids
         """
-        x_in = Input(shape=(self.sequence_length,), name='Encoder-Input-Token')
+        x_in = self.apply(
+            layer=Input,
+            shape=(self.sequence_length,),
+            name='Encoder-Input-Token'
+        )
         return x_in
 
     def apply_embeddings(self, inputs):
@@ -1475,11 +1492,16 @@ class T5_Decoder(T5_Base):
     def get_inputs(self):
         """T5的Decoder的输入为context序列和token_ids
         """
-        c_in = Input(
+        c_in = self.apply(
+            layer=Input,
             shape=(self.sequence_length, self.hidden_size),
             name='Input-Context'
         )
-        x_in = Input(shape=(self.sequence_length,), name='Decoder-Input-Token')
+        x_in = self.apply(
+            layer=Input,
+            shape=(self.sequence_length,),
+            name='Decoder-Input-Token'
+        )
         return [c_in, x_in]
 
     def apply_embeddings(self, inputs):
