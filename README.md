@@ -5,7 +5,7 @@
 - 在线文档：http://bert4keras.spaces.ac.cn/ （还在构建中）
 
 ## 说明
-这是笔者重新实现的keras版的bert，致力于用尽可能清爽的代码来实现结合bert和keras。
+这是笔者重新实现的keras版的transformer模型库，致力于用尽可能清爽的代码来实现结合transformer和keras。
 
 本项目的初衷是为了修改、定制上的方便，所以可能会频繁更新。
 
