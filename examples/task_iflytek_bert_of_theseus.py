@@ -149,7 +149,8 @@ class Evaluator(keras.callbacks.Callback):
 predecessor = build_transformer_model(
     config_path=config_path,
     checkpoint_path=checkpoint_path,
-    return_keras_model=False
+    return_keras_model=False,
+    prefix='Predecessor-'
 )
 
 # 加载预训练模型（3层）
@@ -157,11 +158,9 @@ successor = build_transformer_model(
     config_path=config_path,
     checkpoint_path=checkpoint_path,
     return_keras_model=False,
-    num_hidden_layers=3
+    num_hidden_layers=3,
+    prefix='Successor-'
 )
-
-for layer in successor.model.layers:
-    layer.name = 'Successor-' + layer.name
 
 # 判别模型
 x_in = Input(shape=K.int_shape(predecessor.output)[1:])
