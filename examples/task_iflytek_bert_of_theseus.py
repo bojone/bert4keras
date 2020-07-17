@@ -109,7 +109,7 @@ def bert_of_theseus(predecessor, successor, classfier):
         predecessor_outputs = outputs
         for sub_index in range(layers_per_module):
             predecessor_outputs = predecessor.apply_main_layers(
-                predecessor_outputs, 4 * index + sub_index
+                predecessor_outputs, layers_per_module * index + sub_index
             )
         successor_outputs = successor.apply_main_layers(outputs, index)
         outputs = BinaryRandomChoice()([predecessor_outputs, successor_outputs])
