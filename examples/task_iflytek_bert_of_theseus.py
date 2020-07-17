@@ -85,7 +85,6 @@ class BinaryRandomChoice(Layer):
         source, target = inputs
         mask = K.random_binomial(shape=[1], p=0.5)
         output = mask * source + (1 - mask) * target
-        output = output + K.stop_gradient(target - output)
         return K.in_train_phase(output, target)
 
     def compute_output_shape(self, input_shape):
