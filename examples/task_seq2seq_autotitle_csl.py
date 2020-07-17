@@ -118,7 +118,7 @@ class AutoTitle(AutoRegressiveDecoder):
 autotitle = AutoTitle(start_id=None, end_id=tokenizer._token_end_id, maxlen=32)
 
 
-class Evaluate(keras.callbacks.Callback):
+class Evaluator(keras.callbacks.Callback):
     def __init__(self):
         self.rouge = Rouge()
         self.smooth = SmoothingFunction().method1
@@ -163,7 +163,7 @@ class Evaluate(keras.callbacks.Callback):
 
 if __name__ == '__main__':
 
-    evaluator = Evaluate()
+    evaluator = Evaluator()
     train_generator = data_generator(train_data, batch_size)
 
     model.fit_generator(

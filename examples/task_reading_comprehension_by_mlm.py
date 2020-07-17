@@ -199,7 +199,7 @@ def predict_to_file(data, filename):
             f.flush()
 
 
-class Evaluate(keras.callbacks.Callback):
+class Evaluator(keras.callbacks.Callback):
     def __init__(self):
         self.lowest = 1e10
 
@@ -212,7 +212,7 @@ class Evaluate(keras.callbacks.Callback):
 
 if __name__ == '__main__':
 
-    evaluator = Evaluate()
+    evaluator = Evaluator()
     train_generator = data_generator(train_data, batch_size)
 
     model.fit_generator(

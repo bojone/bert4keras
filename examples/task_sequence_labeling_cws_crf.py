@@ -184,7 +184,7 @@ def predict_to_file(in_file, out_file):
     fw.close()
 
 
-class Evaluate(keras.callbacks.Callback):
+class Evaluator(keras.callbacks.Callback):
     def __init__(self):
         self.best_val_acc = 0
 
@@ -202,7 +202,7 @@ class Evaluate(keras.callbacks.Callback):
 
 if __name__ == '__main__':
 
-    evaluator = Evaluate()
+    evaluator = Evaluator()
     train_generator = data_generator(train_data, batch_size)
 
     model.fit_generator(

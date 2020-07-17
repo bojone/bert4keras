@@ -143,7 +143,7 @@ def just_show():
     print(random_sentiment.generate(0, 5, 5), '\n')
 
 
-class Evaluate(keras.callbacks.Callback):
+class Evaluator(keras.callbacks.Callback):
     def __init__(self):
         self.lowest = 1e10
 
@@ -158,7 +158,7 @@ class Evaluate(keras.callbacks.Callback):
 
 if __name__ == '__main__':
 
-    evaluator = Evaluate()
+    evaluator = Evaluator()
     train_generator = data_generator(data, batch_size)
 
     model.fit_generator(
