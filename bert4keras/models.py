@@ -25,15 +25,17 @@ class Transformer(object):
         attention_key_size=None,  # Attention中Q,K的head_size
         sequence_length=None,  # 是否固定序列长度
         keep_tokens=None,  # 要保留的词ID列表
+        auxiliary_embeddings=None,  # 要增加的embeddings
         layers=None,  # 外部传入的Keras层
         prefix=None,  # 层名前缀
         name=None,  # 模型名称
         **kwargs
     ):
-        if keep_tokens is None:
-            self.vocab_size = vocab_size
-        else:
-            self.vocab_size = len(keep_tokens)
+        if keep_tokens is not None:
+            vocab_size = len(keep_tokens)
+        if auxiliary_embeddings is not None:
+            vocab_size += len(auxiliary_embeddings)
+        self.vocab_size = vocab_size
         self.hidden_size = hidden_size
         self.num_hidden_layers = num_hidden_layers
         self.num_attention_heads = num_attention_heads
@@ -45,6 +47,7 @@ class Transformer(object):
         self.embedding_size = embedding_size or hidden_size
         self.sequence_length = sequence_length
         self.keep_tokens = keep_tokens
+        self.auxiliary_embeddings = auxiliary_embeddings
         self.attention_mask = None
         self.position_bias = None
         self.layers = {} if layers is None else layers
@@ -192,6 +195,22 @@ class Transformer(object):
             inputs = inputs[0]
 
         return inputs
+
+     def load_embeddings(self, embeddings):
+         """处理Embedding层权重
+         """
+         if self.keep_tokens is not None:
+             embeddings = embeddings[self.keep_tokens]
+
+         if isinstance(self.auxiliary_embeddings, list):
+             ext_embeddings = np.array([
+                 embeddings[a].mean(0) for a in self.auxiliary_embeddings
+             ])
+             embeddings = np.concatenate([embeddings, ext_embeddings], 0)
+         elif self.auxiliary_embeddings is not None:
+             embeddings = np.concatenate([embeddings, ext_embeddings], 0)
+
+         return embeddings
 
     def load_variable(self, checkpoint, name):
         """加载单个变量的函数
@@ -540,10 +559,7 @@ class BERT(Transformer):
             'bert/embeddings/word_embeddings',
             'cls/predictions/output_bias',
         ]:
-            if self.keep_tokens is None:
-                return variable
-            else:
-                return variable[self.keep_tokens]
+            return self.load_embeddings(variable)
         elif name == 'cls/seq_relationship/output_weights':
             return variable.T
         else:
@@ -1145,10 +1161,7 @@ class GPT2_ML(Transformer):
         """
         variable = super(GPT2_ML, self).load_variable(checkpoint, name)
         if name == 'newslm/embeddings/word_embed':
-            if self.keep_tokens is None:
-                return variable
-            else:
-                return variable[self.keep_tokens]
+            return self.load_embeddings(variable)
         else:
             return variable
 
@@ -1225,10 +1238,7 @@ class T5_Base(Transformer):
         """
         variable = super(T5_Base, self).load_variable(checkpoint, name)
         if name == 'shared/embedding':
-            if self.keep_tokens is None:
-                return variable
-            else:
-                return variable[self.keep_tokens]
+            return self.load_embeddings(variable)
         elif 'relative_attention_bias' in name:
             return variable.T
         else:
