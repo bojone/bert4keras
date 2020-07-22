@@ -196,19 +196,19 @@ class Transformer(object):
 
         return inputs
 
-     def load_embeddings(self, embeddings):
-         """处理Embedding层权重
-         """
-         if self.keep_tokens is not None:
-             embeddings = embeddings[self.keep_tokens]
+    def load_embeddings(self, embeddings):
+        """处理Embedding层权重
+        """
+        if self.keep_tokens is not None:
+            embeddings = embeddings[self.keep_tokens]
 
-         if self.auxiliary_embeddings is not None:
-             ext_embeddings = np.array([
-                 embeddings[a].mean(0) for a in self.auxiliary_embeddings
-             ])
-             embeddings = np.concatenate([embeddings, ext_embeddings], 0)
+        if self.auxiliary_embeddings is not None:
+            ext_embeddings = np.array([
+                embeddings[a].mean(0) for a in self.auxiliary_embeddings
+            ])
+            embeddings = np.concatenate([embeddings, ext_embeddings], 0)
 
-         return embeddings
+        return embeddings
 
     def load_variable(self, checkpoint, name):
         """加载单个变量的函数
