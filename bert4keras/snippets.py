@@ -129,7 +129,7 @@ def parallel_apply(
     输出可能是func(c), func(a), func(b)。
     参数：
         dummy: False是多进程/线性，True则是多线程/线性；
-        callback: 处理单个输出的回调函数；
+        callback: 处理单个输出的回调函数。
     """
     if dummy:
         from multiprocessing.dummy import Pool, Queue
@@ -141,9 +141,9 @@ def parallel_apply(
     def worker_step(in_queue, out_queue):
         # 单步函数包装成循环执行
         while True:
-            d = in_queue.get()
+            i, d = in_queue.get()
             r = func(d)
-            out_queue.put(r)
+            out_queue.put((i, r))
 
     # 启动多进程/线程
     pool = Pool(workers, worker_step, (in_queue, out_queue))
@@ -155,21 +155,21 @@ def parallel_apply(
     def process_out_queue():
         out_count = 0
         for _ in range(out_queue.qsize()):
-            d = out_queue.get()
+            i, d = out_queue.get()
             out_count += 1
             if callback is None:
-                results.append(d)
+                results.append((i, d))
             else:
                 callback(d)
         return out_count
 
     # 存入数据，取出结果
     in_count, out_count = 0, 0
-    for d in iterable:
+    for i, d in enumerate(iterable):
         in_count += 1
         while True:
             try:
-                in_queue.put(d, block=False)
+                in_queue.put((i, d), block=False)
                 break
             except six.moves.queue.Full:
                 out_count += process_out_queue()
@@ -182,7 +182,8 @@ def parallel_apply(
     pool.terminate()
 
     if callback is None:
-        return results
+        results = sorted(results, key=lambda r: r[0])
+        return [r[1] for r in results]
 
 
 def sequence_padding(inputs, length=None, padding=0):
