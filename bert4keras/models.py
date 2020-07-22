@@ -202,12 +202,10 @@ class Transformer(object):
          if self.keep_tokens is not None:
              embeddings = embeddings[self.keep_tokens]
 
-         if isinstance(self.auxiliary_embeddings, list):
+         if self.auxiliary_embeddings is not None:
              ext_embeddings = np.array([
                  embeddings[a].mean(0) for a in self.auxiliary_embeddings
              ])
-             embeddings = np.concatenate([embeddings, ext_embeddings], 0)
-         elif self.auxiliary_embeddings is not None:
              embeddings = np.concatenate([embeddings, ext_embeddings], 0)
 
          return embeddings
