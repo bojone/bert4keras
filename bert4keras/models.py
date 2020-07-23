@@ -25,7 +25,7 @@ class Transformer(object):
         attention_key_size=None,  # Attention中Q,K的head_size
         sequence_length=None,  # 是否固定序列长度
         keep_tokens=None,  # 要保留的词ID列表
-        auxiliary_embeddings=None,  # 要增加的embeddings
+        compound_tokens=None,  # 扩展Embedding
         layers=None,  # 外部传入的Keras层
         prefix=None,  # 层名前缀
         name=None,  # 模型名称
@@ -33,8 +33,8 @@ class Transformer(object):
     ):
         if keep_tokens is not None:
             vocab_size = len(keep_tokens)
-        if auxiliary_embeddings is not None:
-            vocab_size += len(auxiliary_embeddings)
+        if compound_tokens is not None:
+            vocab_size += len(compound_tokens)
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
         self.num_hidden_layers = num_hidden_layers
@@ -47,7 +47,7 @@ class Transformer(object):
         self.embedding_size = embedding_size or hidden_size
         self.sequence_length = sequence_length
         self.keep_tokens = keep_tokens
-        self.auxiliary_embeddings = auxiliary_embeddings
+        self.compound_tokens = compound_tokens
         self.attention_mask = None
         self.position_bias = None
         self.layers = {} if layers is None else layers
@@ -202,9 +202,9 @@ class Transformer(object):
         if self.keep_tokens is not None:
             embeddings = embeddings[self.keep_tokens]
 
-        if self.auxiliary_embeddings is not None:
+        if self.compound_tokens is not None:
             ext_embeddings = np.array([
-                embeddings[a].mean(0) for a in self.auxiliary_embeddings
+                embeddings[a].mean(0) for a in self.compound_tokens
             ])
             embeddings = np.concatenate([embeddings, ext_embeddings], 0)
 
