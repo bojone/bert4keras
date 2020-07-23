@@ -204,7 +204,7 @@ class Transformer(object):
 
         if self.compound_tokens is not None:
             ext_embeddings = np.array([
-                embeddings[a].mean(0) for a in self.compound_tokens
+                embeddings[idxs].mean(0) for idxs in self.compound_tokens
             ])
             embeddings = np.concatenate([embeddings, ext_embeddings], 0)
 
