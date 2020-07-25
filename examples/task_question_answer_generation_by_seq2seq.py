@@ -1,6 +1,7 @@
 #! -*- coding: utf-8- -*-
 # 用Seq2Seq做阅读理解构建
 # 根据篇章先采样生成答案，然后采样生成问题
+# 数据集同 https://github.com/bojone/dgcnn_for_reading_comprehension
 
 import json, os
 import numpy as np
