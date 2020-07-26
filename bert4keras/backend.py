@@ -128,7 +128,7 @@ def sequence_masking(x, mask, mode=0, axis=None):
             axis = 1
         if axis == -1:
             axis = K.ndim(x) - 1
-        assert axis > 0, 'axis muse be greater than 0'
+        assert axis > 0, 'axis must be greater than 0'
         for _ in range(axis - 1):
             mask = K.expand_dims(mask, 1)
         for _ in range(K.ndim(x) - K.ndim(mask) - axis + 1):
