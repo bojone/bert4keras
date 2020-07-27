@@ -290,6 +290,7 @@ class BERT(Transformer):
     def __init__(
         self,
         max_position,  # 序列最大长度
+        type_vocab_size=2,  # type(segment)总数目
         with_pool=False,  # 是否包含Pool部分
         with_nsp=False,  # 是否包含NSP部分
         with_mlm=False,  # 是否包含MLM部分
@@ -298,6 +299,7 @@ class BERT(Transformer):
     ):
         super(BERT, self).__init__(**kwargs)
         self.max_position = max_position
+        self.type_vocab_size = type_vocab_size
         self.with_pool = with_pool
         self.with_nsp = with_nsp
         self.with_mlm = with_mlm
@@ -348,7 +350,7 @@ class BERT(Transformer):
         s = self.apply(
             inputs=s,
             layer=Embedding,
-            input_dim=2,
+            input_dim=self.type_vocab_size,
             output_dim=self.embedding_size,
             embeddings_initializer=self.initializer,
             name='Embedding-Segment'
