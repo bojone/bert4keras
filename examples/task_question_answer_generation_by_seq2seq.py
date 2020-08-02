@@ -119,7 +119,7 @@ model.summary()
 class QuestionAnswerGeneration(AutoRegressiveDecoder):
     """随机生成答案，并且通过beam search来生成问题
     """
-    @AutoRegressiveDecoder.wraps('probas')
+    @AutoRegressiveDecoder.wraps(default_rtype='probas')
     def predict(self, inputs, output_ids, states):
         token_ids, segment_ids = inputs
         token_ids = np.concatenate([token_ids, output_ids], 1)
