@@ -290,7 +290,7 @@ class BERT(Transformer):
     def __init__(
         self,
         max_position,  # 序列最大长度
-        type_vocab_size=2,  # type(segment)总数目
+        segment_vocab_size=2,  # segment总数目
         with_pool=False,  # 是否包含Pool部分
         with_nsp=False,  # 是否包含NSP部分
         with_mlm=False,  # 是否包含MLM部分
@@ -299,7 +299,7 @@ class BERT(Transformer):
     ):
         super(BERT, self).__init__(**kwargs)
         self.max_position = max_position
-        self.type_vocab_size = type_vocab_size
+        self.segment_vocab_size = segment_vocab_size
         self.with_pool = with_pool
         self.with_nsp = with_nsp
         self.with_mlm = with_mlm
@@ -314,9 +314,15 @@ class BERT(Transformer):
         x_in = self.apply(
             layer=Input, shape=(self.sequence_length,), name='Input-Token'
         )
-        s_in = self.apply(
-            layer=Input, shape=(self.sequence_length,), name='Input-Segment'
-        )
+        inputs = [x_in]
+
+        if self.segment_vocab_size > 0:
+            s_in = self.apply(
+                layer=Input,
+                shape=(self.sequence_length,),
+                name='Input-Segment'
+            )
+            inputs.append(s_in)
 
         if self.custom_position_ids:
             p_in = self.apply(
@@ -324,19 +330,22 @@ class BERT(Transformer):
                 shape=(self.sequence_length,),
                 name='Input-Position'
             )
-            return [x_in, s_in, p_in]
-        else:
-            return [x_in, s_in]
+            inputs.append(p_in)
+
+        return inputs
 
     def apply_embeddings(self, inputs):
         """BERT的embedding是token、position、segment三者embedding之和
         """
-        x, s = inputs[:2]
-        z = self.layer_norm_conds[0]
+        inputs = inputs[:]
+        x = inputs.pop(0)
+        if self.segment_vocab_size > 0:
+            s = inputs.pop(0)
         if self.custom_position_ids:
-            p = inputs[2]
+            p = inputs.pop(0)
         else:
             p = None
+        z = self.layer_norm_conds[0]
 
         x = self.apply(
             inputs=x,
@@ -347,15 +356,18 @@ class BERT(Transformer):
             mask_zero=True,
             name='Embedding-Token'
         )
-        s = self.apply(
-            inputs=s,
-            layer=Embedding,
-            input_dim=self.type_vocab_size,
-            output_dim=self.embedding_size,
-            embeddings_initializer=self.initializer,
-            name='Embedding-Segment'
-        )
-        x = self.apply(inputs=[x, s], layer=Add, name='Embedding-Token-Segment')
+        if self.segment_vocab_size > 0:
+            s = self.apply(
+                inputs=s,
+                layer=Embedding,
+                input_dim=self.segment_vocab_size,
+                output_dim=self.embedding_size,
+                embeddings_initializer=self.initializer,
+                name='Embedding-Segment'
+            )
+            x = self.apply(
+                inputs=[x, s], layer=Add, name='Embedding-Token-Segment'
+            )
         x = self.apply(
             inputs=self.simplify([x, p]),
             layer=PositionEmbedding,
@@ -801,7 +813,10 @@ class NEZHA(BERT):
     def apply_embeddings(self, inputs):
         """NEZHA的embedding是token、segment两者embedding之和
         """
-        x, s = inputs
+        inputs = inputs[:]
+        x = inputs.pop(0)
+        if self.segment_vocab_size > 0:
+            s = inputs.pop(0)
         z = self.layer_norm_conds[0]
 
         x = self.apply(
@@ -813,15 +828,18 @@ class NEZHA(BERT):
             mask_zero=True,
             name='Embedding-Token'
         )
-        s = self.apply(
-            inputs=s,
-            layer=Embedding,
-            input_dim=2,
-            output_dim=self.embedding_size,
-            embeddings_initializer=self.initializer,
-            name='Embedding-Segment'
-        )
-        x = self.apply(inputs=[x, s], layer=Add, name='Embedding-Token-Segment')
+        if self.segment_vocab_size > 0:
+            s = self.apply(
+                inputs=s,
+                layer=Embedding,
+                input_dim=2,
+                output_dim=self.embedding_size,
+                embeddings_initializer=self.initializer,
+                name='Embedding-Segment'
+            )
+            x = self.apply(
+                inputs=[x, s], layer=Add, name='Embedding-Token-Segment'
+            )
         x = self.apply(
             inputs=self.simplify([x, z]),
             layer=LayerNormalization,
@@ -1826,7 +1844,7 @@ def extend_with_language_model(BaseModel):
                     return mask[None, None]
 
                 self.attention_mask = self.apply(
-                    inputs=self.inputs[1],
+                    inputs=self.inputs[0],
                     layer=Lambda,
                     function=lm_mask,
                     name='Attention-LM-Mask'
@@ -1937,6 +1955,8 @@ def build_transformer_model(
         configs['max_position'] = configs.get('max_position_embeddings')
     if 'dropout_rate' not in configs:
         configs['dropout_rate'] = configs.get('hidden_dropout_prob')
+    if 'segment_vocab_size' not in configs:
+        configs['segment_vocab_size'] = configs.get('type_vocab_size')
 
     models = {
         'bert': BERT,
