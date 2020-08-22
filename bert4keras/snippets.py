@@ -582,7 +582,7 @@ class WebServing(object):
     用法：
         arguments = {'text': (None, True), 'n': (int, False)}
         web = WebServing(port=8864)
-        web.add_route('/gen_synonyms', gen_synonyms, arguments)
+        web.route('/gen_synonyms', gen_synonyms, arguments)
         web.start()
         # 然后访问 http://127.0.0.1:8864/gen_synonyms?text=你好
     说明：
@@ -652,7 +652,7 @@ class WebServing(object):
 
         return new_func
 
-    def add_route(self, path, func, arguments, method='GET'):
+    def route(self, path, func, arguments, method='GET'):
         """添加接口
         """
         bottle = WebServing.bottle
