@@ -62,7 +62,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 - 注2：下载下来的ELECTRA权重，如果没有json配置文件的话，参考<a href="https://github.com/ymcui/Chinese-ELECTRA/issues/3">这里</a>自己改一个。
 
 ## 更新
-- <strong>2020.08.22</strong>: 新增`WebServing`类，允许简单地将模型转换为Web接口，详情请参考该类的<a href="https://github.com/bojone/bert4keras/blob/a0167b945d4f0ed508303f330d82541e09e415d6/bert4keras/snippets.py#L580">说明</a>。
+- <strong>2020.08.22</strong>: 新增`WebServing`类，允许简单地将模型转换为Web接口，详情请参考该类的<a href="https://github.com/bojone/bert4keras/blob/8d55512a12e4677262363ac189ebf504fc451716/bert4keras/snippets.py#L580">说明</a>。
 - <strong>2020.07.14</strong>: `Transformer`类加入`prefix`参数；`snippets.py`引入`to_array`函数；`AutoRegressiveDecoder`修改`rtype='logits'`时的一个隐藏bug。
 - <strong>2020.06.06</strong>: 强迫症作祟：将`Tokenizer`原来的`max_length`参数重命名为`maxlen`，同时保留向后兼容性，建议大家用新参数名。
 - <strong>2020.04.29</strong>: 增加重计算（参考<a href="https://github.com/bojone/keras_recompute">keras_recompute</a>），可以通过时间换空间，通过设置环境变量`RECOMPUTE=1`启用。
