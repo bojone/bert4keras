@@ -577,6 +577,94 @@ def longest_common_subsequence(source, target):
     return l, mapping[::-1]
 
 
+class WebServing(object):
+    """简单的Web接口
+    用法：
+        arguments = {'text': (None, True), 'n': (int, False)}
+        web = WebServing(port=8864)
+        web.add_route('/gen_synonyms', gen_synonyms, arguments)
+        web.start()
+        # 然后访问 http://127.0.0.1:8864/gen_synonyms?text=你好
+    说明：
+        基于bottlepy简单封装，仅作为临时测试使用，不保证性能。
+        欢迎有经验的开发者帮忙改进。
+    依赖：
+        pip install bottle
+        pip install paste
+        （如果不用 server='paste' 的话，可以不装paste库）
+    """
+
+    import tensorflow as tf
+    from bert4keras.backend import K
+    import bottle
+    import json
+
+    def __init__(self, host='0.0.0.0', port=8000, server='paste'):
+        self.host = host
+        self.port = port
+        self.server = server
+        self.graph = WebServing.tf.get_default_graph()
+        self.sess = WebServing.K.get_session()
+
+    def wraps(self, func, arguments, method='GET'):
+        """封装为接口函数
+        参数：
+            func：要转换为接口的函数，需要保证输出可以json化，即需要
+                  保证 json.dumps(func(inputs)) 能被执行成功；
+            arguments：声明func所需参数，其中key为参数名，value[0]为
+                       对应的转换函数（接口获取到的参数值都是字符串
+                       型），value[1]为该参数是否必须；
+            method：GET或者POST。
+        """
+
+        K = WebServing.K
+        bottle = WebServing.bottle
+        json = WebServing.json
+
+        def new_func():
+            outputs = {'code': 0, 'desc': u'succeeded', 'data': {}}
+            kwargs = {}
+            for key, value in arguments.items():
+                if method == 'GET':
+                    result = bottle.request.GET.get(key)
+                else:
+                    result = bottle.request.POST.get(key)
+                if result is None:
+                    if value[1]:
+                        outputs['code'] = 1
+                        outputs['desc'] = 'lack of "%s" argument' % key
+                        return json.dumps(outputs, ensure_ascii=False)
+                else:
+                    if value[0] is None:
+                        result = convert_to_unicode(result)
+                    else:
+                        result = value[0](result)
+                    kwargs[key] = result
+            try:
+                with self.graph.as_default():
+                    K.set_session(self.sess)
+                    outputs['data'] = func(**kwargs)
+            except Exception as e:
+                outputs['code'] = 2
+                outputs['desc'] = str(e)
+            return json.dumps(outputs, ensure_ascii=False)
+
+        return new_func
+
+    def add_route(self, name, func, arguments, method='GET'):
+        """添加接口
+        """
+        bottle = WebServing.bottle
+        func = self.wraps(func, arguments, method)
+        bottle.route(name, method=method)(func)
+
+    def start(self):
+        """启动服务
+        """
+        bottle = WebServing.bottle
+        bottle.run(host=self.host, port=self.port, server=self.server)
+
+
 class Hook:
     """注入uniout模块，实现import时才触发
     """
