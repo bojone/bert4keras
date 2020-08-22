@@ -587,6 +587,7 @@ class WebServing(object):
         # 然后访问 http://127.0.0.1:8864/gen_synonyms?text=你好
     说明：
         基于bottlepy简单封装，仅作为临时测试使用，不保证性能。
+        目前仅保证支持 Tensorflow 1.x + Keras <= 2.3.1。
         欢迎有经验的开发者帮忙改进。
     依赖：
         pip install bottle
@@ -651,12 +652,12 @@ class WebServing(object):
 
         return new_func
 
-    def add_route(self, name, func, arguments, method='GET'):
+    def add_route(self, path, func, arguments, method='GET'):
         """添加接口
         """
         bottle = WebServing.bottle
         func = self.wraps(func, arguments, method)
-        bottle.route(name, method=method)(func)
+        bottle.route(path, method=method)(func)
 
     def start(self):
         """启动服务
