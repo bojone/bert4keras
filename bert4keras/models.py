@@ -216,9 +216,9 @@ class Transformer(object):
         return tf.train.load_variable(checkpoint, name)
 
     def create_variable(self, name, value):
-        """在tensorflow中创建一个变量
+        """创建一个变量
         """
-        return tf.Variable(value, name=name)
+        return K.variable(self.initializer(value.shape), name=name)
 
     def variable_mapping(self):
         """构建keras层与checkpoint的变量名之间的映射表
@@ -273,15 +273,17 @@ class Transformer(object):
         mapping = {k: v for k, v in mapping.items() if k in self.layers}
 
         with tf.Graph().as_default():
+            all_variables, all_values = [], []
             for layer, variables in mapping.items():
                 layer = self.layers[layer]
                 values = K.batch_get_value(layer.trainable_weights)
                 for name, value in zip(variables, values):
-                    self.create_variable(name, value)
+                    all_variables.append(self.create_variable(name, value))
+                    all_values.append(value)
             with tf.Session() as sess:
-                sess.run(tf.global_variables_initializer())
+                K.batch_set_value(zip(all_variables, all_values))
                 saver = tf.train.Saver()
-                saver.save(sess, filename, write_meta_graph=False)
+                saver.save(sess, filename)
 
 
 class BERT(Transformer):
