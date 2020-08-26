@@ -8,6 +8,7 @@
 - [basic_language_model_gpt2_ml.py](https://github.com/bojone/bert4keras/tree/master/examples/basic_language_model_gpt2_ml.py): 基础测试，测试[GPT2_ML](https://github.com/imcaspar/gpt2-ml)的生成效果。
 - [basic_language_model_nezha_gen_gpt.py](https://github.com/bojone/bert4keras/tree/master/examples/basic_language_model_nezha_gen_gpt.py): 基础测试，测试[GPT Base（又叫NEZHE-GEN）](https://github.com/huawei-noah/Pretrained-Language-Model/tree/master/NEZHA-Gen-TensorFlow)的生成效果。
 - [basic_masked_language_model.py](https://github.com/bojone/bert4keras/tree/master/examples/basic_masked_language_model.py): 基础测试，测试BERT的MLM模型效果。
+- [basic_simple_web_serving_simbert.py](https://github.com/bojone/bert4keras/tree/master/examples/basic_simple_web_serving_simbert.py): 基础测试，测试自带的WebServing（将模型转化为Web接口）。
 - [task_conditional_language_model.py](https://github.com/bojone/bert4keras/tree/master/examples/task_conditional_language_model.py): 任务例子，结合 BERT + [Conditional Layer Normalization](https://kexue.fm/archives/7124) 做条件语言模型。
 - [task_iflytek_adversarial_training.py](https://github.com/bojone/bert4keras/tree/master/examples/task_iflytek_adversarial_training.py): 任务例子，通过[对抗训练](https://kexue.fm/archives/7234)提升分类效果。
 - [task_iflytek_bert_of_theseus.py](https://github.com/bojone/bert4keras/tree/master/examples/task_iflytek_bert_of_theseus.py): 任务例子，通过[BERT-of-Theseus](https://kexue.fm/archives/7575)来进行模型压缩。
