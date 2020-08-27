@@ -1026,7 +1026,7 @@ class GPT2_ML(Transformer):
         self.final_activation = final_activation
 
     def get_inputs(self):
-        """GPT2_ML的输入是token_ids和segment_ids
+        """GPT2_ML的输入是token_ids
         """
         x_in = self.apply(
             layer=Input, shape=(self.sequence_length,), name='Input-Token'
