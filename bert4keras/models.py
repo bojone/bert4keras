@@ -1158,7 +1158,6 @@ class GPT2_ML(Transformer):
         """剩余部分
         """
         x = inputs
-        z = self.layer_norm_conds[0]
 
         # Language Model部分
         x = self.apply(
