@@ -297,7 +297,7 @@ class BERT(Transformer):
         with_nsp=False,  # 是否包含NSP部分
         with_mlm=False,  # 是否包含MLM部分
         custom_position_ids=False,  # 是否自行传入位置id
-        segment_embeddings=True,  # 如果为False，则segment跟token共用一个embedding
+        shared_segment_embeddings=False,  # 若True，则segment跟token共用embedding
         **kwargs  # 其余参数
     ):
         super(BERT, self).__init__(**kwargs)
@@ -307,7 +307,7 @@ class BERT(Transformer):
         self.with_nsp = with_nsp
         self.with_mlm = with_mlm
         self.custom_position_ids = custom_position_ids
-        self.segment_embeddings = segment_embeddings
+        self.shared_segment_embeddings = shared_segment_embeddings
         if self.with_nsp and not self.with_pool:
             self.with_pool = True
 
@@ -361,10 +361,10 @@ class BERT(Transformer):
             name='Embedding-Token'
         )
         if self.segment_vocab_size > 0:
-            if self.segment_embeddings:
-                name = 'Embedding-Segment'
-            else:
+            if self.shared_segment_embeddings:
                 name = 'Embedding-Token'
+            else:
+                name = 'Embedding-Segment'
             s = self.apply(
                 inputs=s,
                 layer=Embedding,
@@ -837,10 +837,10 @@ class NEZHA(BERT):
             name='Embedding-Token'
         )
         if self.segment_vocab_size > 0:
-            if self.segment_embeddings:
-                name = 'Embedding-Segment'
-            else:
+            if self.shared_segment_embeddings:
                 name = 'Embedding-Token'
+            else:
+                name = 'Embedding-Segment'
             s = self.apply(
                 inputs=s,
                 layer=Embedding,
