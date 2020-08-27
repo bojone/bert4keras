@@ -7,6 +7,7 @@ import numpy as np
 import re
 import sys
 from collections import defaultdict
+import json
 
 _open_ = open
 is_py2 = six.PY2
@@ -594,18 +595,19 @@ class WebServing(object):
         pip install paste
         （如果不用 server='paste' 的话，可以不装paste库）
     """
-
-    import tensorflow as tf
-    from bert4keras.backend import K
-    import bottle
-    import json
-
     def __init__(self, host='0.0.0.0', port=8000, server='paste'):
+
+        import tensorflow as tf
+        from bert4keras.backend import K
+        import bottle
+
         self.host = host
         self.port = port
         self.server = server
-        self.graph = WebServing.tf.get_default_graph()
-        self.sess = WebServing.K.get_session()
+        self.graph = tf.get_default_graph()
+        self.sess = K.get_session()
+        self.set_session = K.set_session
+        self.bottle = bottle
 
     def wraps(self, func, arguments, method='GET'):
         """封装为接口函数
@@ -617,19 +619,14 @@ class WebServing(object):
                        型），value[1]为该参数是否必须；
             method：GET或者POST。
         """
-
-        K = WebServing.K
-        bottle = WebServing.bottle
-        json = WebServing.json
-
         def new_func():
             outputs = {'code': 0, 'desc': u'succeeded', 'data': {}}
             kwargs = {}
             for key, value in arguments.items():
                 if method == 'GET':
-                    result = bottle.request.GET.get(key)
+                    result = self.bottle.request.GET.get(key)
                 else:
-                    result = bottle.request.POST.get(key)
+                    result = self.bottle.request.POST.get(key)
                 if result is None:
                     if value[1]:
                         outputs['code'] = 1
@@ -643,7 +640,7 @@ class WebServing(object):
                     kwargs[key] = result
             try:
                 with self.graph.as_default():
-                    K.set_session(self.sess)
+                    self.set_session(self.sess)
                     outputs['data'] = func(**kwargs)
             except Exception as e:
                 outputs['code'] = 2
@@ -655,15 +652,13 @@ class WebServing(object):
     def route(self, path, func, arguments, method='GET'):
         """添加接口
         """
-        bottle = WebServing.bottle
         func = self.wraps(func, arguments, method)
-        bottle.route(path, method=method)(func)
+        self.bottle.route(path, method=method)(func)
 
     def start(self):
         """启动服务
         """
-        bottle = WebServing.bottle
-        bottle.run(host=self.host, port=self.port, server=self.server)
+        self.bottle.run(host=self.host, port=self.port, server=self.server)
 
 
 class Hook:
