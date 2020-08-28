@@ -1168,6 +1168,19 @@ class GPT_OpenAI(LM_Mask, BERT):
 
         return x
 
+    def variable_mapping(self):
+        """映射到TF版GPT权重格式
+        """
+        mapping = super(GPT_OpenAI, self).variable_mapping()
+        mapping = {
+            k: [
+                i.replace('bert/', 'gpt/').replace('encoder', 'transformer')
+                for i in v
+            ]
+            for k, v in mapping.items()
+        }
+        return mapping
+
 
 class GPT2_ML(LM_Mask, Transformer):
     """构建GPT2_ML模型
