@@ -286,6 +286,57 @@ class Transformer(object):
                 saver.save(sess, filename)
 
 
+class LM_Mask(object):
+    """定义下三角Attention Mask（语言模型用）
+    """
+    def compute_attention_mask(self, inputs=None):
+        """通过idxs序列的比较来得到对应的mask
+        """
+        if self.attention_mask is None:
+
+            def lm_mask(s):
+                seq_len = K.shape(s)[1]
+                idxs = K.arange(0, seq_len)
+                mask = idxs[None, :] <= idxs[:, None]
+                mask = K.cast(mask, K.floatx())
+                return mask[None, None]
+
+            self.attention_mask = self.apply(
+                inputs=self.inputs[0],
+                layer=Lambda,
+                function=lm_mask,
+                name='Attention-LM-Mask'
+            )
+
+        return self.attention_mask
+
+
+class UniLM_Mask(object):
+    """定义UniLM的Attention Mask（Seq2Seq模型用）
+    其中source和target的分区，由segment_ids来表示。
+    UniLM: https://arxiv.org/abs/1905.03197
+    """
+    def compute_attention_mask(self, inputs=None):
+        """通过idxs序列的比较来得到对应的mask
+        """
+        if self.attention_mask is None:
+
+            def unilm_mask(s):
+                idxs = K.cumsum(s, axis=1)
+                mask = idxs[:, None, :] <= idxs[:, :, None]
+                mask = K.cast(mask, K.floatx())
+                return mask[:, None]
+
+            self.attention_mask = self.apply(
+                inputs=self.inputs[1],
+                layer=Lambda,
+                function=unilm_mask,
+                name='Attention-UniLM-Mask'
+            )
+
+        return self.attention_mask
+
+
 class BERT(Transformer):
     """构建BERT模型
     """
@@ -1021,7 +1072,7 @@ class ELECTRA(BERT):
         return mapping
 
 
-class GPT2_ML(Transformer):
+class GPT2_ML(LM_Mask, Transformer):
     """构建GPT2_ML模型
     链接: https://github.com/imcaspar/gpt2-ml
     """
@@ -1193,27 +1244,6 @@ class GPT2_ML(Transformer):
             return self.load_embeddings(variable)
         else:
             return variable
-
-    def compute_attention_mask(self, inputs=None):
-        """添加下三角形式的attention mask
-        """
-        if self.attention_mask is None:
-
-            def lm_mask(s):
-                seq_len = K.shape(s)[1]
-                idxs = K.arange(0, seq_len)
-                mask = idxs[None, :] <= idxs[:, None]
-                mask = K.cast(mask, K.floatx())
-                return mask[None, None]
-
-            self.attention_mask = self.apply(
-                inputs=self.inputs[0],
-                layer=Lambda,
-                function=lm_mask,
-                name='Attention-LM-Mask'
-            )
-
-        return self.attention_mask
 
     def variable_mapping(self):
         """映射到官方GPT2_ML权重格式
@@ -1521,7 +1551,7 @@ class T5_Encoder(T5_Base):
         return self.position_bias
 
 
-class T5_Decoder(T5_Base):
+class T5_Decoder(LM_Mask, T5_Base):
     """Google的T5模型（Decoder）
     """
     def __init__(self, with_lm=True, **kwargs):
@@ -1754,27 +1784,6 @@ class T5_Decoder(T5_Base):
 
         return x
 
-    def compute_attention_mask(self, inputs=None):
-        """添加下三角形式的attention mask
-        """
-        if self.attention_mask is None:
-
-            def lm_mask(s):
-                seq_len = K.shape(s)[1]
-                idxs = K.arange(0, seq_len)
-                mask = idxs[None, :] <= idxs[:, None]
-                mask = K.cast(mask, K.floatx())
-                return mask[None, None]
-
-            self.attention_mask = self.apply(
-                inputs=self.inputs[1],
-                layer=Lambda,
-                function=lm_mask,
-                name='Attention-LM-Mask'
-            )
-
-        return self.attention_mask
-
     def compute_position_bias(self, inputs=None):
         """T5相对位置编码
         """
@@ -1835,41 +1844,20 @@ class T5(T5_Base):
 def extend_with_language_model(BaseModel):
     """添加下三角的Attention Mask（语言模型用）
     """
-    class LanguageModel(BaseModel):
+    class LanguageModel(LM_Mask, BaseModel):
         """带下三角Attention Mask的派生模型
         """
         def __init__(self, *args, **kwargs):
             super(LanguageModel, self).__init__(*args, **kwargs)
             self.with_mlm = self.with_mlm or True
 
-        def compute_attention_mask(self, inputs=None):
-            """重载此函数即可
-            """
-            if self.attention_mask is None:
-
-                def lm_mask(s):
-                    seq_len = K.shape(s)[1]
-                    idxs = K.arange(0, seq_len)
-                    mask = idxs[None, :] <= idxs[:, None]
-                    mask = K.cast(mask, K.floatx())
-                    return mask[None, None]
-
-                self.attention_mask = self.apply(
-                    inputs=self.inputs[0],
-                    layer=Lambda,
-                    function=lm_mask,
-                    name='Attention-LM-Mask'
-                )
-
-            return self.attention_mask
-
     return LanguageModel
 
 
 def extend_with_unified_language_model(BaseModel):
-    """添加UniLM的Attention Mask（UnifiedLanguageModel用）
+    """添加UniLM的Attention Mask（Seq2Seq模型用）
     """
-    class UnifiedLanguageModel(BaseModel):
+    class UnifiedLanguageModel(UniLM_Mask, BaseModel):
         """带UniLM的Attention Mask的派生模型
         UniLM: https://arxiv.org/abs/1905.03197
         """
@@ -1877,75 +1865,7 @@ def extend_with_unified_language_model(BaseModel):
             super(UnifiedLanguageModel, self).__init__(*args, **kwargs)
             self.with_mlm = self.with_mlm or True
 
-        def compute_attention_mask(self, inputs=None):
-            """重载此函数即可
-            """
-            if self.attention_mask is None:
-
-                def unilm_mask(s):
-                    idxs = K.cumsum(s, axis=1)
-                    mask = idxs[:, None, :] <= idxs[:, :, None]
-                    mask = K.cast(mask, K.floatx())
-                    return mask[:, None]
-
-                self.attention_mask = self.apply(
-                    inputs=self.inputs[1],
-                    layer=Lambda,
-                    function=unilm_mask,
-                    name='Attention-UniLM-Mask'
-                )
-
-            return self.attention_mask
-
     return UnifiedLanguageModel
-
-
-def extend_with_parallel_unified_language_model(BaseModel):
-    """添加并行式UniLM的Attention Mask（Seq2Seq用）
-    注：用于加速一对多的Seq2Seq任务的训练过程。
-    """
-    class ParallelUnifiedLanguageModel(BaseModel):
-        """带并行式UniLM的Attention Mask的派生模型
-        UniLM: https://arxiv.org/abs/1905.03197
-        """
-        def __init__(self, *args, **kwargs):
-            super(ParallelUnifiedLanguageModel, self).__init__(*args, **kwargs)
-            self.with_mlm = self.with_mlm or True
-            self.custom_position_ids = True
-
-        def compute_attention_mask(self, inputs=None):
-            """重载此函数即可
-            """
-            if self.attention_mask is None:
-
-                def punilm_mask(inputs):
-                    s, p = inputs
-
-                    s_idxs = K.cumsum(s, axis=1)
-                    s_mask = s_idxs[:, None, :] <= s_idxs[:, :, None]
-                    s_mask = K.cast(s_mask, K.floatx())
-
-                    p = K.less(p[:, 1:] - p[:, :-1], 0)
-                    p = K.cast(p, K.floatx())
-                    p = K.concatenate([K.zeros_like(p[:, :1]), p], axis=1)
-                    p_idxs = K.cumsum(p, axis=1) + s
-                    p_mask = K.equal(p_idxs[:, None, :], p_idxs[:, :, None])
-                    p_mask = K.cast(p_mask, K.floatx())
-
-                    s = s[:, None]
-                    mask = s_mask * (1 - s) + p_mask * s_mask * s
-                    return mask[:, None]
-
-                self.attention_mask = self.apply(
-                    inputs=self.inputs[1:3],
-                    layer=Lambda,
-                    function=punilm_mask,
-                    name='Attention-PUniLM-Mask'
-                )
-
-            return self.attention_mask
-
-    return ParallelUnifiedLanguageModel
 
 
 def build_transformer_model(
@@ -1989,7 +1909,7 @@ def build_transformer_model(
         MODEL = model
 
     application = application.lower()
-    if application in ['lm', 'unilm', 'punilm'] and model in ['electra', 't5']:
+    if application in ['lm', 'unilm'] and model in ['electra', 't5']:
         raise ValueError(
             '"%s" model can not be used as "%s" application.\n' %
             (model, application)
@@ -1999,8 +1919,6 @@ def build_transformer_model(
         MODEL = extend_with_language_model(MODEL)
     elif application == 'unilm':
         MODEL = extend_with_unified_language_model(MODEL)
-    elif application == 'punilm':
-        MODEL = extend_with_parallel_unified_language_model(MODEL)
 
     transformer = MODEL(**configs)
     transformer.build(**configs)
