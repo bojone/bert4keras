@@ -3,6 +3,7 @@
 
 import numpy as np
 from bert4keras.layers import *
+from bert4keras.snippets import insert_arguments
 from bert4keras.snippets import delete_arguments
 from bert4keras.snippets import is_string
 from keras.models import Model
@@ -1072,6 +1073,102 @@ class ELECTRA(BERT):
         return mapping
 
 
+class GPT_OpenAI(LM_Mask, BERT):
+    """构建GPT模型
+    链接：https://github.com/openai/finetune-transformer-lm
+    """
+    @insert_arguments(final_activation='softmax')
+    @delete_arguments('with_pool', 'with_mlm')
+    def __init__(self, **kwargs):
+        super(GPT_OpenAI, self).__init__(**kwargs)
+
+    def apply_embeddings(self, inputs):
+        """GPT的embedding是token、position、segment三者embedding之和
+        跟BERT的主要区别是三者相加之后没有加LayerNormalization层。
+        """
+        inputs = inputs[:]
+        x = inputs.pop(0)
+        if self.segment_vocab_size > 0:
+            s = inputs.pop(0)
+        if self.custom_position_ids:
+            p = inputs.pop(0)
+        else:
+            p = None
+
+        x = self.apply(
+            inputs=x,
+            layer=Embedding,
+            input_dim=self.vocab_size,
+            output_dim=self.embedding_size,
+            embeddings_initializer=self.initializer,
+            mask_zero=True,
+            name='Embedding-Token'
+        )
+        if self.segment_vocab_size > 0:
+            if self.shared_segment_embeddings:
+                name = 'Embedding-Token'
+            else:
+                name = 'Embedding-Segment'
+            s = self.apply(
+                inputs=s,
+                layer=Embedding,
+                input_dim=self.segment_vocab_size,
+                output_dim=self.embedding_size,
+                embeddings_initializer=self.initializer,
+                name=name
+            )
+            x = self.apply(
+                inputs=[x, s], layer=Add, name='Embedding-Token-Segment'
+            )
+        x = self.apply(
+            inputs=self.simplify([x, p]),
+            layer=PositionEmbedding,
+            input_dim=self.max_position,
+            output_dim=self.embedding_size,
+            merge_mode='add',
+            embeddings_initializer=self.initializer,
+            custom_position_ids=self.custom_position_ids,
+            name='Embedding-Position'
+        )
+        x = self.apply(
+            inputs=x,
+            layer=Dropout,
+            rate=self.dropout_rate,
+            name='Embedding-Dropout'
+        )
+        if self.embedding_size != self.hidden_size:
+            x = self.apply(
+                inputs=x,
+                layer=Dense,
+                units=self.hidden_size,
+                kernel_initializer=self.initializer,
+                name='Embedding-Mapping'
+            )
+
+        return x
+
+    def apply_final_layers(self, inputs):
+        """剩余部分
+        """
+        x = inputs
+
+        # Language Model部分
+        x = self.apply(
+            inputs=x,
+            layer=Embedding,
+            arguments={'mode': 'dense'},
+            name='Embedding-Token'
+        )
+        x = self.apply(
+            inputs=x,
+            layer=Activation,
+            activation=self.final_activation,
+            name='LM-Activation'
+        )
+
+        return x
+
+
 class GPT2_ML(LM_Mask, Transformer):
     """构建GPT2_ML模型
     链接: https://github.com/imcaspar/gpt2-ml
@@ -1896,6 +1993,7 @@ def build_transformer_model(
         'roberta': BERT,
         'nezha': NEZHA,
         'electra': ELECTRA,
+        'gpt_openai': GPT_OpenAI,
         'gpt2_ml': GPT2_ML,
         't5': T5,
         't5_encoder': T5_Encoder,
