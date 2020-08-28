@@ -52,6 +52,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 - <strong>华为的NEZHA-GEN</strong>: https://github.com/huawei-noah/Pretrained-Language-Model/tree/master/NEZHA-Gen-TensorFlow
 - <strong>自研语言模型</strong>: https://github.com/ZhuiyiTechnology/pretrained-models
 - <strong>T5模型</strong>: https://github.com/google-research/text-to-text-transfer-transformer
+- <strong>GPT2_OpenAI</strong>: https://github.com/bojone/CDial-GPT-tf
 - <strong>GPT2_ML</strong>: https://github.com/imcaspar/gpt2-ml
 - <strong>Google原版ELECTRA</strong>: https://github.com/google-research/electra
 - <strong>哈工大版ELECTRA</strong>: https://github.com/ymcui/Chinese-ELECTRA
