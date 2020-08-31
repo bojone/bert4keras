@@ -1044,6 +1044,7 @@ class ELECTRA(BERT):
     """Google推出的ELECTRA模型
     链接：https://arxiv.org/abs/2003.10555
     """
+    @insert_arguments(with_discriminator=False)
     @delete_arguments('with_pool', 'with_mlm')
     def __init__(
         self,
@@ -1054,7 +1055,29 @@ class ELECTRA(BERT):
 
     def apply_final_layers(self, inputs):
         x = inputs
-        z = self.layer_norm_conds[0]
+
+        if self.with_discriminator:
+            if self.with_discriminator is True:
+                final_activation = 'sigmoid'
+            else:
+                final_activation = self.with_discriminator
+            x = self.apply(
+                inputs=x,
+                layer=Dense,
+                units=self.hidden_size,
+                activation=self.hidden_act,
+                kernel_initializer=self.initializer,
+                name='Discriminator-Dense'
+            )
+            x = self.apply(
+                inputs=x,
+                layer=Dense,
+                units=1,
+                activation=final_activation,
+                kernel_initializer=self.initializer,
+                name='Discriminator-Prediction'
+            )
+
         return x
 
     def load_variable(self, checkpoint, name):
@@ -1076,6 +1099,14 @@ class ELECTRA(BERT):
             k: [i.replace('bert/', 'electra/') for i in v]
             for k, v in mapping.items()
         }
+        mapping['Discriminator-Dense'] = [
+            'discriminator_predictions/dense/kernel',
+            'discriminator_predictions/dense/bias',
+        ]
+        mapping['Discriminator-Prediction'] = [
+            'discriminator_predictions/dense_1/kernel',
+            'discriminator_predictions/dense_1/bias',
+        ]
         return mapping
 
 
