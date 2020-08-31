@@ -1050,15 +1050,21 @@ class ELECTRA(BERT):
         max_position,  # 序列最大长度
         **kwargs  # 其余参数
     ):
-        if 'keep_tokens' in kwargs:
-            del kwargs['keep_tokens']
-
         super(ELECTRA, self).__init__(max_position, **kwargs)
 
     def apply_final_layers(self, inputs):
         x = inputs
         z = self.layer_norm_conds[0]
         return x
+
+    def load_variable(self, checkpoint, name):
+        """加载单个变量的函数
+        """
+        variable = super(ELECTRA, self).load_variable(checkpoint, name)
+        if name == 'electra/embeddings/word_embeddings':
+            return self.load_embeddings(variable)
+        else:
+            return variable
 
     def variable_mapping(self):
         mapping = super(ELECTRA, self).variable_mapping()
