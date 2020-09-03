@@ -167,7 +167,9 @@ class Tokenizer(BasicTokenizer):
     def __init__(
         self, token_dict, do_lower_case=False, pre_tokenize=None, **kwargs
     ):
-        """初始化
+        """这里的pre_tokenize是外部传入的分词函数，用作对文本进行预分词。如果传入
+        pre_tokenize，则先执行pre_tokenize(text)，然后在它的基础上执行原本的
+        tokenize函数。
         """
         super(Tokenizer, self).__init__(**kwargs)
         if is_string(token_dict):
