@@ -230,15 +230,6 @@ class Tokenizer(BasicTokenizer):
     def _tokenize(self, text, pre_tokenize=True):
         """基本分词函数
         """
-        if pre_tokenize and self._pre_tokenize is not None:
-            tokens = []
-            for token in self._pre_tokenize(text):
-                if token in self._token_dict:
-                    tokens.append(token)
-                else:
-                    tokens.extend(self._tokenize(token, False))
-            return tokens
-
         if self._do_lower_case:
             if is_py2:
                 text = unicode(text)
@@ -247,6 +238,15 @@ class Tokenizer(BasicTokenizer):
             text = ''.join([
                 ch for ch in text if unicodedata.category(ch) != 'Mn'
             ])
+
+        if pre_tokenize and self._pre_tokenize is not None:
+            tokens = []
+            for token in self._pre_tokenize(text):
+                if token in self._token_dict:
+                    tokens.append(token)
+                else:
+                    tokens.extend(self._tokenize(token, False))
+            return tokens
 
         spaced = ''
         for ch in text:
