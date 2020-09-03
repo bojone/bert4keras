@@ -164,14 +164,17 @@ class Tokenizer(BasicTokenizer):
     """Bert原生分词器
     纯Python实现，代码修改自keras_bert的tokenizer实现
     """
-    def __init__(self, token_dict, do_lower_case=False, *args, **kwargs):
+    def __init__(
+        self, token_dict, do_lower_case=False, pre_tokenize=None, **kwargs
+    ):
         """初始化
         """
-        super(Tokenizer, self).__init__(*args, **kwargs)
+        super(Tokenizer, self).__init__(**kwargs)
         if is_string(token_dict):
             token_dict = load_vocab(token_dict)
 
         self._do_lower_case = do_lower_case
+        self._pre_tokenize = pre_tokenize
         self._token_dict = token_dict
         self._token_dict_inv = {v: k for k, v in token_dict.items()}
         self._vocab_size = len(token_dict)
@@ -224,9 +227,18 @@ class Tokenizer(BasicTokenizer):
 
         return text.strip()
 
-    def _tokenize(self, text):
+    def _tokenize(self, text, pre_tokenize=True):
         """基本分词函数
         """
+        if pre_tokenize and self._pre_tokenize is not None:
+            tokens = []
+            for token in self._pre_tokenize(text):
+                if token in self._token_dict:
+                    tokens.append(token)
+                else:
+                    tokens.extend(self._tokenize(token, False))
+            return tokens
+
         if self._do_lower_case:
             if is_py2:
                 text = unicode(text)
@@ -376,8 +388,8 @@ class Tokenizer(BasicTokenizer):
 class SpTokenizer(BasicTokenizer):
     """基于SentencePiece模型的封装，使用上跟Tokenizer基本一致。
     """
-    def __init__(self, sp_model_path, *args, **kwargs):
-        super(SpTokenizer, self).__init__(*args, **kwargs)
+    def __init__(self, sp_model_path, **kwargs):
+        super(SpTokenizer, self).__init__(**kwargs)
         import sentencepiece as spm
         self.sp_model = spm.SentencePieceProcessor()
         self.sp_model.Load(sp_model_path)
