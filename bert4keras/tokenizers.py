@@ -12,7 +12,8 @@ def load_vocab(dict_path, encoding='utf-8', simplified=False, startswith=None):
     token_dict = {}
     with open(dict_path, encoding=encoding) as reader:
         for line in reader:
-            token = line.split(' ')[0]
+            token = line.split()
+            token = token[0] if token else line.strip()
             token_dict[token] = len(token_dict)
 
     if simplified:  # 过滤冗余部分token
