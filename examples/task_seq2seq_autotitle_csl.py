@@ -137,8 +137,8 @@ class Evaluator(keras.callbacks.Callback):
         rouge_1, rouge_2, rouge_l, bleu = 0, 0, 0, 0
         for title, content in tqdm(data):
             total += 1
-            title = ' '.join(title)
-            pred_title = ' '.join(autotitle.generate(content, topk))
+            title = ' '.join(title).lower()
+            pred_title = ' '.join(autotitle.generate(content, topk)).lower()
             if pred_title.strip():
                 scores = self.rouge.get_scores(hyps=pred_title, refs=title)
                 rouge_1 += scores[0]['rouge-1']['f']
