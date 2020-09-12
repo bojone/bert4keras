@@ -2034,7 +2034,7 @@ def build_transformer_model(
     if 'dropout_rate' not in configs:
         configs['dropout_rate'] = configs.get('hidden_dropout_prob')
     if 'segment_vocab_size' not in configs:
-        configs['segment_vocab_size'] = configs.get('type_vocab_size')
+        configs['segment_vocab_size'] = configs.get('type_vocab_size', 2)
 
     models = {
         'bert': BERT,
