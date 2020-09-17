@@ -219,7 +219,7 @@ class Transformer(object):
     def create_variable(self, name, value):
         """创建一个变量
         """
-        return K.variable(self.initializer(value.shape), name=name)
+        return K.variable(self.initializer(value.shape), name=name), value
 
     def variable_mapping(self):
         """构建keras层与checkpoint的变量名之间的映射表
@@ -279,7 +279,8 @@ class Transformer(object):
                 layer = self.layers[layer]
                 values = K.batch_get_value(layer.trainable_weights)
                 for name, value in zip(variables, values):
-                    all_variables.append(self.create_variable(name, value))
+                    variable, value = self.create_variable(name, value)
+                    all_variables.append(variable)
                     all_values.append(value)
             with tf.Session() as sess:
                 K.batch_set_value(zip(all_variables, all_values))
