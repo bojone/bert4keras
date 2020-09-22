@@ -62,6 +62,8 @@ class BasicTokenizer(object):
         self._token_mask = '[MASK]'
         self._token_start = token_start
         self._token_end = token_end
+        # 默认的unk，id为0
+        self._token_unk_id = 0
 
     def tokenize(self, text, maxlen=None):
         """分词函数
