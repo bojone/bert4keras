@@ -105,6 +105,8 @@ def evaluate(data):
 
 
 class Evaluator(keras.callbacks.Callback):
+    """评估与保存
+    """
     def __init__(self):
         self.best_val_acc = 0.
 
@@ -137,4 +139,3 @@ if __name__ == '__main__':
 else:
 
     model.load_weights('best_model.weights')
-

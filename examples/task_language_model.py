@@ -148,6 +148,8 @@ def just_show():
 
 
 class Evaluator(keras.callbacks.Callback):
+    """评估与保存
+    """
     def __init__(self):
         self.lowest = 1e10
 

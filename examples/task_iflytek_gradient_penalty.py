@@ -3,6 +3,7 @@
 # 比CLUE榜单公开的同数据集上的BERT base的成绩高2%
 # 数据集：IFLYTEK' 长文本分类 (https://github.com/CLUEbenchmark/CLUE)
 # 博客：https://kexue.fm/archives/7234
+# 适用于Keras 2.3.1
 
 import json
 import numpy as np
@@ -123,6 +124,8 @@ def evaluate(data):
 
 
 class Evaluator(keras.callbacks.Callback):
+    """评估与保存
+    """
     def __init__(self):
         self.best_val_acc = 0.
 

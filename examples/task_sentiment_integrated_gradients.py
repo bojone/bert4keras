@@ -18,10 +18,12 @@ class Gradient(Layer):
     def __init__(self, **kwargs):
         super(Gradient, self).__init__(**kwargs)
         self.supports_masking = True
+
     def call(self, input):
         input, output, label = input
         output = batch_gather(output, label)
         return K.gradients(output, [input])[0] * input
+
     def compute_output_shape(self, input_shape):
         return input_shape[0]
 

@@ -119,7 +119,7 @@ autotitle = AutoTitle(start_id=None, end_id=tokenizer._token_end_id, maxlen=32)
 
 
 class Evaluator(keras.callbacks.Callback):
-    """模型评测与保存
+    """评估与保存
     """
     def __init__(self):
         self.rouge = Rouge()

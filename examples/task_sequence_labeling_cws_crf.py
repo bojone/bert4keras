@@ -185,6 +185,8 @@ def predict_to_file(in_file, out_file):
 
 
 class Evaluator(keras.callbacks.Callback):
+    """评估与保存
+    """
     def __init__(self):
         self.best_val_acc = 0
 

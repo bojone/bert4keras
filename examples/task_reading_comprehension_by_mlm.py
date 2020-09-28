@@ -200,6 +200,8 @@ def predict_to_file(data, filename):
 
 
 class Evaluator(keras.callbacks.Callback):
+    """评估与保存
+    """
     def __init__(self):
         self.lowest = 1e10
 
