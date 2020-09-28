@@ -6,7 +6,8 @@ import tensorflow as tf
 from bert4keras.backend import keras, K
 from bert4keras.backend import sequence_masking
 from bert4keras.backend import recompute_grad
-from keras import initializers, activations
+from bert4keras import initializers
+from keras import activations
 from keras.layers import *
 
 

@@ -1015,25 +1015,13 @@ class NEZHA(BERT):
         """
         if self.position_bias is None:
 
-            def sinusoidal(shape, dtype=None):
-                """NEZHA直接使用Sin-Cos形式的位置向量
-                """
-                vocab_size, depth = shape
-                embeddings = np.zeros(shape)
-                for pos in range(vocab_size):
-                    for i in range(depth // 2):
-                        theta = pos / np.power(10000, 2. * i / depth)
-                        embeddings[pos, 2 * i] = np.sin(theta)
-                        embeddings[pos, 2 * i + 1] = np.cos(theta)
-                return embeddings
-
             x = inputs
             self.position_bias = self.apply(
                 inputs=[x, x],
                 layer=RelativePositionEmbedding,
                 input_dim=2 * 64 + 1,
                 output_dim=self.attention_head_size,
-                embeddings_initializer=sinusoidal,
+                embeddings_initializer='sinusoidal',
                 name='Embedding-Relative-Position',
                 trainable=False
             )
