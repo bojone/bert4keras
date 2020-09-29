@@ -196,6 +196,23 @@ def leaky_relu(x, alpha=0.2):
     return tf.nn.leaky_relu(x, alpha=alpha)
 
 
+class Sinusoidal(keras.initializers.Initializer):
+    """Sin-Cos位置向量初始化器
+    来自：https://arxiv.org/abs/1706.03762
+    """
+    def __call__(self, shape, dtype=None):
+        """Sin-Cos形式的位置向量
+        """
+        vocab_size, depth = shape
+        embeddings = np.zeros(shape)
+        for pos in range(vocab_size):
+            for i in range(depth // 2):
+                theta = pos / np.power(10000, 2. * i / depth)
+                embeddings[pos, 2 * i] = np.sin(theta)
+                embeddings[pos, 2 * i + 1] = np.cos(theta)
+        return embeddings
+
+
 def symbolic(f):
     """恒等装饰器（兼容旧版本keras用）
     """
@@ -289,6 +306,7 @@ custom_objects = {
     'gelu': gelu_erf,
     'swish': swish,
     'leaky_relu': leaky_relu,
+    'Sinusoidal': Sinusoidal,
 }
 
 keras.utils.get_custom_objects().update(custom_objects)
