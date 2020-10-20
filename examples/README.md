@@ -22,6 +22,7 @@
 - [task_sentiment_albert.py](https://github.com/bojone/bert4keras/tree/master/examples/task_sentiment_albert.py): 任务例子，情感分类任务，加载ALBERT模型。
 - [task_sentiment_integrated_gradients.py](https://github.com/bojone/bert4keras/tree/master/examples/task_sentiment_integrated_gradients.py): 任务例子，通过[积分梯度](https://kexue.fm/archives/7533)的方式可视化情感分类任务。
 - [task_sentiment_virtual_adversarial_training.py](https://github.com/bojone/bert4keras/tree/master/examples/task_sentiment_virtual_adversarial_training.py): 任务例子，通过[虚拟对抗训练](https://kexue.fm/archives/7466)进行半监督学习，提升小样本下的情感分类性能。
+- [task_seq2seq_ape210k_math_word_problem.py](https://github.com/bojone/bert4keras/tree/master/examples/task_seq2seq_ape210k_math_word_problem.py): 任务例子，通过[UniLM](https://kexue.fm/archives/6933)式的Seq2Seq模型来做小学数学应用题（数学公式生成），详情请见[这里](https://kexue.fm/archives/7809)。
 - [task_seq2seq_autotitle.py](https://github.com/bojone/bert4keras/tree/master/examples/task_seq2seq_autotitle.py): 任务例子，通过[UniLM](https://kexue.fm/archives/6933)式的Seq2Seq模型来做新闻标题生成。
 - [task_seq2seq_autotitle_csl.py](https://github.com/bojone/bert4keras/tree/master/examples/task_seq2seq_autotitle_csl.py): 任务例子，通过[UniLM](https://kexue.fm/archives/6933)式的Seq2Seq模型来做论文标题生成，包含了评测代码。
 - [task_sequence_labeling_cws_crf.py](https://github.com/bojone/bert4keras/tree/master/examples/task_sequence_labeling_cws_crf.py): 任务例子，通过 BERT + [CRF](https://kexue.fm/archives/7196) 来做中文分词。
