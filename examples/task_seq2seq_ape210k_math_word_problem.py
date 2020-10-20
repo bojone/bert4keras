@@ -70,9 +70,9 @@ def load_data(filename):
         l = json.loads(l)
         question, equation, answer = l['original_text'], l['equation'], l['ans']
         # 处理带分数
-        question = re.sub('(\d+)\((\d+/\d+)\)', '(\\1+(\\2))', question)
-        equation = re.sub('(\d+)\((\d+/\d+)\)', '(\\1+(\\2))', equation)
-        answer = re.sub('(\d+)\((\d+/\d+)\)', '(\\1+(\\2))', answer)
+        question = re.sub('(\d+)\((\d+/\d+)\)', '(\\1+\\2)', question)
+        equation = re.sub('(\d+)\((\d+/\d+)\)', '(\\1+\\2)', equation)
+        answer = re.sub('(\d+)\((\d+/\d+)\)', '(\\1+\\2)', answer)
         equation = re.sub('(\d+)\(', '\\1+(', equation)
         answer = re.sub('(\d+)\(', '\\1+(', answer)
         # 分数去括号
@@ -207,6 +207,7 @@ def predict(in_file, out_file, topk=1):
     fw = open(out_file, 'w', encoding='utf-8')
     raw_data = pd.read_csv(in_file, header=None, encoding='utf-8')
     for i, question in tqdm(raw_data.values):
+        question = re.sub('(\d+)_(\d+/\d+)', '(\\1+\\2)', question)
         pred_equation = autosolve.generate(question, topk)
         if '.' not in pred_equation:
             pred_equation = re.sub('([\d]+)', 'Integer(\\1)', pred_equation)
