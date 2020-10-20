@@ -21,7 +21,7 @@ from keras.models import Model
 from sympy import Integer
 
 # 基本参数
-maxlen = 160
+maxlen = 192
 batch_size = 32
 epochs = 100
 
@@ -39,6 +39,28 @@ def is_equal(a, b):
     return a == b
 
 
+def remove_bucket(equation):
+    """去掉冗余的括号
+    """
+    l_buckets, buckets = [], []
+    for i, c in enumerate(equation):
+        if c == '(':
+            l_buckets.append(i)
+        elif c == ')':
+            buckets.append((l_buckets.pop(), i))
+    eval_equation = eval(equation)
+    for l, r in buckets:
+        new_equation = '%s %s %s' % (
+            equation[:l], equation[l + 1:r], equation[r + 1:]
+        )
+        try:
+            if is_equal(eval(new_equation.replace(' ', '')), eval_equation):
+                equation = new_equation
+        except:
+            pass
+    return equation.replace(' ', '')
+
+
 def load_data(filename):
     """读取训练数据，并做一些标准化，保证equation是可以eval的
     参考：https://kexue.fm/archives/7809
@@ -47,21 +69,25 @@ def load_data(filename):
     for l in open(filename):
         l = json.loads(l)
         question, equation, answer = l['original_text'], l['equation'], l['ans']
+        # 处理带分数
         question = re.sub('(\d+)\((\d+/\d+)\)', '(\\1+(\\2))', question)
         equation = re.sub('(\d+)\((\d+/\d+)\)', '(\\1+(\\2))', equation)
         answer = re.sub('(\d+)\((\d+/\d+)\)', '(\\1+(\\2))', answer)
         equation = re.sub('(\d+)\(', '\\1+(', equation)
         answer = re.sub('(\d+)\(', '\\1+(', answer)
+        # 分数去括号
         question = re.sub('\((\d+/\d+)\)', '\\1', question)
+        # 处理百分数
         equation = re.sub('([\.\d]+)%', '(\\1/100)', equation)
         answer = re.sub('([\.\d]+)%', '(\\1/100)', answer)
+        # 冒号转除号、剩余百分号处理
         equation = equation.replace(':', '/').replace('%', '/100')
         answer = answer.replace(':', '/').replace('%', '/100')
         if equation[:2] == 'x=':
             equation = equation[2:]
         try:
             if is_equal(eval(equation), eval(answer)):
-                D.append((question, equation, answer))
+                D.append((question, remove_bucket(equation), answer))
         except:
             continue
     return D
@@ -143,7 +169,7 @@ class AutoSolve(AutoRegressiveDecoder):
         return tokenizer.decode(output_ids).replace(' ', '')
 
 
-autosolve = AutoSolve(start_id=None, end_id=tokenizer._token_end_id, maxlen=32)
+autosolve = AutoSolve(start_id=None, end_id=tokenizer._token_end_id, maxlen=64)
 
 
 class Evaluator(keras.callbacks.Callback):
