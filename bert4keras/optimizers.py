@@ -83,6 +83,7 @@ class Adam(keras.optimizers.Optimizer):
             'beta_1': self._serialize_hyperparameter('beta_1'),
             'beta_2': self._serialize_hyperparameter('beta_2'),
             'epsilon': self.epsilon,
+            'bias_correction': self.bias_correction,
         }
         base_config = super(Adam, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
