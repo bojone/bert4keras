@@ -134,6 +134,7 @@ class MultiHeadAttention(Layer):
         self,
         heads,
         head_size,
+        out_dim=None,
         key_size=None,
         use_bias=True,
         attention_scale=True,
@@ -143,7 +144,7 @@ class MultiHeadAttention(Layer):
         super(MultiHeadAttention, self).__init__(**kwargs)
         self.heads = heads
         self.head_size = head_size
-        self.out_dim = heads * head_size
+        self.out_dim = out_dim or heads * head_size
         self.key_size = key_size or head_size
         self.use_bias = use_bias
         self.attention_scale = attention_scale
@@ -162,7 +163,7 @@ class MultiHeadAttention(Layer):
             kernel_initializer=self.kernel_initializer
         )
         self.v_dense = Dense(
-            units=self.out_dim,
+            units=self.head_size * self.heads,
             use_bias=self.use_bias,
             kernel_initializer=self.kernel_initializer
         )
@@ -222,7 +223,7 @@ class MultiHeadAttention(Layer):
         o = tf.einsum('bhjk,bkhd->bjhd', a, vw)
         if p_bias == 'typical_relative':
             o = o + tf.einsum('bhjk,jkd->bjhd', a, pos_embeddings)
-        o = K.reshape(o, (-1, K.shape(o)[1], self.out_dim))
+        o = K.reshape(o, (-1, K.shape(o)[1], self.head_size * self.heads))
         o = self.o_dense(o)
         # 返回结果
         o = sequence_masking(o, q_mask, 0)
@@ -239,6 +240,7 @@ class MultiHeadAttention(Layer):
         config = {
             'heads': self.heads,
             'head_size': self.head_size,
+            'out_dim': self.out_dim,
             'key_size': self.key_size,
             'use_bias': self.use_bias,
             'attention_scale': self.attention_scale,
