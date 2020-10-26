@@ -23,6 +23,7 @@ class Transformer(object):
         hidden_act,  # FeedForward隐层的激活函数
         dropout_rate=None,  # Dropout比例
         embedding_size=None,  # 是否指定embedding_size
+        attention_head_size=None,  # Attention中V的head_size
         attention_key_size=None,  # Attention中Q,K的head_size
         sequence_length=None,  # 是否固定序列长度
         keep_tokens=None,  # 要保留的词ID列表
@@ -40,7 +41,7 @@ class Transformer(object):
         self.hidden_size = hidden_size
         self.num_hidden_layers = num_hidden_layers
         self.num_attention_heads = num_attention_heads
-        self.attention_head_size = hidden_size // num_attention_heads
+        self.attention_head_size = attention_head_size or hidden_size // num_attention_heads
         self.attention_key_size = attention_key_size or self.attention_head_size
         self.intermediate_size = intermediate_size
         self.dropout_rate = dropout_rate or 0
