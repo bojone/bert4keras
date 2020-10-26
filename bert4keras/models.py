@@ -489,6 +489,7 @@ class BERT(Transformer):
             arguments=arguments,
             heads=self.num_attention_heads,
             head_size=self.attention_head_size,
+            out_dim=self.hidden_size,
             key_size=self.attention_key_size,
             kernel_initializer=self.initializer,
             name=attention_name
@@ -738,6 +739,7 @@ class ALBERT(BERT):
             arguments=arguments,
             heads=self.num_attention_heads,
             head_size=self.attention_head_size,
+            out_dim=self.hidden_size,
             key_size=self.attention_key_size,
             kernel_initializer=self.initializer,
             name=attention_name
@@ -957,6 +959,7 @@ class NEZHA(BERT):
             arguments=arguments,
             heads=self.num_attention_heads,
             head_size=self.attention_head_size,
+            out_dim=self.hidden_size,
             key_size=self.attention_key_size,
             kernel_initializer=self.initializer,
             name=attention_name
@@ -1296,6 +1299,7 @@ class GPT2_ML(LM_Mask, Transformer):
             arguments=arguments,
             heads=self.num_attention_heads,
             head_size=self.attention_head_size,
+            out_dim=self.hidden_size,
             key_size=self.attention_key_size,
             kernel_initializer=self.initializer,
             name=attention_name
@@ -1592,6 +1596,7 @@ class T5_Encoder(T5_Base):
             arguments={'p_bias': 't5_relative'},
             heads=self.num_attention_heads,
             head_size=self.attention_head_size,
+            out_dim=self.hidden_size,
             key_size=self.attention_key_size,
             use_bias=False,
             attention_scale=False,
@@ -1777,6 +1782,7 @@ class T5_Decoder(LM_Mask, T5_Base):
             },
             heads=self.num_attention_heads,
             head_size=self.attention_head_size,
+            out_dim=self.hidden_size,
             key_size=self.attention_key_size,
             use_bias=False,
             attention_scale=False,
@@ -1815,6 +1821,7 @@ class T5_Decoder(LM_Mask, T5_Base):
             },
             heads=self.num_attention_heads,
             head_size=self.attention_head_size,
+            out_dim=self.hidden_size,
             key_size=self.attention_key_size,
             use_bias=False,
             attention_scale=False,
