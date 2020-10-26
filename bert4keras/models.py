@@ -1920,6 +1920,15 @@ class T5_Decoder(LM_Mask, T5_Base):
 
         return x
 
+    def compute_attention_mask(self, inputs=None):
+        """修改LM Mask的序列长度（从 self.inputs[0] 改为 self.inputs[1] ）
+        """
+        old_inputs = self.inputs[:]
+        self.inputs = [old_inputs[1]]
+        mask = super(T5_Decoder, self).compute_attention_mask(inputs)
+        self.inputs = old_inputs
+        return mask
+
     def compute_position_bias(self, inputs=None):
         """T5相对位置编码
         """
