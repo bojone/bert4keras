@@ -29,6 +29,9 @@ dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
 
 def load_data(filename):
+    """加载数据
+    单条格式：[(片段1, 标签1), (片段2, 标签2), (片段3, 标签3), ...]
+    """
     D = []
     with open(filename, encoding='utf-8') as f:
         f = f.read()
