@@ -1432,7 +1432,17 @@ class GPT2_ML(LM_Mask, Transformer):
 
 class T5_Base(Transformer):
     """Google的T5模型（基类）
+    注意T5有两个版本，一开始放出来的版本称为t5.1.0，而后来放出了一个升级
+    版本称为t5.1.1，两者结构略有不同，包括后来放出来的多国语言版T5也采用
+    了t5.1.1的结构。
+    t5.1.0: https://github.com/google-research/text-to-text-transfer-transformer
+    t5.1.1: https://github.com/google-research/text-to-text-transfer-transformer/blob/master/released_checkpoints.md#t511
+    multilingual-t5: https://github.com/google-research/multilingual-t5
     """
+    @insert_arguments(version='t5.1.0')
+    def __init__(self, **kwargs):
+        super(T5_Base, self).__init__(**kwargs)
+
     def load_variable(self, checkpoint, name):
         """加载单个变量的函数
         """
@@ -1516,6 +1526,25 @@ class T5_Base(Transformer):
                     prefix + 'layer_002/layer_norm/scale',
                 ],
             })
+
+        if self.version == 't5.1.1':
+            mapping['Encoder-Output-Norm'] = ['encoder/rms_norm/scale']
+            mapping['Decoder-Output-Norm'] = ['decoder/rms_norm/scale']
+            mapping['Decoder-Output-LM'] = ['decoder/logits/kernel']
+            mapping = {
+                k: [i.replace('layer_norm', 'rms_norm') for i in v]
+                for k, v in mapping.items()
+            }
+            for i in range(self.num_hidden_layers):
+                for layer in [
+                    'Encoder-Transformer-%d-FeedForward' % i,
+                    'Decoder-Transformer-%d-FeedForward' % i
+                ]:
+                    mapping[layer] = [
+                        mapping[layer][0][:-7] + '_0' + mapping[layer][0][-7:],
+                        mapping[layer][0][:-7] + '_1' + mapping[layer][0][-7:],
+                        mapping[layer][1]
+                    ]
 
         return mapping
 
@@ -1912,19 +1941,30 @@ class T5_Decoder(LM_Mask, T5_Base):
                     kernel_initializer=self.initializer,
                     name='Decoder-Output-Mapping'
                 )
-            x = self.apply(
-                inputs=x,
-                layer=Embedding,
-                arguments={'mode': 'dense'},
-                name='Embedding-Token'
-            )
             lm_activation = 'softmax' if self.with_lm is True else self.with_lm
-            x = self.apply(
-                inputs=x,
-                layer=Activation,
-                activation=lm_activation,
-                name='Dencoder-Output-LM-Activation'
-            )
+            if self.version == 't5.1.0':
+                x = self.apply(
+                    inputs=x,
+                    layer=Embedding,
+                    arguments={'mode': 'dense'},
+                    name='Embedding-Token'
+                )
+                x = self.apply(
+                    inputs=x,
+                    layer=Activation,
+                    activation=lm_activation,
+                    name='Dencoder-Output-LM-Activation'
+                )
+            else:
+                x = self.apply(
+                    inputs=x,
+                    layer=Dense,
+                    units=self.vocab_size,
+                    activation=lm_activation,
+                    use_bias=False,
+                    kernel_initializer=self.initializer,
+                    name='Decoder-Output-LM'
+                )
 
         return x
 
@@ -2054,6 +2094,12 @@ def build_transformer_model(
         't5': T5,
         't5_encoder': T5_Encoder,
         't5_decoder': T5_Decoder,
+        't5.1.0': T5,
+        't5.1.0_encoder': T5_Encoder,
+        't5.1.0_decoder': T5_Decoder,
+        't5.1.1': T5,
+        't5.1.1_encoder': T5_Encoder,
+        't5.1.1_decoder': T5_Decoder,
     }
 
     if is_string(model):
@@ -2073,6 +2119,9 @@ def build_transformer_model(
         MODEL = extend_with_language_model(MODEL)
     elif application == 'unilm':
         MODEL = extend_with_unified_language_model(MODEL)
+
+    if model.startswith('t5.1.1'):
+        configs['version'] = 't5.1.1'
 
     transformer = MODEL(**configs)
     transformer.build(**configs)
