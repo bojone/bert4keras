@@ -59,12 +59,15 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 - <strong>CLUE版ELECTRA</strong>: https://github.com/CLUEbenchmark/ELECTRA
 - <strong>LaBSE（多国语言BERT）</strong>: https://github.com/bojone/labse
 - <strong>Chinese-GEN项目下的模型</strong>: https://github.com/bojone/chinese-gen
+- <strong>T5.1.1</strong>: https://github.com/google-research/text-to-text-transfer-transformer/blob/master/released_checkpoints.md#t511
+- <strong>Multilingual T5</strong>: https://github.com/google-research/multilingual-t5/
 
 <strong>注意事项</strong>
 - 注1：brightmart版albert的开源时间早于Google版albert，这导致早期brightmart版albert的权重与Google版的不完全一致，换言之两者不能直接相互替换。为了减少代码冗余，bert4keras的0.2.4及后续版本均只支持加载<u>Google版</u>以brightmart版中<u>带Google字眼</u>的权重。如果要加载早期版本的权重，请用<a href="https://github.com/bojone/bert4keras/releases/tag/v0.2.3">0.2.3版本</a>，或者考虑作者转换过的<a href="https://github.com/bojone/albert_zh">albert_zh</a>。
 - 注2：下载下来的ELECTRA权重，如果没有json配置文件的话，参考<a href="https://github.com/ymcui/Chinese-ELECTRA/issues/3">这里</a>自己改一个（需要加上`type_vocab_size`字段）。
 
 ## 更新
+- <strong>2020.10.27</strong>: 支持<a href="https://github.com/google-research/text-to-text-transfer-transformer/blob/master/released_checkpoints.md#t511">T5.1.1</a>和<a href="https://github.com/google-research/multilingual-t5/">Multilingual T5</a>。
 - <strong>2020.08.28</strong>: 支持<a href="https://github.com/bojone/CDial-GPT-tf">GPT_OpenAI</a>。
 - <strong>2020.08.22</strong>: 新增`WebServing`类，允许简单地将模型转换为Web接口，详情请参考该类的<a href="https://github.com/bojone/bert4keras/blob/8d55512a12e4677262363ac189ebf504fc451716/bert4keras/snippets.py#L580">说明</a>。
 - <strong>2020.07.14</strong>: `Transformer`类加入`prefix`参数；`snippets.py`引入`to_array`函数；`AutoRegressiveDecoder`修改`rtype='logits'`时的一个隐藏bug。
