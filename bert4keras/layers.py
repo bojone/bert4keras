@@ -561,7 +561,10 @@ class RelativePositionEmbeddingT5(RelativePositionEmbedding):
 
 
 class FeedForward(Layer):
-    """FeedForward层，其实就是两个Dense层的叠加
+    """FeedForward层
+    如果activation不是一个list，那么它就是两个Dense层的叠加；如果activation是
+    一个list，那么第一个Dense层将会被替换成门控线性单元（Gated Linear Unit）。
+    参考论文: https://arxiv.org/abs/2002.05202
     """
     def __init__(
         self,
@@ -573,7 +576,9 @@ class FeedForward(Layer):
     ):
         super(FeedForward, self).__init__(**kwargs)
         self.units = units
-        self.activation = activations.get(activation)
+        if not isinstance(activation, list):
+            activation = [activation]
+        self.activation = [activations.get(act) for act in activation]
         self.use_bias = use_bias
         self.kernel_initializer = initializers.get(kernel_initializer)
 
@@ -582,13 +587,16 @@ class FeedForward(Layer):
         super(FeedForward, self).build(input_shape)
         output_dim = input_shape[-1]
 
-        self.dense_1 = Dense(
-            units=self.units,
-            activation=self.activation,
-            use_bias=self.use_bias,
-            kernel_initializer=self.kernel_initializer
-        )
-        self.dense_2 = Dense(
+        for i, activation in enumerate(self.activation):
+            i_dense = Dense(
+                units=self.units,
+                activation=activation,
+                use_bias=self.use_bias,
+                kernel_initializer=self.kernel_initializer
+            )
+            setattr(self, 'i%s_dense' % i, i_dense)
+
+        self.o_dense = Dense(
             units=output_dim,
             use_bias=self.use_bias,
             kernel_initializer=self.kernel_initializer
@@ -596,9 +604,10 @@ class FeedForward(Layer):
 
     @recompute_grad
     def call(self, inputs):
-        x = inputs
-        x = self.dense_1(x)
-        x = self.dense_2(x)
+        x = self.i0_dense(inputs)
+        for i in range(1, len(self.activation)):
+            x = x * getattr(self, 'i%s_dense' % i)(inputs)
+        x = self.o_dense(x)
         return x
 
     def get_config(self):
