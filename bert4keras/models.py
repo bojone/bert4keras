@@ -1449,6 +1449,8 @@ class T5_Base(Transformer):
         variable = super(T5_Base, self).load_variable(checkpoint, name)
         if name == 'shared/embedding':
             return self.load_embeddings(variable)
+        elif name == 'decoder/logits/kernel':
+            return self.load_embeddings(variable.T).T
         elif 'relative_attention_bias' in name:
             return variable.T
         else:
