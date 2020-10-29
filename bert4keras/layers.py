@@ -613,7 +613,9 @@ class FeedForward(Layer):
     def get_config(self):
         config = {
             'units': self.units,
-            'activation': activations.serialize(self.activation),
+            'activation': [
+                activations.serialize(act) for act in self.activation
+            ],
             'use_bias': self.use_bias,
             'kernel_initializer':
                 initializers.serialize(self.kernel_initializer),
