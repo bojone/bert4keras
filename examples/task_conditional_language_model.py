@@ -95,7 +95,7 @@ class CrossEntropy(Loss):
 
 
 c_in = Input(shape=(1,))
-c = Embedding(2, 128)(c_in)
+c = Embedding(num_classes, 128)(c_in)
 c = Reshape((128,))(c)
 
 # Bert模型
