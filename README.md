@@ -37,6 +37,15 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 
 **为了获得最好的体验，建议你使用Tensorflow 1.14 + Keras 2.3.1组合。**
 
+<blockquote>**关于环境组合** 
+  
+- 支持tf+keras和tf+tf.keras，后者需要提前传入环境变量TF_KERAS=1。
+
+- 当使用tf+keras时，建议2.2.4 <= keras <= 2.3.1，以及 1.14 <= tf <= 2.2，不能使用tf 2.3+。
+
+- keras 2.4+可以用，但事实上keras 2.4.x基本上已经完全等价于tf.keras了，因此如果你要用keras 2.4+，倒不如直接用tf.keras。
+</blockquote>
+
 当然，乐于贡献的朋友如果发现了某些bug的话，也欢迎指出修正甚至Pull Requests～
 
 ## 权重
