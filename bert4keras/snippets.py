@@ -294,9 +294,9 @@ class DataGenerator(object):
     def __iter__(self, random=False):
         raise NotImplementedError
 
-    def forfit(self):
+    def forfit(self, random=True):
         while True:
-            for d in self.__iter__(True):
+            for d in self.__iter__(random):
                 yield d
 
 
