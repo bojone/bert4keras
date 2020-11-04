@@ -333,7 +333,7 @@ if __name__ == '__main__':
     train_generator = data_generator(train_data, batch_size)
     evaluator = Evaluator()
 
-    train_model.fit_generator(
+    train_model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=20,

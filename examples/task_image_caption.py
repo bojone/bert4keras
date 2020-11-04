@@ -214,7 +214,7 @@ if __name__ == '__main__':
     evaluator = Evaluator()
     train_generator = data_generator(train_data, batch_size)
 
-    model.fit_generator(
+    model.fit(
         train_generator.forfit(),
         steps_per_epoch=steps_per_epoch,
         epochs=epochs,

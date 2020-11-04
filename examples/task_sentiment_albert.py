@@ -129,7 +129,7 @@ if __name__ == '__main__':
 
     evaluator = Evaluator()
 
-    model.fit_generator(
+    model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=10,
