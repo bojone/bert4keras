@@ -34,6 +34,9 @@ keep_tokens_path = '/root/kg/bert/mt5/sentencepiece_cn_keep_tokens.json'
 
 
 def load_data(filename):
+    """加载数据
+    单条格式：(标题, 正文)
+    """
     D = []
     with open(filename, encoding='utf-8') as f:
         for l in f:
