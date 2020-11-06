@@ -27,7 +27,7 @@ batch_size = 16
 epochs = 40
 
 # 模型路径
-config_path = '/root/kg/bert/mt5/mt5_base/t5_config.json'
+config_path = '/root/kg/bert/mt5/mt5_base/mt5_base_config.json'
 checkpoint_path = '/root/kg/bert/mt5/mt5_base/model.ckpt-1000000'
 spm_path = '/root/kg/bert/mt5/sentencepiece_cn.model'
 keep_tokens_path = '/root/kg/bert/mt5/sentencepiece_cn_keep_tokens.json'
