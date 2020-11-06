@@ -26,6 +26,7 @@
 - [task_seq2seq_ape210k_math_word_problem.py](https://github.com/bojone/bert4keras/tree/master/examples/task_seq2seq_ape210k_math_word_problem.py): 任务例子，通过[UniLM](https://kexue.fm/archives/6933)式的Seq2Seq模型来做小学数学应用题（数学公式生成），详情请见[这里](https://kexue.fm/archives/7809)。
 - [task_seq2seq_autotitle.py](https://github.com/bojone/bert4keras/tree/master/examples/task_seq2seq_autotitle.py): 任务例子，通过[UniLM](https://kexue.fm/archives/6933)式的Seq2Seq模型来做新闻标题生成。
 - [task_seq2seq_autotitle_csl.py](https://github.com/bojone/bert4keras/tree/master/examples/task_seq2seq_autotitle_csl.py): 任务例子，通过[UniLM](https://kexue.fm/archives/6933)式的Seq2Seq模型来做论文标题生成，包含了评测代码。
+- [task_seq2seq_autotitle_csl_mt5.py](https://github.com/bojone/bert4keras/tree/master/examples/task_seq2seq_autotitle_csl_mt5.py): 任务例子，通过[多国语言版T5](https://kexue.fm/archives/7867)式的Seq2Seq模型来做论文标题生成，包含了评测代码。
 - [task_sequence_labeling_cws_crf.py](https://github.com/bojone/bert4keras/tree/master/examples/task_sequence_labeling_cws_crf.py): 任务例子，通过 BERT + [CRF](https://kexue.fm/archives/7196) 来做中文分词。
 - [task_sequence_labeling_ner_crf.py](https://github.com/bojone/bert4keras/tree/master/examples/task_sequence_labeling_ner_crf.py): 
 任务例子，通过 BERT + [CRF](https://kexue.fm/archives/7196) 来做中文NER。
