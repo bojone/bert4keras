@@ -51,7 +51,7 @@ def save_vocab(dict_path, token_dict, encoding='utf-8'):
             writer.write(k + '\n')
 
 
-class BasicTokenizer(object):
+class TokenizerBase(object):
     """分词器基类
     """
     def __init__(self, token_start='[CLS]', token_end='[SEP]'):
@@ -161,7 +161,7 @@ class BasicTokenizer(object):
         raise NotImplementedError
 
 
-class Tokenizer(BasicTokenizer):
+class Tokenizer(TokenizerBase):
     """Bert原生分词器
     纯Python实现，代码修改自keras_bert的tokenizer实现
     """
@@ -388,7 +388,7 @@ class Tokenizer(BasicTokenizer):
         return token_mapping
 
 
-class SpTokenizer(BasicTokenizer):
+class SpTokenizer(TokenizerBase):
     """基于SentencePiece模型的封装，使用上跟Tokenizer基本一致。
     """
     def __init__(self, sp_model_path, **kwargs):
