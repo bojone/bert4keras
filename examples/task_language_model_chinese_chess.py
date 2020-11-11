@@ -1,5 +1,5 @@
 #! -*- coding: utf-8 -*-
-# 用 语言模型+棋谱 的方式监督训练一个下棋模型
+# 用 语言模型+棋谱 的方式监督训练一个下中国象棋模型
 # 介绍：https://kexue.fm/archives/7877
 # 数据：https://github.com/bojone/gpt_cchess
 # 模型训练可以在python2/python3进行。但是cchess模型只支持python3，
