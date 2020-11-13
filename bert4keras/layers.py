@@ -966,6 +966,14 @@ class Loss(Layer):
         else:
             return input_shape[self.output_axis]
 
+    def compute_mask(self, inputs, mask):
+        if self.output_axis is None:
+            return mask
+        elif isinstance(self.output_axis, list):
+            return [mask[i] for i in self.output_axis]
+        else:
+            return mask[self.output_axis]
+
     def get_config(self):
         config = {
             'output_axis': self.output_axis,
