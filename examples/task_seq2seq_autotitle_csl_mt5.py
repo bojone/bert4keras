@@ -117,7 +117,7 @@ class AutoTitle(AutoRegressiveDecoder):
         c_token_ids, _ = tokenizer.encode(text, maxlen=max_c_len)
         c_encoded = encoder.predict(np.array([c_token_ids]))[0]
         output_ids = self.beam_search([c_encoded], topk)  # 基于beam search
-        return tokenizer.decode(output_ids)
+        return tokenizer.decode([int(i) for i in output_ids])
 
 
 # 注：T5有一个很让人不解的设置，它的<bos>标记id是0，即<bos>和<pad>其实都是0
