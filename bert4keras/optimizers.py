@@ -1017,6 +1017,99 @@ def extend_with_exponential_moving_average_v2(BaseOptimizer):
     return NewOptimizer
 
 
+@export_to_custom_objects
+def extend_with_parameter_wise_lr(BaseOptimizer):
+    """返回新的优化器类，加入分参数学习率
+    主要场景就是给每层甚至每个参数设置不同的学习率。
+    """
+    class NewOptimizer(BaseOptimizer):
+        """带有分参数学习率的优化器
+        其中schedule是形如{name1: 2, name2: 0.1}的字典，
+        其实name1、name2是字符串，表示变量名包含name1的
+        参数学习率乘以2，变量名包含name2的参数学习率要
+        乘以0.1。
+        """
+        @insert_arguments(paramwise_lr_schedule={})
+        def __init__(self, *args, **kwargs):
+            super(NewOptimizer, self).__init__(*args, **kwargs)
+
+        @K.symbolic
+        def get_updates(self, loss, params):
+            old_update = K.update
+
+            def new_update(x, new_x):
+                if is_one_of(x, params):
+                    lr_multiplier = 1
+                    for k, v in self.paramwise_lr_schedule.items():
+                        if k in x.name:
+                            lr_multiplier *= v
+                    if lr_multiplier != 1:
+                        print(x, lr_multiplier)
+                        new_x = x + (new_x - x) * lr_multiplier
+                return old_update(x, new_x)
+
+            K.update = new_update
+            updates = super(NewOptimizer, self).get_updates(loss, params)
+            K.update = old_update
+
+            return updates
+
+        def get_config(self):
+            config = {
+                'paramwise_lr_schedule': self.paramwise_lr_schedule,
+            }
+            base_config = super(NewOptimizer, self).get_config()
+            return dict(list(base_config.items()) + list(config.items()))
+
+    return NewOptimizer
+
+
+@export_to_custom_objects
+def extend_with_parameter_wise_lr_v2(BaseOptimizer):
+    """返回新的优化器类，加入分参数学习率
+    主要场景就是给每层甚至每个参数设置不同的学习率。
+    """
+    class NewOptimizer(BaseOptimizer):
+        """带有分参数学习率的优化器
+        其中schedule是形如{name1: 2, name2: 0.1}的字典，
+        其实name1、name2是字符串，表示变量名包含name1的
+        参数学习率乘以2，变量名包含name2的参数学习率要
+        乘以0.1。
+        """
+        @insert_arguments(paramwise_lr_schedule={})
+        def __init__(self, *args, **kwargs):
+            super(NewOptimizer, self).__init__(*args, **kwargs)
+
+        def _resource_apply(self, grad, var, indices=None):
+            old_update = K.update
+
+            def new_update(x, new_x):
+                if x is var:
+                    lr_multiplier = 1
+                    for k, v in self.paramwise_lr_schedule.items():
+                        if k in x.name:
+                            lr_multiplier *= v
+                    if lr_multiplier != 1:
+                        print(x, lr_multiplier, 2222)
+                        new_x = x + (new_x - x) * lr_multiplier
+                return old_update(x, new_x)
+
+            K.update = new_update
+            op = super(NewOptimizer, self)._resource_apply(grad, var, indices)
+            K.update = old_update
+
+            return op
+
+        def get_config(self):
+            config = {
+                'paramwise_lr_schedule': self.paramwise_lr_schedule,
+            }
+            base_config = super(NewOptimizer, self).get_config()
+            return dict(list(base_config.items()) + list(config.items()))
+
+    return NewOptimizer
+
+
 if is_tf_keras:
     extend_with_weight_decay = extend_with_weight_decay_v2
     extend_with_layer_adaptation = extend_with_layer_adaptation_v2
@@ -1025,6 +1118,7 @@ if is_tf_keras:
     extend_with_lookahead = extend_with_lookahead_v2
     extend_with_lazy_optimization = extend_with_lazy_optimization_v2
     extend_with_exponential_moving_average = extend_with_exponential_moving_average_v2
+    extend_with_parameter_wise_lr = extend_with_parameter_wise_lr_v2
     AdaFactor = AdaFactorV2
 else:
     Adam = keras.optimizers.Adam
