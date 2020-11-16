@@ -206,7 +206,7 @@ class MultiHeadAttention(Layer):
         o = sequence_masking(o, q_mask, 0)
         return o
 
-    def pay_attention_to(self, inputs, mask=None, a_mask=None, p_bias=None):
+    def pay_attention_to(self, inputs, mask=None, **kwargs):
         """实现标准的乘性多头注意力
         a_mask: 对attention矩阵的mask。
                 不同的attention mask对应不同的应用。
@@ -216,9 +216,9 @@ class MultiHeadAttention(Layer):
               继承此类来定义不同形式的atttention；此处要求
               返回o.shape=(batch_size, seq_len, heads, head_size)。
         """
-        qw, kw, vw = inputs[:3]
+        (qw, kw, vw), n = inputs[:3], 3
         q_mask, v_mask = mask
-        n = 3
+        a_mask, p_bias = kwargs.get('a_mask'), kwargs.get('p_bias')
         if a_mask:
             a_mask = inputs[n]
             n += 1
