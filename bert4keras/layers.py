@@ -174,27 +174,20 @@ class MultiHeadAttention(Layer):
         )
 
     @recompute_grad
-    def call(self, inputs, mask=None, a_mask=None, p_bias=None):
+    def call(self, inputs, mask=None, **kwargs):
         """实现多头注意力
         q_mask: 对输入的query序列的mask。
                 主要是将输出结果的padding部分置0。
         v_mask: 对输入的value序列的mask。
                 主要是防止attention读取到padding信息。
-        a_mask: 对attention矩阵的mask。
-                不同的attention mask对应不同的应用。
-        p_bias: 在attention里的位置偏置。
-                一般用来指定相对位置编码的种类。
         """
         q, k, v = inputs[:3]
-        q_mask, v_mask, n = None, None, 3
+        q_mask, v_mask = None, None
         if mask is not None:
             if mask[0] is not None:
                 q_mask = K.cast(mask[0], K.floatx())
             if mask[2] is not None:
                 v_mask = K.cast(mask[2], K.floatx())
-        if a_mask:
-            a_mask = inputs[n]
-            n += 1
         # 线性变换
         qw = self.q_dense(q)
         kw = self.k_dense(k)
@@ -203,6 +196,33 @@ class MultiHeadAttention(Layer):
         qw = K.reshape(qw, (-1, K.shape(q)[1], self.heads, self.key_size))
         kw = K.reshape(kw, (-1, K.shape(k)[1], self.heads, self.key_size))
         vw = K.reshape(vw, (-1, K.shape(v)[1], self.heads, self.head_size))
+        # Attention
+        qkv_inputs = [qw, kw, vw] + inputs[3:]
+        qv_masks = [q_mask, v_mask]
+        o = self.pay_attention_to(qkv_inputs, qv_masks, **kwargs)
+        # 完成输出
+        o = K.reshape(o, (-1, K.shape(o)[1], self.head_size * self.heads))
+        o = self.o_dense(o)
+        # 返回结果
+        o = sequence_masking(o, q_mask, 0)
+        return o
+
+    def pay_attention_to(self, inputs, mask=None, a_mask=None, p_bias=None):
+        """实现标准的乘性多头注意力
+        a_mask: 对attention矩阵的mask。
+                不同的attention mask对应不同的应用。
+        p_bias: 在attention里的位置偏置。
+                一般用来指定相对位置编码的种类。
+        说明: 这里单独分离出pay_attention_to函数，是为了方便
+              继承此类来定义不同形式的atttention；此处要求
+              返回o.shape=(batch_size, seq_len, heads, head_size)。
+        """
+        qw, kw, vw = inputs[:3]
+        q_mask, v_mask = mask
+        n = 3
+        if a_mask:
+            a_mask = inputs[n]
+            n += 1
         # Attention
         a = tf.einsum('bjhd,bkhd->bhjk', qw, kw)
         # 处理位置编码
@@ -223,10 +243,6 @@ class MultiHeadAttention(Layer):
         o = tf.einsum('bhjk,bkhd->bjhd', a, vw)
         if p_bias == 'typical_relative':
             o = o + tf.einsum('bhjk,jkd->bjhd', a, pos_embeddings)
-        o = K.reshape(o, (-1, K.shape(o)[1], self.head_size * self.heads))
-        o = self.o_dense(o)
-        # 返回结果
-        o = sequence_masking(o, q_mask, 0)
         return o
 
     def compute_output_shape(self, input_shape):
