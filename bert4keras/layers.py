@@ -183,11 +183,10 @@ class MultiHeadAttention(Layer):
         """
         q, k, v = inputs[:3]
         q_mask, v_mask = None, None
-        if mask is not None:
-            if mask[0] is not None:
-                q_mask = K.cast(mask[0], K.floatx())
-            if mask[2] is not None:
-                v_mask = K.cast(mask[2], K.floatx())
+        if mask[0] is not None:
+            q_mask = K.cast(mask[0], K.floatx())
+        if mask[2] is not None:
+            v_mask = K.cast(mask[2], K.floatx())
         # 线性变换
         qw = self.q_dense(q)
         kw = self.k_dense(k)
