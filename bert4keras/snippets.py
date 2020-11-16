@@ -91,12 +91,18 @@ class open:
             self.file = _open_(name, mode, encoding=encoding, errors=errors)
         self.encoding = encoding
         self.errors = errors
+        self.iterator = None
 
     def __iter__(self):
         for l in self.file:
             if self.encoding:
                 l = convert_to_unicode(l, self.encoding, self.errors)
             yield l
+
+    def __next__(self):
+        if self.iterator is None:
+            self.iterator = self.__iter__()
+        return next(self.iterator)
 
     def read(self):
         text = self.file.read()
