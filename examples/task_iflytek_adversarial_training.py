@@ -3,6 +3,7 @@
 # 比CLUE榜单公开的同数据集上的BERT base的成绩高2%
 # 数据集：IFLYTEK' 长文本分类 (https://github.com/CLUEbenchmark/CLUE)
 # 博客：https://kexue.fm/archives/7234
+# 适用于Keras 2.3.1
 
 import json
 import numpy as np
@@ -25,6 +26,9 @@ dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
 
 def load_data(filename):
+    """加载数据
+    单条格式：(文本, 标签id)
+    """
     D = []
     with open(filename) as f:
         for i, l in enumerate(f):
@@ -150,6 +154,8 @@ def evaluate(data):
 
 
 class Evaluator(keras.callbacks.Callback):
+    """评估与保存
+    """
     def __init__(self):
         self.best_val_acc = 0.
 
@@ -184,7 +190,7 @@ if __name__ == '__main__':
 
     evaluator = Evaluator()
 
-    model.fit_generator(
+    model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=50,

@@ -9,7 +9,7 @@ from bert4keras.models import build_transformer_model
 from bert4keras.tokenizers import Tokenizer
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, DataGenerator
-from bert4keras.snippets import open, ViterbiDecoder
+from bert4keras.snippets import open, ViterbiDecoder, to_array
 from bert4keras.layers import ConditionalRandomField
 from keras.layers import Dense
 from keras.models import Model
@@ -29,6 +29,9 @@ dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
 
 def load_data(filename):
+    """加载数据
+    单条格式：[(片段1, 标签1), (片段2, 标签2), (片段3, 标签3), ...]
+    """
     D = []
     with open(filename, encoding='utf-8') as f:
         f = f.read()
@@ -143,7 +146,8 @@ class NamedEntityRecognizer(ViterbiDecoder):
         mapping = tokenizer.rematch(text, tokens)
         token_ids = tokenizer.tokens_to_ids(tokens)
         segment_ids = [0] * len(token_ids)
-        nodes = model.predict([[token_ids], [segment_ids]])[0]
+        token_ids, segment_ids = to_array([token_ids], [segment_ids])
+        nodes = model.predict([token_ids, segment_ids])[0]
         labels = self.decode(nodes)
         entities, starting = [], False
         for i, label in enumerate(labels):
@@ -180,7 +184,9 @@ def evaluate(data):
     return f1, precision, recall
 
 
-class Evaluate(keras.callbacks.Callback):
+class Evaluator(keras.callbacks.Callback):
+    """评估与保存
+    """
     def __init__(self):
         self.best_val_f1 = 0
 
@@ -206,10 +212,10 @@ class Evaluate(keras.callbacks.Callback):
 
 if __name__ == '__main__':
 
-    evaluator = Evaluate()
+    evaluator = Evaluator()
     train_generator = data_generator(train_data, batch_size)
 
-    model.fit_generator(
+    model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=epochs,

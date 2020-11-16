@@ -12,7 +12,8 @@ def load_vocab(dict_path, encoding='utf-8', simplified=False, startswith=None):
     token_dict = {}
     with open(dict_path, encoding=encoding) as reader:
         for line in reader:
-            token = line.strip()
+            token = line.split()
+            token = token[0] if token else line.strip()
             token_dict[token] = len(token_dict)
 
     if simplified:  # 过滤冗余部分token
@@ -50,7 +51,7 @@ def save_vocab(dict_path, token_dict, encoding='utf-8'):
             writer.write(k + '\n')
 
 
-class BasicTokenizer(object):
+class TokenizerBase(object):
     """分词器基类
     """
     def __init__(self, token_start='[CLS]', token_end='[SEP]'):
@@ -62,16 +63,9 @@ class BasicTokenizer(object):
         self._token_start = token_start
         self._token_end = token_end
 
-    def tokenize(self, text, maxlen=None, max_length=None):
+    def tokenize(self, text, maxlen=None):
         """分词函数
         """
-        # 向后兼容
-        if maxlen is None and max_length is not None:
-            print(
-                'From tokenizers.py: The argument max_length is deprecated. Please use maxlen instead.'
-            )
-        maxlen = maxlen or max_length
-
         tokens = self._tokenize(text)
         if self._token_start is not None:
             tokens.insert(0, self._token_start)
@@ -112,17 +106,10 @@ class BasicTokenizer(object):
                 second_sequence.pop(pop_index)
 
     def encode(
-        self, first_text, second_text=None, maxlen=None, max_length=None
+        self, first_text, second_text=None, maxlen=None, pattern='S*E*E'
     ):
         """输出文本对应token id和segment id
         """
-        # 向后兼容
-        if maxlen is None and max_length is not None:
-            print(
-                'From tokenizers.py: The argument max_length is deprecated. Please use maxlen instead.'
-            )
-        maxlen = maxlen or max_length
-
         if is_string(first_text):
             first_tokens = self.tokenize(first_text)
         else:
@@ -131,8 +118,11 @@ class BasicTokenizer(object):
         if second_text is None:
             second_tokens = None
         elif is_string(second_text):
-            idx = int(bool(self._token_start))
-            second_tokens = self.tokenize(second_text)[idx:]
+            if pattern == 'S*E*E':
+                idx = int(bool(self._token_start))
+                second_tokens = self.tokenize(second_text)[idx:]
+            elif pattern == 'S*ES*E':
+                second_tokens = self.tokenize(second_text)
         else:
             second_tokens = second_text
 
@@ -171,18 +161,23 @@ class BasicTokenizer(object):
         raise NotImplementedError
 
 
-class Tokenizer(BasicTokenizer):
+class Tokenizer(TokenizerBase):
     """Bert原生分词器
     纯Python实现，代码修改自keras_bert的tokenizer实现
     """
-    def __init__(self, token_dict, do_lower_case=False, *args, **kwargs):
-        """初始化
+    def __init__(
+        self, token_dict, do_lower_case=False, pre_tokenize=None, **kwargs
+    ):
+        """这里的pre_tokenize是外部传入的分词函数，用作对文本进行预分词。如果传入
+        pre_tokenize，则先执行pre_tokenize(text)，然后在它的基础上执行原本的
+        tokenize函数。
         """
-        super(Tokenizer, self).__init__(*args, **kwargs)
+        super(Tokenizer, self).__init__(**kwargs)
         if is_string(token_dict):
             token_dict = load_vocab(token_dict)
 
         self._do_lower_case = do_lower_case
+        self._pre_tokenize = pre_tokenize
         self._token_dict = token_dict
         self._token_dict_inv = {v: k for k, v in token_dict.items()}
         self._vocab_size = len(token_dict)
@@ -235,7 +230,7 @@ class Tokenizer(BasicTokenizer):
 
         return text.strip()
 
-    def _tokenize(self, text):
+    def _tokenize(self, text, pre_tokenize=True):
         """基本分词函数
         """
         if self._do_lower_case:
@@ -246,6 +241,15 @@ class Tokenizer(BasicTokenizer):
             text = ''.join([
                 ch for ch in text if unicodedata.category(ch) != 'Mn'
             ])
+
+        if pre_tokenize and self._pre_tokenize is not None:
+            tokens = []
+            for token in self._pre_tokenize(text):
+                if token in self._token_dict:
+                    tokens.append(token)
+                else:
+                    tokens.extend(self._tokenize(token, False))
+            return tokens
 
         spaced = ''
         for ch in text:
@@ -384,11 +388,11 @@ class Tokenizer(BasicTokenizer):
         return token_mapping
 
 
-class SpTokenizer(BasicTokenizer):
+class SpTokenizer(TokenizerBase):
     """基于SentencePiece模型的封装，使用上跟Tokenizer基本一致。
     """
-    def __init__(self, sp_model_path, *args, **kwargs):
-        super(SpTokenizer, self).__init__(*args, **kwargs)
+    def __init__(self, sp_model_path, **kwargs):
+        super(SpTokenizer, self).__init__(**kwargs)
         import sentencepiece as spm
         self.sp_model = spm.SentencePieceProcessor()
         self.sp_model.Load(sp_model_path)

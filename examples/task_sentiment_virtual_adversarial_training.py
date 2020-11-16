@@ -30,6 +30,9 @@ dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
 
 def load_data(filename):
+    """加载数据
+    单条格式：(文本, 标签id)
+    """
     D = []
     with open(filename, encoding='utf-8') as f:
         for l in f:
@@ -183,6 +186,8 @@ def evaluate(data):
 
 
 class Evaluator(keras.callbacks.Callback):
+    """评估与保存
+    """
     def __init__(self):
         self.best_val_acc = 0.
         self.data = data_generator(unlabeled_data, batch_size).forfit()
@@ -208,7 +213,7 @@ if __name__ == '__main__':
 
     evaluator = Evaluator()
 
-    model.fit_generator(
+    model.fit(
         train_generator.forfit(),
         steps_per_epoch=30,
         epochs=100,

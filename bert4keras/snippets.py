@@ -7,12 +7,23 @@ import numpy as np
 import re
 import sys
 from collections import defaultdict
+import json
 
 _open_ = open
 is_py2 = six.PY2
 
 if not is_py2:
     basestring = str
+
+    
+def to_array(*args):
+    """批量转numpy的array
+    """
+    results = [np.array(a) for a in args]
+    if len(args) == 1:
+        return results[0]
+    else:
+        return results
 
 
 def is_string(s):
@@ -80,12 +91,21 @@ class open:
             self.file = _open_(name, mode, encoding=encoding, errors=errors)
         self.encoding = encoding
         self.errors = errors
+        self.iterator = None
 
     def __iter__(self):
         for l in self.file:
             if self.encoding:
                 l = convert_to_unicode(l, self.encoding, self.errors)
             yield l
+
+    def next(self):
+        if self.iterator is None:
+            self.iterator = self.__iter__()
+        return next(self.iterator)
+
+    def __next__(self):
+        return self.next()
 
     def read(self):
         text = self.file.read()
@@ -119,7 +139,7 @@ def parallel_apply(
     输出可能是func(c), func(a), func(b)。
     参数：
         dummy: False是多进程/线性，True则是多线程/线性；
-        callback: 处理单个输出的回调函数；
+        callback: 处理单个输出的回调函数。
     """
     if dummy:
         from multiprocessing.dummy import Pool, Queue
@@ -131,9 +151,9 @@ def parallel_apply(
     def worker_step(in_queue, out_queue):
         # 单步函数包装成循环执行
         while True:
-            d = in_queue.get()
+            i, d = in_queue.get()
             r = func(d)
-            out_queue.put(r)
+            out_queue.put((i, r))
 
     # 启动多进程/线程
     pool = Pool(workers, worker_step, (in_queue, out_queue))
@@ -145,21 +165,21 @@ def parallel_apply(
     def process_out_queue():
         out_count = 0
         for _ in range(out_queue.qsize()):
-            d = out_queue.get()
+            i, d = out_queue.get()
             out_count += 1
             if callback is None:
-                results.append(d)
+                results.append((i, d))
             else:
                 callback(d)
         return out_count
 
     # 存入数据，取出结果
     in_count, out_count = 0, 0
-    for d in iterable:
+    for i, d in enumerate(iterable):
         in_count += 1
         while True:
             try:
-                in_queue.put(d, block=False)
+                in_queue.put((i, d), block=False)
                 break
             except six.moves.queue.Full:
                 out_count += process_out_queue()
@@ -172,7 +192,8 @@ def parallel_apply(
     pool.terminate()
 
     if callback is None:
-        return results
+        results = sorted(results, key=lambda r: r[0])
+        return [r[1] for r in results]
 
 
 def sequence_padding(inputs, length=None, padding=0):
@@ -282,9 +303,9 @@ class DataGenerator(object):
     def __iter__(self, random=False):
         raise NotImplementedError
 
-    def forfit(self):
+    def forfit(self, random=True):
         while True:
-            for d in self.__iter__(True):
+            for d in self.__iter__(random):
                 yield d
 
 
@@ -360,18 +381,17 @@ class AutoRegressiveDecoder(object):
             ):
                 assert rtype in ['probas', 'logits']
                 prediction = predict(self, inputs, output_ids, states)
+
                 if not use_states:
-                    prediction = [prediction, None]
-                if default_rtype == 'probas':
-                    if rtype == 'probas':
-                        return prediction
-                    else:
-                        return np.log(prediction[0] + 1e-12), prediction[1]
+                    prediction = (prediction, None)
+
+                if default_rtype == 'logits':
+                    prediction = (softmax(prediction[0]), prediction[1])
+
+                if rtype == 'probas':
+                    return prediction
                 else:
-                    if rtype == 'probas':
-                        return softmax(prediction[0], -1), prediction[1]
-                    else:
-                        return prediction
+                    return np.log(prediction[0] + 1e-12), prediction[1]
 
             return new_predict
 
@@ -565,6 +585,87 @@ def longest_common_subsequence(source, target):
         else:
             i = i - 1
     return l, mapping[::-1]
+
+
+class WebServing(object):
+    """简单的Web接口
+    用法：
+        arguments = {'text': (None, True), 'n': (int, False)}
+        web = WebServing(port=8864)
+        web.route('/gen_synonyms', gen_synonyms, arguments)
+        web.start()
+        # 然后访问 http://127.0.0.1:8864/gen_synonyms?text=你好
+    说明：
+        基于bottlepy简单封装，仅作为临时测试使用，不保证性能。
+        目前仅保证支持 Tensorflow 1.x + Keras <= 2.3.1。
+        欢迎有经验的开发者帮忙改进。
+    依赖：
+        pip install bottle
+        pip install paste
+        （如果不用 server='paste' 的话，可以不装paste库）
+    """
+    def __init__(self, host='0.0.0.0', port=8000, server='paste'):
+
+        import tensorflow as tf
+        from bert4keras.backend import K
+        import bottle
+
+        self.host = host
+        self.port = port
+        self.server = server
+        self.graph = tf.get_default_graph()
+        self.sess = K.get_session()
+        self.set_session = K.set_session
+        self.bottle = bottle
+
+    def wraps(self, func, arguments, method='GET'):
+        """封装为接口函数
+        参数：
+            func：要转换为接口的函数，需要保证输出可以json化，即需要
+                  保证 json.dumps(func(inputs)) 能被执行成功；
+            arguments：声明func所需参数，其中key为参数名，value[0]为
+                       对应的转换函数（接口获取到的参数值都是字符串
+                       型），value[1]为该参数是否必须；
+            method：GET或者POST。
+        """
+        def new_func():
+            outputs = {'code': 0, 'desc': u'succeeded', 'data': {}}
+            kwargs = {}
+            for key, value in arguments.items():
+                if method == 'GET':
+                    result = self.bottle.request.GET.getunicode(key)
+                else:
+                    result = self.bottle.request.POST.getunicode(key)
+                if result is None:
+                    if value[1]:
+                        outputs['code'] = 1
+                        outputs['desc'] = 'lack of "%s" argument' % key
+                        return json.dumps(outputs, ensure_ascii=False)
+                else:
+                    if value[0] is not None:
+                        result = value[0](result)
+                    kwargs[key] = result
+            try:
+                with self.graph.as_default():
+                    self.set_session(self.sess)
+                    outputs['data'] = func(**kwargs)
+            except Exception as e:
+                outputs['code'] = 2
+                outputs['desc'] = str(e)
+            return json.dumps(outputs, ensure_ascii=False)
+
+        return new_func
+
+    def route(self, path, func, arguments, method='GET'):
+        """添加接口
+        """
+        func = self.wraps(func, arguments, method)
+        self.bottle.route(path, method=method)(func)
+
+    def start(self):
+        """启动服务
+        """
+        self.bottle.run(host=self.host, port=self.port, server=self.server)
 
 
 class Hook:

@@ -1,16 +1,18 @@
 #! -*- coding: utf-8 -*-
-# bert做Seq2Seq任务，采用UNILM方案
-# 介绍链接：https://kexue.fm/archives/6933
+# 微调多国语言版T5做Seq2Seq任务
+# 介绍链接：kexue.fm/archives/7867
+# 细节请看：https://github.com/bojone/t5_in_bert4keras
 # 数据集：https://github.com/CLUEbenchmark/CLGE 中的CSL数据集
 # 补充了评测指标bleu、rouge-1、rouge-2、rouge-l
 
 from __future__ import print_function
+import json
 import numpy as np
 from tqdm import tqdm
 from bert4keras.backend import keras, K
 from bert4keras.layers import Loss
 from bert4keras.models import build_transformer_model
-from bert4keras.tokenizers import Tokenizer, load_vocab
+from bert4keras.tokenizers import SpTokenizer
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, open
 from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
@@ -19,14 +21,16 @@ from rouge import Rouge  # pip install rouge
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 
 # 基本参数
-maxlen = 256
+max_c_len = 256
+max_t_len = 32
 batch_size = 16
-epochs = 20
+epochs = 40
 
-# bert配置
-config_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/bert_model.ckpt'
-dict_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/vocab.txt'
+# 模型路径
+config_path = '/root/kg/bert/mt5/mt5_base/mt5_base_config.json'
+checkpoint_path = '/root/kg/bert/mt5/mt5_base/model.ckpt-1000000'
+spm_path = '/root/kg/bert/mt5/sentencepiece_cn.model'
+keep_tokens_path = '/root/kg/bert/mt5/sentencepiece_cn_keep_tokens.json'
 
 
 def load_data(filename):
@@ -46,58 +50,59 @@ train_data = load_data('/root/csl/train.tsv')
 valid_data = load_data('/root/csl/val.tsv')
 test_data = load_data('/root/csl/test.tsv')
 
-# 加载并精简词表，建立分词器
-token_dict, keep_tokens = load_vocab(
-    dict_path=dict_path,
-    simplified=True,
-    startswith=['[PAD]', '[UNK]', '[CLS]', '[SEP]'],
-)
-tokenizer = Tokenizer(token_dict, do_lower_case=True)
+# 加载分词器
+tokenizer = SpTokenizer(spm_path, token_start=None, token_end='</s>')
+keep_tokens = json.load(open(keep_tokens_path))
 
 
 class data_generator(DataGenerator):
     """数据生成器
     """
     def __iter__(self, random=False):
-        batch_token_ids, batch_segment_ids = [], []
+        batch_c_token_ids, batch_t_token_ids = [], []
         for is_end, (title, content) in self.sample(random):
-            token_ids, segment_ids = tokenizer.encode(
-                content, title, maxlen=maxlen
-            )
-            batch_token_ids.append(token_ids)
-            batch_segment_ids.append(segment_ids)
-            if len(batch_token_ids) == self.batch_size or is_end:
-                batch_token_ids = sequence_padding(batch_token_ids)
-                batch_segment_ids = sequence_padding(batch_segment_ids)
-                yield [batch_token_ids, batch_segment_ids], None
-                batch_token_ids, batch_segment_ids = [], []
+            c_token_ids, _ = tokenizer.encode(content, maxlen=max_c_len)
+            t_token_ids, _ = tokenizer.encode(title, maxlen=max_t_len)
+            batch_c_token_ids.append(c_token_ids)
+            batch_t_token_ids.append([0] + t_token_ids)
+            if len(batch_c_token_ids) == self.batch_size or is_end:
+                batch_c_token_ids = sequence_padding(batch_c_token_ids)
+                batch_t_token_ids = sequence_padding(batch_t_token_ids)
+                yield [batch_c_token_ids, batch_t_token_ids], None
+                batch_c_token_ids, batch_t_token_ids = [], []
 
 
 class CrossEntropy(Loss):
     """交叉熵作为loss，并mask掉输入部分
     """
     def compute_loss(self, inputs, mask=None):
-        y_true, y_mask, y_pred = inputs
+        y_true, y_pred = inputs
         y_true = y_true[:, 1:]  # 目标token_ids
-        y_mask = y_mask[:, 1:]  # segment_ids，刚好指示了要预测的部分
+        y_mask = K.cast(mask[1], K.floatx())[:, :-1]  # 解码器自带mask
         y_pred = y_pred[:, :-1]  # 预测序列，错开一位
         loss = K.sparse_categorical_crossentropy(y_true, y_pred)
         loss = K.sum(loss * y_mask) / K.sum(y_mask)
         return loss
 
 
-model = build_transformer_model(
-    config_path,
-    checkpoint_path,
-    application='unilm',
-    keep_tokens=keep_tokens,  # 只保留keep_tokens中的字，精简原字表
+t5 = build_transformer_model(
+    config_path=config_path,
+    checkpoint_path=checkpoint_path,
+    keep_tokens=keep_tokens,
+    model='t5.1.1',
+    return_keras_model=False,
+    name='T5',
 )
 
-output = CrossEntropy(2)(model.inputs + model.outputs)
+encoder = t5.encoder
+decoder = t5.decoder
+model = t5.model
+model.summary()
+
+output = CrossEntropy(1)([model.inputs[1], model.outputs[0]])
 
 model = Model(model.inputs, output)
-model.compile(optimizer=Adam(1e-5))
-model.summary()
+model.compile(optimizer=Adam(2e-4))
 
 
 class AutoTitle(AutoRegressiveDecoder):
@@ -105,20 +110,18 @@ class AutoTitle(AutoRegressiveDecoder):
     """
     @AutoRegressiveDecoder.wraps(default_rtype='probas')
     def predict(self, inputs, output_ids, states):
-        token_ids, segment_ids = inputs
-        token_ids = np.concatenate([token_ids, output_ids], 1)
-        segment_ids = np.concatenate([segment_ids, np.ones_like(output_ids)], 1)
-        return model.predict([token_ids, segment_ids])[:, -1]
+        c_encoded = inputs[0]
+        return decoder.predict([c_encoded, output_ids])[:, -1]
 
     def generate(self, text, topk=1):
-        max_c_len = maxlen - self.maxlen
-        token_ids, segment_ids = tokenizer.encode(text, maxlen=max_c_len)
-        output_ids = self.beam_search([token_ids, segment_ids],
-                                      topk)  # 基于beam search
-        return tokenizer.decode(output_ids)
+        c_token_ids, _ = tokenizer.encode(text, maxlen=max_c_len)
+        c_encoded = encoder.predict(np.array([c_token_ids]))[0]
+        output_ids = self.beam_search([c_encoded], topk)  # 基于beam search
+        return tokenizer.decode([int(i) for i in output_ids])
 
 
-autotitle = AutoTitle(start_id=None, end_id=tokenizer._token_end_id, maxlen=32)
+# 注：T5有一个很让人不解的设置，它的<bos>标记id是0，即<bos>和<pad>其实都是0
+autotitle = AutoTitle(start_id=0, end_id=tokenizer._token_end_id, maxlen=32)
 
 
 class Evaluator(keras.callbacks.Callback):

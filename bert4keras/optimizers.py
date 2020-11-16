@@ -83,6 +83,7 @@ class Adam(keras.optimizers.Optimizer):
             'beta_1': self._serialize_hyperparameter('beta_1'),
             'beta_2': self._serialize_hyperparameter('beta_2'),
             'epsilon': self.epsilon,
+            'bias_correction': self.bias_correction,
         }
         base_config = super(Adam, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
@@ -145,7 +146,7 @@ class AdaFactorBase(keras.optimizers.Optimizer):
             return None
         shape = np.array(shape)
         indices = shape.argpartition(-2)
-        if indices[-2] < self.min_dim_size_to_factor:
+        if shape[indices[-2]] < self.min_dim_size_to_factor:
             return None
         shape1, shape2 = np.array(shape), np.array(shape)
         shape1[indices[-1]] = 1
@@ -914,7 +915,6 @@ def extend_with_exponential_moving_average(BaseOptimizer):
             self.model_weights = params
             self.ema_weights = [K.zeros(K.shape(w)) for w in params]
             self.old_weights = K.batch_get_value(params)
-            K.batch_set_value(zip(self.ema_weights, self.old_weights))
 
             ema_updates, ema_momentum = [], self.ema_momentum
             with tf.control_dependencies(updates):
@@ -931,11 +931,17 @@ def extend_with_exponential_moving_average(BaseOptimizer):
             base_config = super(NewOptimizer, self).get_config()
             return dict(list(base_config.items()) + list(config.items()))
 
-        def apply_ema_weights(self):
+        def apply_ema_weights(self, bias_correction=True):
             """备份原模型权重，然后将平均权重应用到模型上去。
             """
             self.old_weights = K.batch_get_value(self.model_weights)
             ema_weights = K.batch_get_value(self.ema_weights)
+
+            if bias_correction:
+                iterations = K.eval(self.iterations)
+                scale = 1.0 - np.power(self.ema_momentum, iterations)
+                ema_weights = [weight / scale for weight in ema_weights]
+
             K.batch_set_value(zip(self.model_weights, ema_weights))
 
         def reset_old_weights(self):
@@ -947,22 +953,159 @@ def extend_with_exponential_moving_average(BaseOptimizer):
 
 
 @export_to_custom_objects
-def extend_with_gradient_centralization(BaseOptimizer):
-    """返回新的优化器类，将梯度零中心化
+def extend_with_exponential_moving_average_v2(BaseOptimizer):
+    """返回新的优化器类，加入EMA（权重滑动平均）
     """
     class NewOptimizer(BaseOptimizer):
-        """带梯度零中心化的优化器
+        """带EMA（权重滑动平均）的优化器
         """
-        def get_gradients(self, loss, params):
-            grads = []
-            for g in super(NewOptimizer, self).get_gradients(loss, params):
-                if isinstance(g, tf.IndexedSlices):
-                    g = tf.convert_to_tensor(g)
-                if K.ndim(g) > 1:
-                    g = g - K.mean(g, axis=range(1, K.ndim(g)), keepdims=True)
-                grads.append(g)
+        @insert_arguments(ema_momentum=0.999)
+        def __init__(self, *args, **kwargs):
+            super(NewOptimizer, self).__init__(*args, **kwargs)
 
-            return grads
+        def _create_slots(self, var_list):
+            super(NewOptimizer, self)._create_slots(var_list)
+            self.model_weights = var_list
+            self.ema_weights = []
+            for var in var_list:
+                self.ema_weights.append(self.add_slot(var, 'ema'))
+
+        def _resource_apply_dense(self, grad, var):
+            op = super(NewOptimizer, self)._resource_apply_dense(grad, var)
+            ema = self.get_slot(var, 'ema')
+            ema_momentum = self.ema_momentum
+            with tf.control_dependencies([op]):
+                return K.update(
+                    ema, ema * ema_momentum + var * (1.0 - ema_momentum)
+                )
+
+        def _resource_apply_sparse(self, grad, var, indices):
+            op = super(NewOptimizer,
+                       self)._resource_apply_sparse(grad, var, indices)
+            ema = self.get_slot(var, 'ema')
+            ema_momentum = self.ema_momentum
+            with tf.control_dependencies([op]):
+                return K.update(
+                    ema, ema * ema_momentum + var * (1.0 - ema_momentum)
+                )
+
+        def get_config(self):
+            config = {
+                'ema_momentum': self.ema_momentum,
+            }
+            base_config = super(NewOptimizer, self).get_config()
+            return dict(list(base_config.items()) + list(config.items()))
+
+        def apply_ema_weights(self, bias_correction=True):
+            """备份原模型权重，然后将平均权重应用到模型上去。
+            """
+            self.old_weights = K.batch_get_value(self.model_weights)
+            ema_weights = K.batch_get_value(self.ema_weights)
+
+            if bias_correction:
+                iterations = K.eval(self.iterations)
+                scale = 1.0 - np.power(self.ema_momentum, iterations)
+                ema_weights = [weight / scale for weight in ema_weights]
+
+            K.batch_set_value(zip(self.model_weights, ema_weights))
+
+        def reset_old_weights(self):
+            """恢复模型到旧权重。
+            """
+            K.batch_set_value(zip(self.model_weights, self.old_weights))
+
+    return NewOptimizer
+
+
+@export_to_custom_objects
+def extend_with_parameter_wise_lr(BaseOptimizer):
+    """返回新的优化器类，加入分参数学习率
+    主要场景就是给每层甚至每个参数设置不同的学习率。
+    """
+    class NewOptimizer(BaseOptimizer):
+        """带有分参数学习率的优化器
+        其中schedule是形如{name1: 2, name2: 0.1}的字典，
+        其实name1、name2是字符串，表示变量名包含name1的
+        参数学习率乘以2，变量名包含name2的参数学习率要
+        乘以0.1。
+        """
+        @insert_arguments(paramwise_lr_schedule={})
+        def __init__(self, *args, **kwargs):
+            super(NewOptimizer, self).__init__(*args, **kwargs)
+
+        @K.symbolic
+        def get_updates(self, loss, params):
+            old_update = K.update
+
+            def new_update(x, new_x):
+                if is_one_of(x, params):
+                    lr_multiplier = 1
+                    for k, v in self.paramwise_lr_schedule.items():
+                        if k in x.name:
+                            lr_multiplier *= v
+                    if lr_multiplier != 1:
+                        print(x, lr_multiplier)
+                        new_x = x + (new_x - x) * lr_multiplier
+                return old_update(x, new_x)
+
+            K.update = new_update
+            updates = super(NewOptimizer, self).get_updates(loss, params)
+            K.update = old_update
+
+            return updates
+
+        def get_config(self):
+            config = {
+                'paramwise_lr_schedule': self.paramwise_lr_schedule,
+            }
+            base_config = super(NewOptimizer, self).get_config()
+            return dict(list(base_config.items()) + list(config.items()))
+
+    return NewOptimizer
+
+
+@export_to_custom_objects
+def extend_with_parameter_wise_lr_v2(BaseOptimizer):
+    """返回新的优化器类，加入分参数学习率
+    主要场景就是给每层甚至每个参数设置不同的学习率。
+    """
+    class NewOptimizer(BaseOptimizer):
+        """带有分参数学习率的优化器
+        其中schedule是形如{name1: 2, name2: 0.1}的字典，
+        其实name1、name2是字符串，表示变量名包含name1的
+        参数学习率乘以2，变量名包含name2的参数学习率要
+        乘以0.1。
+        """
+        @insert_arguments(paramwise_lr_schedule={})
+        def __init__(self, *args, **kwargs):
+            super(NewOptimizer, self).__init__(*args, **kwargs)
+
+        def _resource_apply(self, grad, var, indices=None):
+            old_update = K.update
+
+            def new_update(x, new_x):
+                if x is var:
+                    lr_multiplier = 1
+                    for k, v in self.paramwise_lr_schedule.items():
+                        if k in x.name:
+                            lr_multiplier *= v
+                    if lr_multiplier != 1:
+                        print(x, lr_multiplier, 2222)
+                        new_x = x + (new_x - x) * lr_multiplier
+                return old_update(x, new_x)
+
+            K.update = new_update
+            op = super(NewOptimizer, self)._resource_apply(grad, var, indices)
+            K.update = old_update
+
+            return op
+
+        def get_config(self):
+            config = {
+                'paramwise_lr_schedule': self.paramwise_lr_schedule,
+            }
+            base_config = super(NewOptimizer, self).get_config()
+            return dict(list(base_config.items()) + list(config.items()))
 
     return NewOptimizer
 
@@ -974,6 +1117,8 @@ if is_tf_keras:
     extend_with_gradient_accumulation = extend_with_gradient_accumulation_v2
     extend_with_lookahead = extend_with_lookahead_v2
     extend_with_lazy_optimization = extend_with_lazy_optimization_v2
+    extend_with_exponential_moving_average = extend_with_exponential_moving_average_v2
+    extend_with_parameter_wise_lr = extend_with_parameter_wise_lr_v2
     AdaFactor = AdaFactorV2
 else:
     Adam = keras.optimizers.Adam

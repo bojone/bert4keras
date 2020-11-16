@@ -24,8 +24,8 @@ model = build_transformer_model(
 class ArticleCompletion(AutoRegressiveDecoder):
     """基于随机采样的文章续写
     """
-    @AutoRegressiveDecoder.set_rtype('probas')
-    def predict(self, inputs, output_ids, step):
+    @AutoRegressiveDecoder.wraps(default_rtype='probas')
+    def predict(self, inputs, output_ids, states):
         token_ids = np.concatenate([inputs[0], output_ids], 1)
         return model.predict(token_ids)[:, -1]
 

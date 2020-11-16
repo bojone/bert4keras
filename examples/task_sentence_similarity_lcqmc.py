@@ -21,6 +21,9 @@ dict_path = '/root/kg/bert/chinese_wwm_L-12_H-768_A-12/vocab.txt'
 
 
 def load_data(filename):
+    """加载数据
+    单条格式：(文本1, 文本2, 标签id)
+    """
     D = []
     with open(filename, encoding='utf-8') as f:
         for l in f:
@@ -98,6 +101,8 @@ def evaluate(data):
 
 
 class Evaluator(keras.callbacks.Callback):
+    """评估与保存
+    """
     def __init__(self):
         self.best_val_acc = 0.
 
@@ -113,13 +118,20 @@ class Evaluator(keras.callbacks.Callback):
         )
 
 
-evaluator = Evaluator()
-model.fit_generator(
-    train_generator.forfit(),
-    steps_per_epoch=len(train_generator),
-    epochs=20,
-    callbacks=[evaluator]
-)
+if __name__ == '__main__':
 
-model.load_weights('best_model.weights')
-print(u'final test acc: %05f\n' % (evaluate(test_generator)))
+    evaluator = Evaluator()
+
+    model.fit(
+        train_generator.forfit(),
+        steps_per_epoch=len(train_generator),
+        epochs=20,
+        callbacks=[evaluator]
+    )
+
+    model.load_weights('best_model.weights')
+    print(u'final test acc: %05f\n' % (evaluate(test_generator)))
+
+else:
+
+    model.load_weights('best_model.weights')

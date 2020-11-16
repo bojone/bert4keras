@@ -5,7 +5,7 @@
 - 在线文档：http://bert4keras.spaces.ac.cn/ （还在构建中）
 
 ## 说明
-这是笔者重新实现的keras版的bert，致力于用尽可能清爽的代码来实现结合bert和keras。
+这是笔者重新实现的keras版的transformer模型库，致力于用尽可能清爽的代码来实现结合transformer和keras。
 
 本项目的初衷是为了修改、定制上的方便，所以可能会频繁更新。
 
@@ -33,7 +33,18 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 
 之前基于keras-bert给出的<a href="https://github.com/bojone/bert_in_keras">例子</a>，仍适用于本项目，只需要将`bert_model`的加载方式换成本项目的。
 
-理论上兼容Python2和Python3，实验环境是Python 2.7、Tesorflow 1.14+以及Keras 2.3.1（已经在2.2.4、2.3.0、2.3.1、tf.keras下测试通过）。
+理论上兼容Python2和Python3，兼容tensorflow 1.14+和tensorflow 2.x，实验环境是Python 2.7、Tesorflow 1.14+以及Keras 2.3.1（已经在2.2.4、2.3.0、2.3.1、tf.keras下测试通过）。
+
+**为了获得最好的体验，建议你使用Tensorflow 1.14 + Keras 2.3.1组合。**
+
+<blockquote><strong>关于环境组合</strong>
+  
+- 支持tf+keras和tf+tf.keras，后者需要提前传入环境变量TF_KERAS=1。
+
+- 当使用tf+keras时，建议2.2.4 <= keras <= 2.3.1，以及 1.14 <= tf <= 2.2，不能使用tf 2.3+。
+
+- keras 2.4+可以用，但事实上keras 2.4.x基本上已经完全等价于tf.keras了，因此如果你要用keras 2.4+，倒不如直接用tf.keras。
+</blockquote>
 
 当然，乐于贡献的朋友如果发现了某些bug的话，也欢迎指出修正甚至Pull Requests～
 
@@ -47,18 +58,29 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 - <strong>brightmart版albert</strong>: https://github.com/brightmart/albert_zh
 - <strong>转换后的albert</strong>: https://github.com/bojone/albert_zh
 - <strong>华为的NEZHA</strong>: https://github.com/huawei-noah/Pretrained-Language-Model/tree/master/NEZHA-TensorFlow
+- <strong>华为的NEZHA-GEN</strong>: https://github.com/huawei-noah/Pretrained-Language-Model/tree/master/NEZHA-Gen-TensorFlow
 - <strong>自研语言模型</strong>: https://github.com/ZhuiyiTechnology/pretrained-models
 - <strong>T5模型</strong>: https://github.com/google-research/text-to-text-transfer-transformer
+- <strong>GPT_OpenAI</strong>: https://github.com/bojone/CDial-GPT-tf
 - <strong>GPT2_ML</strong>: https://github.com/imcaspar/gpt2-ml
 - <strong>Google原版ELECTRA</strong>: https://github.com/google-research/electra
 - <strong>哈工大版ELECTRA</strong>: https://github.com/ymcui/Chinese-ELECTRA
 - <strong>CLUE版ELECTRA</strong>: https://github.com/CLUEbenchmark/ELECTRA
+- <strong>LaBSE（多国语言BERT）</strong>: https://github.com/bojone/labse
+- <strong>Chinese-GEN项目下的模型</strong>: https://github.com/bojone/chinese-gen
+- <strong>T5.1.1</strong>: https://github.com/google-research/text-to-text-transfer-transformer/blob/master/released_checkpoints.md#t511
+- <strong>Multilingual T5</strong>: https://github.com/google-research/multilingual-t5/
 
 <strong>注意事项</strong>
 - 注1：brightmart版albert的开源时间早于Google版albert，这导致早期brightmart版albert的权重与Google版的不完全一致，换言之两者不能直接相互替换。为了减少代码冗余，bert4keras的0.2.4及后续版本均只支持加载<u>Google版</u>以brightmart版中<u>带Google字眼</u>的权重。如果要加载早期版本的权重，请用<a href="https://github.com/bojone/bert4keras/releases/tag/v0.2.3">0.2.3版本</a>，或者考虑作者转换过的<a href="https://github.com/bojone/albert_zh">albert_zh</a>。
-- 注2：下载下来的ELECTRA权重，如果没有json配置文件的话，参考<a href="https://github.com/ymcui/Chinese-ELECTRA/issues/3">这里</a>自己改一个。
+- 注2：下载下来的ELECTRA权重，如果没有json配置文件的话，参考<a href="https://github.com/ymcui/Chinese-ELECTRA/issues/3">这里</a>自己改一个（需要加上`type_vocab_size`字段）。
 
 ## 更新
+- <strong>2020.11.14</strong>: 新增分参数学习率`extend_with_parameter_wise_lr`，可用于给每层设置不同的学习率。
+- <strong>2020.10.27</strong>: 支持<a href="https://github.com/google-research/text-to-text-transfer-transformer/blob/master/released_checkpoints.md#t511">T5.1.1</a>和<a href="https://github.com/google-research/multilingual-t5/">Multilingual T5</a>。
+- <strong>2020.08.28</strong>: 支持<a href="https://github.com/bojone/CDial-GPT-tf">GPT_OpenAI</a>。
+- <strong>2020.08.22</strong>: 新增`WebServing`类，允许简单地将模型转换为Web接口，详情请参考该类的<a href="https://github.com/bojone/bert4keras/blob/8d55512a12e4677262363ac189ebf504fc451716/bert4keras/snippets.py#L580">说明</a>。
+- <strong>2020.07.14</strong>: `Transformer`类加入`prefix`参数；`snippets.py`引入`to_array`函数；`AutoRegressiveDecoder`修改`rtype='logits'`时的一个隐藏bug。
 - <strong>2020.06.06</strong>: 强迫症作祟：将`Tokenizer`原来的`max_length`参数重命名为`maxlen`，同时保留向后兼容性，建议大家用新参数名。
 - <strong>2020.04.29</strong>: 增加重计算（参考<a href="https://github.com/bojone/keras_recompute">keras_recompute</a>），可以通过时间换空间，通过设置环境变量`RECOMPUTE=1`启用。
 - <strong>2020.04.25</strong>: 优化tf2下的表现。
@@ -120,4 +142,4 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 感谢CyberZHG大佬实现的<a href="https://github.com/CyberZHG/keras-bert">keras-bert</a>，本实现有不少地方参考了keras-bert的源码，在此衷心感谢大佬的无私奉献。
 
 ## 交流
-QQ交流群：67729435，微信群请加机器人微信号spaces_ac_cn
+QQ交流群：808623966，微信群请加机器人微信号spaces_ac_cn

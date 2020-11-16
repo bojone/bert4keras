@@ -128,7 +128,7 @@ def sequence_masking(x, mask, mode=0, axis=None):
             axis = 1
         if axis == -1:
             axis = K.ndim(x) - 1
-        assert axis > 0, 'axis muse be greater than 0'
+        assert axis > 0, 'axis must be greater than 0'
         for _ in range(axis - 1):
             mask = K.expand_dims(mask, 1)
         for _ in range(K.ndim(x) - K.ndim(mask) - axis + 1):
@@ -142,6 +142,9 @@ def sequence_masking(x, mask, mode=0, axis=None):
 def batch_gather(params, indices):
     """同tf旧版本的batch_gather
     """
+    if K.dtype(indices)[:3] != 'int':
+        indices = K.cast(indices, 'int32')
+
     try:
         return tf.gather(params, indices, batch_dims=K.ndim(indices) - 1)
     except Exception as e1:
@@ -191,6 +194,23 @@ def leaky_relu(x, alpha=0.2):
     """leaky relu函数（这样封装过后才有 __name__ 属性）
     """
     return tf.nn.leaky_relu(x, alpha=alpha)
+
+
+class Sinusoidal(keras.initializers.Initializer):
+    """Sin-Cos位置向量初始化器
+    来自：https://arxiv.org/abs/1706.03762
+    """
+    def __call__(self, shape, dtype=None):
+        """Sin-Cos形式的位置向量
+        """
+        vocab_size, depth = shape
+        embeddings = np.zeros(shape)
+        for pos in range(vocab_size):
+            for i in range(depth // 2):
+                theta = pos / np.power(10000, 2. * i / depth)
+                embeddings[pos, 2 * i] = np.sin(theta)
+                embeddings[pos, 2 * i + 1] = np.cos(theta)
+        return embeddings
 
 
 def symbolic(f):
@@ -286,6 +306,7 @@ custom_objects = {
     'gelu': gelu_erf,
     'swish': swish,
     'leaky_relu': leaky_relu,
+    'Sinusoidal': Sinusoidal,
 }
 
 keras.utils.get_custom_objects().update(custom_objects)

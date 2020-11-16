@@ -134,6 +134,7 @@ class MultiHeadAttention(Layer):
         self,
         heads,
         head_size,
+        out_dim=None,
         key_size=None,
         use_bias=True,
         attention_scale=True,
@@ -143,7 +144,7 @@ class MultiHeadAttention(Layer):
         super(MultiHeadAttention, self).__init__(**kwargs)
         self.heads = heads
         self.head_size = head_size
-        self.out_dim = heads * head_size
+        self.out_dim = out_dim or heads * head_size
         self.key_size = key_size or head_size
         self.use_bias = use_bias
         self.attention_scale = attention_scale
@@ -162,7 +163,7 @@ class MultiHeadAttention(Layer):
             kernel_initializer=self.kernel_initializer
         )
         self.v_dense = Dense(
-            units=self.out_dim,
+            units=self.head_size * self.heads,
             use_bias=self.use_bias,
             kernel_initializer=self.kernel_initializer
         )
@@ -173,27 +174,19 @@ class MultiHeadAttention(Layer):
         )
 
     @recompute_grad
-    def call(self, inputs, mask=None, a_mask=None, p_bias=None):
+    def call(self, inputs, mask=None, **kwargs):
         """实现多头注意力
         q_mask: 对输入的query序列的mask。
                 主要是将输出结果的padding部分置0。
         v_mask: 对输入的value序列的mask。
                 主要是防止attention读取到padding信息。
-        a_mask: 对attention矩阵的mask。
-                不同的attention mask对应不同的应用。
-        p_bias: 在attention里的位置偏置。
-                一般用来指定相对位置编码的种类。
         """
         q, k, v = inputs[:3]
-        q_mask, v_mask, n = None, None, 3
-        if mask is not None:
-            if mask[0] is not None:
-                q_mask = K.cast(mask[0], K.floatx())
-            if mask[2] is not None:
-                v_mask = K.cast(mask[2], K.floatx())
-        if a_mask:
-            a_mask = inputs[n]
-            n += 1
+        q_mask, v_mask = None, None
+        if mask[0] is not None:
+            q_mask = K.cast(mask[0], K.floatx())
+        if mask[2] is not None:
+            v_mask = K.cast(mask[2], K.floatx())
         # 线性变换
         qw = self.q_dense(q)
         kw = self.k_dense(k)
@@ -202,6 +195,33 @@ class MultiHeadAttention(Layer):
         qw = K.reshape(qw, (-1, K.shape(q)[1], self.heads, self.key_size))
         kw = K.reshape(kw, (-1, K.shape(k)[1], self.heads, self.key_size))
         vw = K.reshape(vw, (-1, K.shape(v)[1], self.heads, self.head_size))
+        # Attention
+        qkv_inputs = [qw, kw, vw] + inputs[3:]
+        qv_masks = [q_mask, v_mask]
+        o = self.pay_attention_to(qkv_inputs, qv_masks, **kwargs)
+        # 完成输出
+        o = K.reshape(o, (-1, K.shape(o)[1], self.head_size * self.heads))
+        o = self.o_dense(o)
+        # 返回结果
+        o = sequence_masking(o, q_mask, 0)
+        return o
+
+    def pay_attention_to(self, inputs, mask=None, **kwargs):
+        """实现标准的乘性多头注意力
+        a_mask: 对attention矩阵的mask。
+                不同的attention mask对应不同的应用。
+        p_bias: 在attention里的位置偏置。
+                一般用来指定相对位置编码的种类。
+        说明: 这里单独分离出pay_attention_to函数，是为了方便
+              继承此类来定义不同形式的atttention；此处要求
+              返回o.shape=(batch_size, seq_len, heads, head_size)。
+        """
+        (qw, kw, vw), n = inputs[:3], 3
+        q_mask, v_mask = mask
+        a_mask, p_bias = kwargs.get('a_mask'), kwargs.get('p_bias')
+        if a_mask:
+            a_mask = inputs[n]
+            n += 1
         # Attention
         a = tf.einsum('bjhd,bkhd->bhjk', qw, kw)
         # 处理位置编码
@@ -222,10 +242,6 @@ class MultiHeadAttention(Layer):
         o = tf.einsum('bhjk,bkhd->bjhd', a, vw)
         if p_bias == 'typical_relative':
             o = o + tf.einsum('bhjk,jkd->bjhd', a, pos_embeddings)
-        o = K.reshape(o, (-1, K.shape(o)[1], self.out_dim))
-        o = self.o_dense(o)
-        # 返回结果
-        o = sequence_masking(o, q_mask, 0)
         return o
 
     def compute_output_shape(self, input_shape):
@@ -239,6 +255,7 @@ class MultiHeadAttention(Layer):
         config = {
             'heads': self.heads,
             'head_size': self.head_size,
+            'out_dim': self.out_dim,
             'key_size': self.key_size,
             'use_bias': self.use_bias,
             'attention_scale': self.attention_scale,
@@ -559,7 +576,10 @@ class RelativePositionEmbeddingT5(RelativePositionEmbedding):
 
 
 class FeedForward(Layer):
-    """FeedForward层，其实就是两个Dense层的叠加
+    """FeedForward层
+    如果activation不是一个list，那么它就是两个Dense层的叠加；如果activation是
+    一个list，那么第一个Dense层将会被替换成门控线性单元（Gated Linear Unit）。
+    参考论文: https://arxiv.org/abs/2002.05202
     """
     def __init__(
         self,
@@ -571,7 +591,9 @@ class FeedForward(Layer):
     ):
         super(FeedForward, self).__init__(**kwargs)
         self.units = units
-        self.activation = activations.get(activation)
+        if not isinstance(activation, list):
+            activation = [activation]
+        self.activation = [activations.get(act) for act in activation]
         self.use_bias = use_bias
         self.kernel_initializer = initializers.get(kernel_initializer)
 
@@ -580,13 +602,16 @@ class FeedForward(Layer):
         super(FeedForward, self).build(input_shape)
         output_dim = input_shape[-1]
 
-        self.dense_1 = Dense(
-            units=self.units,
-            activation=self.activation,
-            use_bias=self.use_bias,
-            kernel_initializer=self.kernel_initializer
-        )
-        self.dense_2 = Dense(
+        for i, activation in enumerate(self.activation):
+            i_dense = Dense(
+                units=self.units,
+                activation=activation,
+                use_bias=self.use_bias,
+                kernel_initializer=self.kernel_initializer
+            )
+            setattr(self, 'i%s_dense' % i, i_dense)
+
+        self.o_dense = Dense(
             units=output_dim,
             use_bias=self.use_bias,
             kernel_initializer=self.kernel_initializer
@@ -594,15 +619,18 @@ class FeedForward(Layer):
 
     @recompute_grad
     def call(self, inputs):
-        x = inputs
-        x = self.dense_1(x)
-        x = self.dense_2(x)
+        x = self.i0_dense(inputs)
+        for i in range(1, len(self.activation)):
+            x = x * getattr(self, 'i%s_dense' % i)(inputs)
+        x = self.o_dense(x)
         return x
 
     def get_config(self):
         config = {
             'units': self.units,
-            'activation': activations.serialize(self.activation),
+            'activation': [
+                activations.serialize(act) for act in self.activation
+            ],
             'use_bias': self.use_bias,
             'kernel_initializer':
                 initializers.serialize(self.kernel_initializer),
@@ -952,6 +980,14 @@ class Loss(Layer):
             return [input_shape[i] for i in self.output_axis]
         else:
             return input_shape[self.output_axis]
+
+    def compute_mask(self, inputs, mask):
+        if self.output_axis is None:
+            return mask
+        elif isinstance(self.output_axis, list):
+            return [mask[i] for i in self.output_axis]
+        else:
+            return mask[self.output_axis]
 
     def get_config(self):
         config = {

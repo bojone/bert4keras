@@ -16,7 +16,7 @@ from bert4keras.tokenizers import Tokenizer
 from bert4keras.models import build_transformer_model
 from bert4keras.optimizers import Adam, extend_with_exponential_moving_average
 from bert4keras.snippets import sequence_padding, DataGenerator
-from bert4keras.snippets import open
+from bert4keras.snippets import open, to_array
 from keras.layers import Input, Dense, Lambda, Reshape
 from keras.models import Model
 from tqdm import tqdm
@@ -29,6 +29,9 @@ dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
 
 def load_data(filename):
+    """加载数据
+    单条格式：{'text': text, 'spo_list': [(s, p, o)]}
+    """
     D = []
     with open(filename, encoding='utf-8') as f:
         for l in f:
@@ -129,11 +132,10 @@ class data_generator(DataGenerator):
                     batch_subject_labels, batch_subject_ids, batch_object_labels = [], [], []
 
 
-def extrac_subject(inputs):
+def extract_subject(inputs):
     """根据subject_ids从output中取出subject的向量表征
     """
     output, subject_ids = inputs
-    subject_ids = K.cast(subject_ids, 'int32')
     start = batch_gather(output, subject_ids[:, :1])
     end = batch_gather(output, subject_ids[:, 1:])
     subject = K.concatenate([start, end], 2)
@@ -163,7 +165,7 @@ subject_model = Model(bert.model.inputs, subject_preds)
 # 传入subject，预测object
 # 通过Conditional Layer Normalization将subject融入到object的预测中
 output = bert.model.layers[-2].get_output_at(-1)
-subject = Lambda(extrac_subject)([output, subject_ids])
+subject = Lambda(extract_subject)([output, subject_ids])
 output = LayerNormalization(conditional=True)([output, subject])
 output = Dense(
     units=len(predicate2id) * 2,
@@ -220,8 +222,9 @@ def extract_spoes(text):
     tokens = tokenizer.tokenize(text, maxlen=maxlen)
     mapping = tokenizer.rematch(text, tokens)
     token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
+    token_ids, segment_ids = to_array([token_ids], [segment_ids])
     # 抽取subject
-    subject_preds = subject_model.predict([[token_ids], [segment_ids]])
+    subject_preds = subject_model.predict([token_ids, segment_ids])
     start = np.where(subject_preds[0, :, 0] > 0.6)[0]
     end = np.where(subject_preds[0, :, 1] > 0.5)[0]
     subjects = []
@@ -232,8 +235,8 @@ def extract_spoes(text):
             subjects.append((i, j))
     if subjects:
         spoes = []
-        token_ids = np.repeat([token_ids], len(subjects), 0)
-        segment_ids = np.repeat([segment_ids], len(subjects), 0)
+        token_ids = np.repeat(token_ids, len(subjects), 0)
+        segment_ids = np.repeat(segment_ids, len(subjects), 0)
         subjects = np.array(subjects)
         # 传入subject，抽取object和predicate
         object_preds = object_model.predict([token_ids, segment_ids, subjects])
@@ -307,7 +310,7 @@ def evaluate(data):
 
 
 class Evaluator(keras.callbacks.Callback):
-    """评估和保存模型
+    """评估与保存
     """
     def __init__(self):
         self.best_val_f1 = 0.
@@ -330,7 +333,7 @@ if __name__ == '__main__':
     train_generator = data_generator(train_data, batch_size)
     evaluator = Evaluator()
 
-    train_model.fit_generator(
+    train_model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=20,
