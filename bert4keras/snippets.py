@@ -99,10 +99,13 @@ class open:
                 l = convert_to_unicode(l, self.encoding, self.errors)
             yield l
 
-    def __next__(self):
+    def next(self):
         if self.iterator is None:
             self.iterator = self.__iter__()
         return next(self.iterator)
+
+    def __next__(self):
+        return self.next()
 
     def read(self):
         text = self.file.read()
