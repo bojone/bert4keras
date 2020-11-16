@@ -624,18 +624,16 @@ class WebServing(object):
             kwargs = {}
             for key, value in arguments.items():
                 if method == 'GET':
-                    result = self.bottle.request.GET.get(key)
+                    result = self.bottle.request.GET.getunicode(key)
                 else:
-                    result = self.bottle.request.POST.get(key)
+                    result = self.bottle.request.POST.getunicode(key)
                 if result is None:
                     if value[1]:
                         outputs['code'] = 1
                         outputs['desc'] = 'lack of "%s" argument' % key
                         return json.dumps(outputs, ensure_ascii=False)
                 else:
-                    if value[0] is None:
-                        result = convert_to_unicode(result)
-                    else:
+                    if value[0] is not None:
                         result = value[0](result)
                     kwargs[key] = result
             try:
