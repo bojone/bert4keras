@@ -370,14 +370,20 @@ class AutoRegressiveDecoder(object):
             self.first_output_ids = np.array([[self.start_id]])
 
     @staticmethod
-    def wraps(default_rtype='probas', use_states=False):
+    def wraps(default_rtype='probas', use_states=False, default_temperature=1):
         """用来进一步完善predict函数
         目前包含：1. 设置rtype参数，并做相应处理；
-                  2. 确定states的使用，并做相应处理。
+                  2. 确定states的使用，并做相应处理；
+                  3. 设置温度参数，并做相应处理。
         """
         def actual_decorator(predict):
             def new_predict(
-                self, inputs, output_ids, states, rtype=default_rtype
+                self,
+                inputs,
+                output_ids,
+                states,
+                temperature=default_temperature,
+                rtype=default_rtype
             ):
                 assert rtype in ['probas', 'logits']
                 prediction = predict(self, inputs, output_ids, states)
@@ -386,7 +392,13 @@ class AutoRegressiveDecoder(object):
                     prediction = (prediction, None)
 
                 if default_rtype == 'logits':
-                    prediction = (softmax(prediction[0]), prediction[1])
+                    prediction = (
+                        softmax(prediction[0] / temperature), prediction[1]
+                    )
+                elif temperature != 1:
+                    probas = np.power(prediction[0], 1.0 / temperature)
+                    probas = probas / probas.sum(axis=-1, keepdims=True)
+                    prediction = (probas, prediction[1])
 
                 if rtype == 'probas':
                     return prediction
@@ -397,7 +409,7 @@ class AutoRegressiveDecoder(object):
 
         return actual_decorator
 
-    def predict(self, inputs, output_ids, states=None, rtype='logits'):
+    def predict(self, inputs, output_ids, states=None):
         """用户需自定义递归预测函数
         说明：rtype为字符串logits或probas，用户定义的时候，应当根据rtype来
               返回不同的结果，rtype=probas时返回归一化的概率，rtype=logits时
@@ -406,7 +418,7 @@ class AutoRegressiveDecoder(object):
         """
         raise NotImplementedError
 
-    def beam_search(self, inputs, topk, states=None, min_ends=1):
+    def beam_search(self, inputs, topk, states=None, temperature=1, min_ends=1):
         """beam search解码
         说明：这里的topk即beam size；
         返回：最优解码序列。
@@ -445,7 +457,14 @@ class AutoRegressiveDecoder(object):
         return output_ids[output_scores.argmax()]
 
     def random_sample(
-        self, inputs, n, topk=None, topp=None, states=None, min_ends=1
+        self,
+        inputs,
+        n,
+        topk=None,
+        topp=None,
+        states=None,
+        temperature=1,
+        min_ends=1
     ):
         """随机采样n个结果
         说明：非None的topk表示每一步只从概率最高的topk个中采样；而非None的topp
