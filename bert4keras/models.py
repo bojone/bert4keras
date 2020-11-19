@@ -1201,6 +1201,15 @@ class GPT(LM_Mask, BERT):
 
         return x
 
+    def load_variable(self, checkpoint, name):
+        """加载单个变量的函数
+        """
+        variable = super(GPT, self).load_variable(checkpoint, name)
+        if name == 'gpt/embeddings/word_embeddings':
+            return self.load_embeddings(variable)
+        else:
+            return variable
+
     def variable_mapping(self):
         """映射到TF版GPT权重格式
         """
