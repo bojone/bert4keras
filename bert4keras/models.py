@@ -1106,14 +1106,14 @@ class ELECTRA(BERT):
         return mapping
 
 
-class GPT_OpenAI(LM_Mask, BERT):
+class GPT(LM_Mask, BERT):
     """构建GPT模型
     链接：https://github.com/openai/finetune-transformer-lm
     """
     @insert_arguments(final_activation='softmax')
     @delete_arguments('with_pool', 'with_mlm')
     def __init__(self, **kwargs):
-        super(GPT_OpenAI, self).__init__(**kwargs)
+        super(GPT, self).__init__(**kwargs)
 
     def apply_embeddings(self, inputs):
         """GPT的embedding是token、position、segment三者embedding之和
@@ -1204,7 +1204,7 @@ class GPT_OpenAI(LM_Mask, BERT):
     def variable_mapping(self):
         """映射到TF版GPT权重格式
         """
-        mapping = super(GPT_OpenAI, self).variable_mapping()
+        mapping = super(GPT, self).variable_mapping()
         mapping = {
             k: [
                 i.replace('bert/', 'gpt/').replace('encoder', 'transformer')
@@ -2095,7 +2095,7 @@ def build_transformer_model(
         'roberta': BERT,
         'nezha': NEZHA,
         'electra': ELECTRA,
-        'gpt_openai': GPT_OpenAI,
+        'gpt': GPT,
         'gpt2_ml': GPT2_ML,
         't5': T5,
         't5_encoder': T5_Encoder,
