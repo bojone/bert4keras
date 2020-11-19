@@ -215,7 +215,10 @@ class Transformer(object):
     def load_variable(self, checkpoint, name):
         """加载单个变量的函数
         """
-        return tf.train.load_variable(checkpoint, name)
+        if isinstance(checkpoint, dict):
+            return checkpoint[name]
+        else:
+            return tf.train.load_variable(checkpoint, name)
 
     def create_variable(self, name, value):
         """创建一个变量
