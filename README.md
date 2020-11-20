@@ -76,6 +76,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 - 注2：下载下来的ELECTRA权重，如果没有json配置文件的话，参考<a href="https://github.com/ymcui/Chinese-ELECTRA/issues/3">这里</a>自己改一个（需要加上`type_vocab_size`字段）。
 
 ## 更新
+- <strong>2020.11.19</strong>: 支持GPT2模型。
 - <strong>2020.11.14</strong>: 新增分参数学习率`extend_with_parameter_wise_lr`，可用于给每层设置不同的学习率。
 - <strong>2020.10.27</strong>: 支持<a href="https://github.com/google-research/text-to-text-transfer-transformer/blob/master/released_checkpoints.md#t511">T5.1.1</a>和<a href="https://github.com/google-research/multilingual-t5/">Multilingual T5</a>。
 - <strong>2020.08.28</strong>: 支持<a href="https://github.com/bojone/CDial-GPT-tf">GPT_OpenAI</a>。
