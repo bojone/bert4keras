@@ -55,11 +55,18 @@ class TokenizerBase(object):
     """分词器基类
     """
     def __init__(
-        self, token_start='[CLS]', token_end='[SEP]', pre_tokenize=None
+        self,
+        token_start='[CLS]',
+        token_end='[SEP]',
+        pre_tokenize=None,
+        token_translate=None
     ):
-        """这里的pre_tokenize是外部传入的分词函数，用作对文本进行预分词。如果传入
-        pre_tokenize，则先执行pre_tokenize(text)，然后在它的基础上执行原本的
-        tokenize函数。
+        """参数说明：
+        pre_tokenize：外部传入的分词函数，用作对文本进行预分词。如果传入
+                      pre_tokenize，则先执行pre_tokenize(text)，然后在它
+                      的基础上执行原本的tokenize函数；
+        token_translate：映射字典，主要用在tokenize之后，将某些特殊的token
+                         替换为对应的token。
         """
         self._token_pad = '[PAD]'
         self._token_unk = '[UNK]'
@@ -67,11 +74,19 @@ class TokenizerBase(object):
         self._token_start = token_start
         self._token_end = token_end
         self._pre_tokenize = pre_tokenize
+        self._token_translate = token_translate or {}
+        self._token_translate_inv = {
+            v: k
+            for k, v in self._token_translate.items()
+        }
 
     def tokenize(self, text, maxlen=None):
         """分词函数
         """
-        tokens = self._tokenize(text)
+        tokens = [
+            self._token_translate.get(token) or token
+            for token in self._tokenize(text)
+        ]
         if self._token_start is not None:
             tokens.insert(0, self._token_start)
         if self._token_end is not None:
