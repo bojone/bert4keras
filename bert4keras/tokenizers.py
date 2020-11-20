@@ -4,6 +4,7 @@
 import unicodedata, re
 from bert4keras.snippets import is_string, is_py2
 from bert4keras.snippets import open
+from bert4keras.snippets import convert_to_unicode
 
 
 def load_vocab(dict_path, encoding='utf-8', simplified=False, startswith=None):
@@ -442,7 +443,7 @@ class SpTokenizer(TokenizerBase):
             for token in self.ids_to_tokens(ids)
         ]
         text = self.sp_model.decode_pieces(tokens)
-        return text.decode('utf-8') if is_py2 else text
+        return convert_to_unicode(text)
 
     def _tokenize(self, text):
         """基本分词函数
