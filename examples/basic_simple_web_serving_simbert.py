@@ -45,10 +45,10 @@ class SynonymsGenerator(AutoRegressiveDecoder):
         segment_ids = np.concatenate([segment_ids, np.ones_like(output_ids)], 1)
         return seq2seq.predict([token_ids, segment_ids])[:, -1]
 
-    def generate(self, text, n=1, topk=5):
+    def generate(self, text, n=1, topp=0.95):
         token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
         output_ids = self.random_sample([token_ids, segment_ids], n,
-                                        topk)  # 基于随机采样
+                                        topp=topp)  # 基于随机采样
         return [tokenizer.decode(ids) for ids in output_ids]
 
 
