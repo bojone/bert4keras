@@ -172,7 +172,7 @@ class AutoCaption(AutoRegressiveDecoder):
         if is_string(image):
             image = read_image(image)
         image = preprocess_input(image)
-        output_ids = self.beam_search([image], topk)  # 基于beam search
+        output_ids = self.beam_search([image], topk=topk)  # 基于beam search
         return tokenizer.decode(output_ids)
 
 

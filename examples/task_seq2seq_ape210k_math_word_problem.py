@@ -165,7 +165,7 @@ class AutoSolve(AutoRegressiveDecoder):
     def generate(self, text, topk=1):
         token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
         output_ids = self.beam_search([token_ids, segment_ids],
-                                      topk)  # 基于beam search
+                                      topk=topk)  # 基于beam search
         return tokenizer.decode(output_ids).replace(' ', '')
 
 
@@ -190,7 +190,7 @@ class Evaluator(keras.callbacks.Callback):
         total, right = 0.0, 0.0
         for question, equation, answer in tqdm(data):
             total += 1
-            pred_equation = autosolve.generate(question, topk)
+            pred_equation = autosolve.generate(question, topk=topk)
             try:
                 right += int(is_equal(eval(pred_equation), eval(answer)))
             except:
@@ -208,7 +208,7 @@ def predict(in_file, out_file, topk=1):
     raw_data = pd.read_csv(in_file, header=None, encoding='utf-8')
     for i, question in tqdm(raw_data.values):
         question = re.sub('(\d+)_(\d+/\d+)', '(\\1+\\2)', question)
-        pred_equation = autosolve.generate(question, topk)
+        pred_equation = autosolve.generate(question, topk=topk)
         if '.' not in pred_equation:
             pred_equation = re.sub('([\d]+)', 'Integer(\\1)', pred_equation)
         try:

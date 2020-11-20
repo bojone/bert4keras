@@ -114,7 +114,7 @@ class AutoTitle(AutoRegressiveDecoder):
         max_c_len = maxlen - self.maxlen
         token_ids, segment_ids = tokenizer.encode(text, maxlen=max_c_len)
         output_ids = self.beam_search([token_ids, segment_ids],
-                                      topk)  # 基于beam search
+                                      topk=topk)  # 基于beam search
         return tokenizer.decode(output_ids)
 
 
@@ -143,7 +143,8 @@ class Evaluator(keras.callbacks.Callback):
         for title, content in tqdm(data):
             total += 1
             title = ' '.join(title).lower()
-            pred_title = ' '.join(autotitle.generate(content, topk)).lower()
+            pred_title = ' '.join(autotitle.generate(content,
+                                                     topk=topk)).lower()
             if pred_title.strip():
                 scores = self.rouge.get_scores(hyps=pred_title, refs=title)
                 rouge_1 += scores[0]['rouge-1']['f']

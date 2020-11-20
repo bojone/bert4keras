@@ -101,7 +101,7 @@ class AutoTitle(AutoRegressiveDecoder):
         max_c_len = maxlen - self.maxlen
         token_ids, segment_ids = tokenizer.encode(text, maxlen=max_c_len)
         output_ids = self.beam_search([token_ids, segment_ids],
-                                      topk)  # 基于beam search
+                                      topk=topk)  # 基于beam search
         return tokenizer.decode(output_ids)
 
 
