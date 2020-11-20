@@ -422,8 +422,11 @@ class SpTokenizer(TokenizerBase):
     def decode(self, ids):
         """转为可读文本
         """
-        ids = [i for i in ids if self._is_decodable(i)]
-        text = self.sp_model.decode_ids(ids)
+        tokens = [
+            self._token_translate_inv.get(token) or token
+            for token in self.ids_to_tokens(ids)
+        ]
+        text = self.sp_model.decode_pieces(tokens)
         return text.decode('utf-8') if is_py2 else text
 
     def _tokenize(self, text):
