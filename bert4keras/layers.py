@@ -293,8 +293,8 @@ class LayerNormalization(Layer):
 
     def compute_mask(self, inputs, mask=None):
         if self.conditional:
-            mask = mask or []
-            masks = [K.expand_dims(m, 0) for m in mask if m is not None]
+            masks = mask if mask is not None else []
+            masks = [K.expand_dims(m, 0) for m in masks if m is not None]
             if len(masks) == 0:
                 return None
             else:
