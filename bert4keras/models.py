@@ -1387,20 +1387,12 @@ class GPT2(GPT):
         return mapping
 
 
-class GPT2_ML(LM_Mask, Transformer):
+class GPT2_ML(GPT):
     """构建GPT2_ML模型
     链接: https://github.com/imcaspar/gpt2-ml
+    注意：GPT2_ML虽然号称GPT2，但是它的结构其实更接近GPT，它自称GPT2的
+         原因大概是因为它开源的版本参数量达到了GPT2的15亿参数。
     """
-    def __init__(
-        self,
-        max_position,  # 序列最大长度
-        final_activation='softmax',  # 预测分布的激活函数
-        **kwargs  # 其余参数
-    ):
-        super(GPT2_ML, self).__init__(**kwargs)
-        self.max_position = max_position
-        self.final_activation = final_activation
-
     def get_inputs(self):
         """GPT2_ML的输入是token_ids
         """
@@ -1527,27 +1519,6 @@ class GPT2_ML(LM_Mask, Transformer):
             hidden_activation=self.layer_norm_conds[2],
             hidden_initializer=self.initializer,
             name='%s-Norm-1' % feed_forward_name
-        )
-
-        return x
-
-    def apply_final_layers(self, inputs):
-        """剩余部分
-        """
-        x = inputs
-
-        # Language Model部分
-        x = self.apply(
-            inputs=x,
-            layer=Embedding,
-            arguments={'mode': 'dense'},
-            name='Embedding-Token'
-        )
-        x = self.apply(
-            inputs=x,
-            layer=Activation,
-            activation=self.final_activation,
-            name='LM-Activation'
         )
 
         return x
