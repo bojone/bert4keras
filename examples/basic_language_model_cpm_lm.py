@@ -48,6 +48,9 @@ class TextExpansion(AutoRegressiveDecoder):
         return model.predict(token_ids)[:, -1]
 
     def generate(self, text, n=1, topp=0.95, temperature=1):
+        """输出结果会有一定的随机性，如果只关心Few Shot效果，
+        可以考虑将解码方式换为beam search。
+        """
         token_ids, _ = tokenizer.encode(text)
         results = self.random_sample([token_ids],
                                      n,
