@@ -1,5 +1,5 @@
 #! -*- coding: utf-8 -*-
-# 基本测试：中文GPT2模型
+# 基本测试：中文GPT2_ML模型
 # 介绍链接：https://kexue.fm/archives/7292
 
 import numpy as np
@@ -8,9 +8,9 @@ from bert4keras.tokenizers import Tokenizer
 from bert4keras.snippets import AutoRegressiveDecoder
 from bert4keras.snippets import uniout
 
-config_path = '/root/gpt2/config.json'
-checkpoint_path = '/root/gpt2/model.ckpt-100000'
-dict_path = '/root/gpt2/vocab.txt'
+config_path = '/root/kg/bert/gpt2_ml/config.json'
+checkpoint_path = '/root/kg/bert/gpt2_ml/model.ckpt-100000'
+dict_path = '/root/kg/bert/gpt2_ml/vocab.txt'
 
 tokenizer = Tokenizer(
     dict_path, token_start=None, token_end=None, do_lower_case=True
