@@ -421,7 +421,7 @@ class LayerNormalization(Layer):
 
 
 class PositionEmbedding(Layer):
-    """定义位置Embedding，这里的Embedding是可训练的。
+    """定义可训练的位置Embedding
     """
     def __init__(
         self,
