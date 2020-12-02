@@ -67,8 +67,10 @@ class Transformer(object):
         **kwargs
     ):
         """模型构建函数
-        layer_norm_*系列参数为实现Conditional Layer Normalization时使用，
-        用来实现以“固定长度向量”为条件的条件Bert。
+        attention_caches：为Attention的K,V的缓存序列字典，格式为
+                         {Attention层名: [K缓存, V缓存]}；
+        layer_norm_*系列参数：实现Conditional Layer Normalization时使用，
+                            用来实现以“固定长度向量”为条件的条件Bert。
         """
         if self.built:
             return None
