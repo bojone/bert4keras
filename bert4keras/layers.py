@@ -127,6 +127,33 @@ class BiasAdd(Layer):
         return K.bias_add(inputs, self.bias)
 
 
+class Concatenate1D(Layer):
+    """1维序列拼接层
+    说明：本来该功能可以直接通过Concatenate层来实现，无奈Keras
+          自带的Concatenate层的compute_mask写得不合理，导致一个
+          带mask的序列与一个不带mask的序列拼接会报错，因此干脆
+          自己重写一个好了。
+    """
+    def call(self, inputs):
+        return K.concatenate(inputs, axis=1)
+
+    def compute_mask(self, inputs, mask=None):
+        if mask is not None:
+            masks = []
+            for i, m in enumerate(mask):
+                if m is None:
+                    m = K.ones_like(inputs[i][..., 0], dtype='bool')
+                masks.append(m)
+            return K.concatenate(masks, axis=1)
+
+    def compute_output_shape(self, input_shape):
+        if all([shape[1] for shape in input_shape]):
+            seq_len = sum([shape[1] for shape in input_shape])
+            return (input_shape[0][0], seq_len, input_shape[0][2])
+        else:
+            return (input_shape[0][0], None, input_shape[0][2])
+
+
 class MultiHeadAttention(Layer):
     """多头注意力机制
     """
@@ -1003,6 +1030,7 @@ class Loss(Layer):
 custom_objects = {
     'Embedding': Embedding,
     'BiasAdd': BiasAdd,
+    'Concatenate1D': Concatenate1D,
     'MultiHeadAttention': MultiHeadAttention,
     'LayerNormalization': LayerNormalization,
     'PositionEmbedding': PositionEmbedding,
