@@ -521,7 +521,9 @@ class SinusoidalPositionEmbedding(Layer):
             K.sin(pos_embeddings)[..., None],
             K.cos(pos_embeddings)[..., None]
         ])
-        pos_embeddings = K.reshape(pos_embeddings, (batch_size, seq_len, -1))
+        pos_embeddings = K.reshape(
+            pos_embeddings, (-1, seq_len, self.output_dim)
+        )
 
         if self.merge_mode == 'add':
             return inputs + pos_embeddings
