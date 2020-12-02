@@ -133,8 +133,9 @@ class Transformer(object):
             if isinstance(self.layers[name], MultiHeadAttention):
                 if name in self.attention_caches:
                     k_cache, v_cache = self.attention_caches[name]
-                    k = Concatenate1D()([k_cache, inputs[1]])
-                    v = Concatenate1D()([v_cache, inputs[2]])
+                    k_name, v_name = name + '-Cached-Key', name + '-Cached-Value'
+                    k = Concatenate1D(name=k_name)([k_cache, inputs[1]])
+                    v = Concatenate1D(name=v_name)([v_cache, inputs[2]])
                     inputs = inputs[:1] + [k, v] + inputs[3:]
             return self.layers[name](inputs, **arguments)
 
