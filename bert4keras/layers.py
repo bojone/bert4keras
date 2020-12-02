@@ -492,6 +492,65 @@ class PositionEmbedding(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
+class SinusoidalPositionEmbedding(Layer):
+    """定义Sin-Cos位置Embedding
+    """
+    def __init__(
+        self, output_dim, merge_mode='add', custom_position_ids=False, **kwargs
+    ):
+        super(SinusoidalPositionEmbedding, self).__init__(**kwargs)
+        self.output_dim = output_dim
+        self.merge_mode = merge_mode
+        self.custom_position_ids = custom_position_ids
+
+    def call(self, inputs):
+        """如果custom_position_ids，那么第二个输入为自定义的位置id
+        """
+        input_shape = K.shape(inputs)
+        batch_size, seq_len = input_shape[0], input_shape[1]
+
+        if self.custom_position_ids:
+            inputs, position_ids = inputs
+        else:
+            position_ids = K.arange(0, seq_len, dtype=K.floatx())[None]
+
+        indices = K.arange(0, self.output_dim // 2, dtype=K.floatx())
+        indices = K.pow(10000.0, -2 * indices / self.output_dim)
+        pos_embeddings = tf.einsum('bn,d->bnd', position_ids, indices)
+        pos_embeddings = K.concatenate([
+            K.sin(pos_embeddings)[..., None],
+            K.cos(pos_embeddings)[..., None]
+        ])
+        pos_embeddings = K.reshape(pos_embeddings, (batch_size, seq_len, -1))
+
+        if self.merge_mode == 'add':
+            return inputs + pos_embeddings
+        elif self.merge_mode == 'mul':
+            return inputs * pos_embeddings
+        else:
+            if not self.custom_position_ids:
+                pos_embeddings = K.tile(pos_embeddings, [batch_size, 1, 1])
+            return K.concatenate([inputs, pos_embeddings])
+
+    def compute_output_shape(self, input_shape):
+        if self.custom_position_ids:
+            input_shape = input_shape[0]
+
+        if self.merge_mode in ['add', 'mul']:
+            return input_shape
+        else:
+            return input_shape[:2] + (input_shape[2] + self.output_dim,)
+
+    def get_config(self):
+        config = {
+            'output_dim': self.output_dim,
+            'merge_mode': self.merge_mode,
+            'custom_position_ids': self.custom_position_ids,
+        }
+        base_config = super(SinusoidalPositionEmbedding, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+
 class RelativePositionEmbedding(Layer):
     """相对位置编码
     来自论文：https://arxiv.org/abs/1803.02155
@@ -1036,6 +1095,7 @@ custom_objects = {
     'MultiHeadAttention': MultiHeadAttention,
     'LayerNormalization': LayerNormalization,
     'PositionEmbedding': PositionEmbedding,
+    'SinusoidalPositionEmbedding': SinusoidalPositionEmbedding,
     'RelativePositionEmbedding': RelativePositionEmbedding,
     'RelativePositionEmbeddingT5': RelativePositionEmbeddingT5,
     'FeedForward': FeedForward,
