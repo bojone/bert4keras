@@ -59,6 +59,7 @@ class Transformer(object):
 
     def build(
         self,
+        attention_caches=None,
         layer_norm_cond=None,
         layer_norm_cond_hidden_size=None,
         layer_norm_cond_hidden_act=None,
@@ -75,6 +76,7 @@ class Transformer(object):
         inputs = self.get_inputs()
         self.set_inputs(inputs, additional_input_layers)
         # Other
+        self.attention_caches = attention_caches or {}
         self.layer_norm_conds = [
             layer_norm_cond,
             layer_norm_cond_hidden_size,
@@ -126,6 +128,12 @@ class Transformer(object):
         if inputs is None:
             return self.layers[name]
         else:
+            if isinstance(self.layers[name], MultiHeadAttention):
+                if name in self.attention_caches:
+                    k_cache, v_cache = self.attention_caches[name]
+                    k = Concatenate1D()([k_cache, inputs[1]])
+                    v = Concatenate1D()([v_cache, inputs[2]])
+                    inputs = inputs[:1] + [k, v] + inputs[3:]
             return self.layers[name](inputs, **arguments)
 
     def get_inputs(self):
