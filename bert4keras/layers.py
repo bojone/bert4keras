@@ -460,11 +460,13 @@ class PositionEmbedding(Layer):
             batch_size, seq_len = input_shape[0], input_shape[1]
             pos_embeddings = self.embeddings[:seq_len]
             pos_embeddings = K.expand_dims(pos_embeddings, 0)
-            if self.merge_mode != 'add':
+            if self.merge_mode not in ['add', 'mul']:
                 pos_embeddings = K.tile(pos_embeddings, [batch_size, 1, 1])
 
         if self.merge_mode == 'add':
             return inputs + pos_embeddings
+        elif self.merge_mode == 'mul':
+            return inputs * pos_embeddings
         else:
             return K.concatenate([inputs, pos_embeddings])
 
@@ -472,7 +474,7 @@ class PositionEmbedding(Layer):
         if self.custom_position_ids:
             input_shape = input_shape[0]
 
-        if self.merge_mode == 'add':
+        if self.merge_mode in ['add', 'mul']:
             return input_shape
         else:
             return input_shape[:2] + (input_shape[2] + self.output_dim,)
