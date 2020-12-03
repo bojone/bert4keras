@@ -364,6 +364,7 @@ class BERT(Transformer):
         with_pool=False,  # 是否包含Pool部分
         with_nsp=False,  # 是否包含NSP部分
         with_mlm=False,  # 是否包含MLM部分
+        hierarchical_position=None,  # 是否层次分解位置编码
         custom_position_ids=False,  # 是否自行传入位置id
         shared_segment_embeddings=False,  # 若True，则segment跟token共用embedding
         **kwargs  # 其余参数
@@ -374,6 +375,7 @@ class BERT(Transformer):
         self.with_pool = with_pool
         self.with_nsp = with_nsp
         self.with_mlm = with_mlm
+        self.hierarchical_position = hierarchical_position
         self.custom_position_ids = custom_position_ids
         self.shared_segment_embeddings = shared_segment_embeddings
         if self.with_nsp and not self.with_pool:
@@ -450,6 +452,7 @@ class BERT(Transformer):
             input_dim=self.max_position,
             output_dim=self.embedding_size,
             merge_mode='add',
+            hierarchical=self.hierarchical_position,
             embeddings_initializer=self.initializer,
             custom_position_ids=self.custom_position_ids,
             name='Embedding-Position'
@@ -1170,6 +1173,7 @@ class GPT(LM_Mask, BERT):
             input_dim=self.max_position,
             output_dim=self.embedding_size,
             merge_mode='add',
+            hierarchical=self.hierarchical_position,
             embeddings_initializer=self.initializer,
             custom_position_ids=self.custom_position_ids,
             name='Embedding-Position'
@@ -1267,6 +1271,7 @@ class GPT2(GPT):
             input_dim=self.max_position,
             output_dim=self.embedding_size,
             merge_mode='add',
+            hierarchical=self.hierarchical_position,
             embeddings_initializer=self.initializer,
             name='Embedding-Position'
         )
@@ -1433,6 +1438,7 @@ class GPT2_ML(GPT):
             input_dim=self.max_position,
             output_dim=self.embedding_size,
             merge_mode='add',
+            hierarchical=self.hierarchical_position,
             embeddings_initializer=self.initializer,
             name='Embedding-Position'
         )
