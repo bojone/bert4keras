@@ -463,7 +463,7 @@ class PositionEmbedding(Layer):
             position_ids = K.arange(0, seq_len, dtype='int32')[None]
 
         if self.hierarchical:
-            alpha = 2 / 3.0 if self.hierarchical is True else self.hierarchical
+            alpha = 0.25 if self.hierarchical is True else self.hierarchical
             embeddings = self.embeddings - alpha * self.embeddings[:1]
             embeddings = embeddings / (1 - alpha)
             embeddings_x = K.gather(embeddings, position_ids // self.input_dim)
