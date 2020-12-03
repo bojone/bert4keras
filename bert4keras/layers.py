@@ -428,6 +428,7 @@ class PositionEmbedding(Layer):
         input_dim,
         output_dim,
         merge_mode='add',
+        hierarchical=None,
         embeddings_initializer='zeros',
         custom_position_ids=False,
         **kwargs
@@ -436,6 +437,7 @@ class PositionEmbedding(Layer):
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.merge_mode = merge_mode
+        self.hierarchical = hierarchical
         self.embeddings_initializer = initializers.get(embeddings_initializer)
         self.custom_position_ids = custom_position_ids
 
@@ -450,23 +452,33 @@ class PositionEmbedding(Layer):
     def call(self, inputs):
         """如果custom_position_ids，那么第二个输入为自定义的位置id
         """
+        input_shape = K.shape(inputs)
+        batch_size, seq_len = input_shape[0], input_shape[1]
+
         if self.custom_position_ids:
             inputs, position_ids = inputs
             if K.dtype(position_ids) != 'int32':
                 position_ids = K.cast(position_ids, 'int32')
+        else:
+            position_ids = K.arange(0, seq_len, dtype='int32')[None]
+
+        if self.hierarchical is None:
             pos_embeddings = K.gather(self.embeddings, position_ids)
         else:
-            input_shape = K.shape(inputs)
-            batch_size, seq_len = input_shape[0], input_shape[1]
-            pos_embeddings = self.embeddings[None, :seq_len]
-            if self.merge_mode not in ['add', 'mul']:
-                pos_embeddings = K.tile(pos_embeddings, [batch_size, 1, 1])
+            alpha = 2 / 3.0 if self.hierarchical is True else self.hierarchical
+            embeddings = self.embeddings - alpha * self.embeddings[:1]
+            embeddings = embeddings / (1 - alpha)
+            embeddings_x = K.gather(embeddings, position_ids // self.input_dim)
+            embeddings_y = K.gather(embeddings, position_ids % self.input_dim)
+            pos_embeddings = alpha * embeddings_x + (1 - alpha) * embeddings_y
 
         if self.merge_mode == 'add':
             return inputs + pos_embeddings
         elif self.merge_mode == 'mul':
             return inputs * pos_embeddings
         else:
+            if not self.custom_position_ids:
+                pos_embeddings = K.tile(pos_embeddings, [batch_size, 1, 1])
             return K.concatenate([inputs, pos_embeddings])
 
     def compute_output_shape(self, input_shape):
@@ -483,6 +495,7 @@ class PositionEmbedding(Layer):
             'input_dim': self.input_dim,
             'output_dim': self.output_dim,
             'merge_mode': self.merge_mode,
+            'hierarchical': self.hierarchical,
             'embeddings_initializer':
                 initializers.serialize(self.embeddings_initializer),
             'custom_position_ids': self.custom_position_ids,
