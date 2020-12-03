@@ -458,8 +458,7 @@ class PositionEmbedding(Layer):
         else:
             input_shape = K.shape(inputs)
             batch_size, seq_len = input_shape[0], input_shape[1]
-            pos_embeddings = self.embeddings[:seq_len]
-            pos_embeddings = K.expand_dims(pos_embeddings, 0)
+            pos_embeddings = self.embeddings[None, :seq_len]
             if self.merge_mode not in ['add', 'mul']:
                 pos_embeddings = K.tile(pos_embeddings, [batch_size, 1, 1])
 
