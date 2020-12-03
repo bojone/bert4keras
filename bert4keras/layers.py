@@ -470,7 +470,10 @@ class PositionEmbedding(Layer):
             embeddings_y = K.gather(embeddings, position_ids % self.input_dim)
             pos_embeddings = alpha * embeddings_x + (1 - alpha) * embeddings_y
         else:
-            pos_embeddings = K.gather(self.embeddings, position_ids)
+            if self.custom_position_ids:
+                pos_embeddings = K.gather(self.embeddings, position_ids)
+            else:
+                pos_embeddings = self.embeddings[None, :seq_len]
 
         if self.merge_mode == 'add':
             return inputs + pos_embeddings
