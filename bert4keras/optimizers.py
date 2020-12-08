@@ -1044,7 +1044,6 @@ def extend_with_parameter_wise_lr(BaseOptimizer):
                         if k in x.name:
                             lr_multiplier *= v
                     if lr_multiplier != 1:
-                        print(x, lr_multiplier)
                         new_x = x + (new_x - x) * lr_multiplier
                 return old_update(x, new_x)
 
@@ -1090,7 +1089,6 @@ def extend_with_parameter_wise_lr_v2(BaseOptimizer):
                         if k in x.name:
                             lr_multiplier *= v
                     if lr_multiplier != 1:
-                        print(x, lr_multiplier, 2222)
                         new_x = x + (new_x - x) * lr_multiplier
                 return old_update(x, new_x)
 
