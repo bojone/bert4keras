@@ -132,24 +132,40 @@ class open:
 
 
 def parallel_apply(
-    func, iterable, workers, max_queue_size, callback=None, dummy=False
+    func,
+    iterable,
+    workers,
+    max_queue_size,
+    callback=None,
+    dummy=False,
+    random_seeds=True
 ):
     """多进程或多线程地将func应用到iterable的每个元素中。
     注意这个apply是异步且无序的，也就是说依次输入a,b,c，但是
     输出可能是func(c), func(a), func(b)。
     参数：
+        callback: 处理单个输出的回调函数；
         dummy: False是多进程/线性，True则是多线程/线性；
-        callback: 处理单个输出的回调函数。
+        random_seeds: 每个进程的随机种子。
     """
     if dummy:
         from multiprocessing.dummy import Pool, Queue
     else:
         from multiprocessing import Pool, Queue
 
-    in_queue, out_queue = Queue(max_queue_size), Queue()
+    in_queue, out_queue, seed_queue = Queue(max_queue_size), Queue(), Queue()
+    if random_seeds is True:
+        random_seeds = np.random.randint(0, 2**32, workers)
+    elif random_seeds is None or random_seeds is False:
+        random_seeds = []
+    for seed in random_seeds:
+        seed_queue.put(seed)
 
     def worker_step(in_queue, out_queue):
-        # 单步函数包装成循环执行
+        """单步函数包装成循环执行
+        """
+        if not seed_queue.empty():
+            np.random.seed(seed_queue.get())
         while True:
             i, d = in_queue.get()
             r = func(d)
