@@ -225,3 +225,4 @@ if __name__ == '__main__':
 else:
 
     model.load_weights('./best_model.weights')
+    NER.trans = K.eval(CRF.trans)
