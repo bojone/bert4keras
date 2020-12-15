@@ -111,7 +111,7 @@ if (not is_tf_keras) or tf.__version__ < '1.15':
 
         @arguments.setter
         def arguments(self, value):
-            self._arguments = value
+            self._arguments = value or {}
 
     if not is_tf_keras:
         keras.engine.base_layer.Node = Node
