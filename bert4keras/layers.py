@@ -68,18 +68,20 @@ if keras.__version__[-2:] != 'tf' and keras.__version__ < '2.3':
                     non_trainable_weights += l.weights
             return non_trainable_weights
 
-    import inspect
+    if keras.__version__ < '2.2.5':
 
-    class Model(keras.models.Model):
-        """重新定义Model，整合fit和fit_generator
-        """
-        def fit(self, x=None, *args, **kwargs):
-            if inspect.isgenerator(x):
-                return self.fit_generator(x, *args, **kwargs)
-            else:
-                return super(Model, self).fit(x, *args, **kwargs)
+        import inspect
 
-    keras.models.Model = Model
+        class Model(keras.models.Model):
+            """重新定义Model，整合fit和fit_generator
+            """
+            def fit(self, x=None, *args, **kwargs):
+                if inspect.isgenerator(x):
+                    return self.fit_generator(x, *args, **kwargs)
+                else:
+                    return super(Model, self).fit(x, *args, **kwargs)
+
+        keras.models.Model = Model
 
 else:
 
