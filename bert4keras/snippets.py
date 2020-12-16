@@ -212,7 +212,7 @@ def parallel_apply(
         return [r[1] for r in results]
 
 
-def sequence_padding(inputs, length=None, padding=0):
+def sequence_padding(inputs, length=None, padding=0, mode='post'):
     """Numpy函数，将序列padding到同一长度
     """
     if length is None:
@@ -222,7 +222,12 @@ def sequence_padding(inputs, length=None, padding=0):
     outputs = []
     for x in inputs:
         x = x[:length]
-        pad_width[0] = (0, length - len(x))
+        if mode == 'post':
+            pad_width[0] = (0, length - len(x))
+        elif mode == 'pre':
+            pad_width[0] = (length - len(x), 0)
+        else:
+            raise ValueError('"mode" argument must be "post" or "pre".')
         x = np.pad(x, pad_width, 'constant', constant_values=padding)
         outputs.append(x)
 
