@@ -495,14 +495,13 @@ class PositionEmbedding(Layer):
     def call(self, inputs):
         """如果custom_position_ids，那么第二个输入为自定义的位置id
         """
-        input_shape = K.shape(inputs)
-        batch_size, seq_len = input_shape[0], input_shape[1]
-
         if self.custom_position_ids:
             inputs, position_ids = inputs
             if K.dtype(position_ids) != 'int32':
                 position_ids = K.cast(position_ids, 'int32')
         else:
+            input_shape = K.shape(inputs)
+            batch_size, seq_len = input_shape[0], input_shape[1]
             position_ids = K.arange(0, seq_len, dtype='int32')[None]
 
         if self.hierarchical:
@@ -511,21 +510,21 @@ class PositionEmbedding(Layer):
             embeddings = embeddings / (1 - alpha)
             embeddings_x = K.gather(embeddings, position_ids // self.input_dim)
             embeddings_y = K.gather(embeddings, position_ids % self.input_dim)
-            pos_embeddings = alpha * embeddings_x + (1 - alpha) * embeddings_y
+            embeddings = alpha * embeddings_x + (1 - alpha) * embeddings_y
         else:
             if self.custom_position_ids:
-                pos_embeddings = K.gather(self.embeddings, position_ids)
+                embeddings = K.gather(self.embeddings, position_ids)
             else:
-                pos_embeddings = self.embeddings[None, :seq_len]
+                embeddings = self.embeddings[None, :seq_len]
 
         if self.merge_mode == 'add':
-            return inputs + pos_embeddings
+            return inputs + embeddings
         elif self.merge_mode == 'mul':
-            return inputs * pos_embeddings
+            return inputs * embeddings
         else:
             if not self.custom_position_ids:
-                pos_embeddings = K.tile(pos_embeddings, [batch_size, 1, 1])
-            return K.concatenate([inputs, pos_embeddings])
+                embeddings = K.tile(embeddings, [batch_size, 1, 1])
+            return K.concatenate([inputs, embeddings])
 
     def compute_output_shape(self, input_shape):
         if self.custom_position_ids:
@@ -564,33 +563,28 @@ class SinusoidalPositionEmbedding(Layer):
     def call(self, inputs):
         """如果custom_position_ids，那么第二个输入为自定义的位置id
         """
-        input_shape = K.shape(inputs)
-        batch_size, seq_len = input_shape[0], input_shape[1]
-
         if self.custom_position_ids:
+            seq_len = K.shape(inputs)[1]
             inputs, position_ids = inputs
         else:
+            input_shape = K.shape(inputs)
+            batch_size, seq_len = input_shape[0], input_shape[1]
             position_ids = K.arange(0, seq_len, dtype=K.floatx())[None]
 
         indices = K.arange(0, self.output_dim // 2, dtype=K.floatx())
         indices = K.pow(10000.0, -2 * indices / self.output_dim)
-        pos_embeddings = tf.einsum('bn,d->bnd', position_ids, indices)
-        pos_embeddings = K.concatenate([
-            K.sin(pos_embeddings)[..., None],
-            K.cos(pos_embeddings)[..., None]
-        ])
-        pos_embeddings = K.reshape(
-            pos_embeddings, (-1, seq_len, self.output_dim)
-        )
+        embeddings = tf.einsum('bn,d->bnd', position_ids, indices)
+        embeddings = K.stack([K.sin(embeddings), K.cos(embeddings)], axis=-1)
+        embeddings = K.reshape(embeddings, (-1, seq_len, self.output_dim))
 
         if self.merge_mode == 'add':
-            return inputs + pos_embeddings
+            return inputs + embeddings
         elif self.merge_mode == 'mul':
-            return inputs * pos_embeddings
+            return inputs * embeddings
         else:
             if not self.custom_position_ids:
-                pos_embeddings = K.tile(pos_embeddings, [batch_size, 1, 1])
-            return K.concatenate([inputs, pos_embeddings])
+                embeddings = K.tile(embeddings, [batch_size, 1, 1])
+            return K.concatenate([inputs, embeddings])
 
     def compute_output_shape(self, input_shape):
         if self.custom_position_ids:
