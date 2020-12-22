@@ -16,7 +16,8 @@ new_token_dict = token_dict.copy()
 compound_tokens = []
 
 for t, i in sorted(token_dict.items(), key=lambda s: s[1]):
-    # 这里只考虑两种情况：1、首字母大写；2、整个单词大写
+    # 这里只考虑两种情况：1、首字母大写；2、整个单词大写。
+    # Python2下，新增了5594个token；Python3下，新增了5596个token。
     tokens = []
     if t.isalpha():
         tokens.extend([t[:1].upper() + t[1:], t.upper()])
