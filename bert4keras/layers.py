@@ -279,8 +279,8 @@ class MultiHeadAttention(Layer):
 
     def pay_attention_to(self, inputs, mask=None, **kwargs):
         """实现标准的乘性多头注意力
-        a_mask: 对attention矩阵的mask。
-                不同的attention mask对应不同的应用。
+        a_bias: 对attention矩阵的bias。
+                不同的attention bias对应不同的应用。
         p_bias: 在attention里的位置偏置。
                 一般用来指定相对位置编码的种类。
         说明: 这里单独分离出pay_attention_to函数，是为了方便
@@ -289,9 +289,9 @@ class MultiHeadAttention(Layer):
         """
         (qw, kw, vw), n = inputs[:3], 3
         q_mask, v_mask = mask
-        a_mask, p_bias = kwargs.get('a_mask'), kwargs.get('p_bias')
-        if a_mask:
-            a_mask = inputs[n]
+        a_bias, p_bias = kwargs.get('a_bias'), kwargs.get('p_bias')
+        if a_bias:
+            a_bias = inputs[n]
             n += 1
         # Attention
         a = tf.einsum('bjhd,bkhd->bhjk', qw, kw)
@@ -305,9 +305,9 @@ class MultiHeadAttention(Layer):
         # Attention（续）
         if self.attention_scale:
             a = a / self.key_size**0.5
+        if a_bias is not None:
+            a = a + a_bias
         a = sequence_masking(a, v_mask, 1, -1)
-        if a_mask is not None:
-            a = a - (1 - a_mask) * 1e12
         a = K.softmax(a)
         # 完成输出
         o = tf.einsum('bhjk,bkhd->bjhd', a, vw)
