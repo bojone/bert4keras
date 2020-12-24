@@ -297,11 +297,13 @@ class MultiHeadAttention(Layer):
         a = tf.einsum('bjhd,bkhd->bhjk', qw, kw)
         # 处理位置编码
         if p_bias == 'typical_relative':
-            pos_embeddings = inputs[n]
-            a = a + tf.einsum('bjhd,jkd->bhjk', qw, pos_embeddings)
+            position_bias = inputs[n]
+            a = a + tf.einsum('bjhd,jkd->bhjk', qw, position_bias)
         elif p_bias == 't5_relative':
-            pos_embeddings = K.permute_dimensions(inputs[n], (2, 0, 1))
-            a = a + K.expand_dims(pos_embeddings, 0)
+            position_bias = K.permute_dimensions(inputs[n], (2, 0, 1))
+            a = a + K.expand_dims(position_bias, 0)
+        else:
+            a = a + inputs[n]
         # Attention（续）
         if self.attention_scale:
             a = a / self.key_size**0.5
@@ -312,7 +314,7 @@ class MultiHeadAttention(Layer):
         # 完成输出
         o = tf.einsum('bhjk,bkhd->bjhd', a, vw)
         if p_bias == 'typical_relative':
-            o = o + tf.einsum('bhjk,jkd->bjhd', a, pos_embeddings)
+            o = o + tf.einsum('bhjk,jkd->bjhd', a, position_bias)
         return o
 
     def compute_output_shape(self, input_shape):
