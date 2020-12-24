@@ -302,8 +302,6 @@ class MultiHeadAttention(Layer):
         elif p_bias == 't5_relative':
             position_bias = K.permute_dimensions(inputs[n], (2, 0, 1))
             a = a + K.expand_dims(position_bias, 0)
-        elif p_bias:
-            a = a + inputs[n]
         # Attention（续）
         if self.attention_scale:
             a = a / self.key_size**0.5
