@@ -125,7 +125,7 @@ class Embedding(keras.layers.Embedding):
     def compute_mask(self, inputs, mask=None):
         """为了适配T5，保证第一个token不被mask
         """
-        if self._current_mode == 'embedding':
+        if K.ndim(inputs) == 2:
             mask = super(Embedding, self).compute_mask(inputs, mask)
             if mask is not None:
                 mask1 = K.ones_like(mask[:, :1], dtype='bool')
@@ -138,7 +138,6 @@ class Embedding(keras.layers.Embedding):
         """新增mode参数，可以为embedding或dense。如果为embedding，
         则等价于普通Embedding层；如果为dense，则等价于无bias的Dense层。
         """
-        self._current_mode = mode
         if mode == 'embedding':
             return super(Embedding, self).call(inputs)
         else:
@@ -146,7 +145,11 @@ class Embedding(keras.layers.Embedding):
             return K.dot(inputs, kernel)
 
     def compute_output_shape(self, input_shape):
-        if self._current_mode == 'embedding':
+        """关于判据，本来是通过缓存call时的mode参数来判断的，但是后来发现
+        Keras在使用compute_output_shape的时候不一定配套调用了call函数，
+        所以缓存的mode可能是不准的，因此只能出此下策。
+        """
+        if len(input_shape) == 2:
             return super(Embedding, self).compute_output_shape(input_shape)
         else:
             return input_shape[:2] + (K.int_shape(self.embeddings)[0],)
