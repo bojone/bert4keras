@@ -122,7 +122,9 @@ class RandomSentiment(AutoRegressiveDecoder):
     def predict(self, inputs, output_ids, states):
         token_ids = output_ids
         segment_ids = np.zeros_like(token_ids)
-        return model.predict([token_ids, segment_ids, inputs[0]])[:, -1]
+        return self.last_token(model).predict([
+            token_ids, segment_ids, inputs[0]
+        ])
 
     def generate(self, label, n=1, topp=0.95):
         results = self.random_sample([[label]], n, topp=topp)  # 基于随机采样

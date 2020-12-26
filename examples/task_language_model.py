@@ -124,7 +124,7 @@ class StoryCompletion(AutoRegressiveDecoder):
         token_ids = inputs[0]
         token_ids = np.concatenate([token_ids, output_ids], 1)
         segment_ids = np.zeros_like(token_ids)
-        return model.predict([token_ids, segment_ids])[:, -1]
+        return self.last_token(model).predict([token_ids, segment_ids])
 
     def generate(self, text, n=1, topp=0.95):
         token_ids, _ = tokenizer.encode(text)

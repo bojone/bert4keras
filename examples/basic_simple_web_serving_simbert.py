@@ -43,7 +43,7 @@ class SynonymsGenerator(AutoRegressiveDecoder):
         token_ids, segment_ids = inputs
         token_ids = np.concatenate([token_ids, output_ids], 1)
         segment_ids = np.concatenate([segment_ids, np.ones_like(output_ids)], 1)
-        return seq2seq.predict([token_ids, segment_ids])[:, -1]
+        return self.last_token(seq2seq).predict([token_ids, segment_ids])
 
     def generate(self, text, n=1, topp=0.95):
         token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)

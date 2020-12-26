@@ -124,7 +124,7 @@ class QuestionAnswerGeneration(AutoRegressiveDecoder):
         token_ids, segment_ids = inputs
         token_ids = np.concatenate([token_ids, output_ids], 1)
         segment_ids = np.concatenate([segment_ids, np.ones_like(output_ids)], 1)
-        return model.predict([token_ids, segment_ids])[:, -1]
+        return self.last_token(model).predict([token_ids, segment_ids])
 
     def generate(self, passage, topk=1, topp=0.95):
         token_ids, segment_ids = tokenizer.encode(passage, maxlen=max_p_len)

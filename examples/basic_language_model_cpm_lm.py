@@ -45,7 +45,7 @@ class TextExpansion(AutoRegressiveDecoder):
     @AutoRegressiveDecoder.wraps(default_rtype='probas')
     def predict(self, inputs, output_ids, states):
         token_ids = np.concatenate([inputs[0], output_ids], 1)
-        return model.predict(token_ids)[:, -1]
+        return self.last_token(model).predict(token_ids)
 
     def generate(self, text, n=1, topp=0.95, temperature=1):
         """输出结果会有一定的随机性，如果只关心Few Shot效果，

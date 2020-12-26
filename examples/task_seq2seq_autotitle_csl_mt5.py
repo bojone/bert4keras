@@ -111,7 +111,7 @@ class AutoTitle(AutoRegressiveDecoder):
     @AutoRegressiveDecoder.wraps(default_rtype='probas')
     def predict(self, inputs, output_ids, states):
         c_encoded = inputs[0]
-        return decoder.predict([c_encoded, output_ids])[:, -1]
+        return self.last_token(decoder).predict([c_encoded, output_ids])
 
     def generate(self, text, topk=1):
         c_token_ids, _ = tokenizer.encode(text, maxlen=max_c_len)
