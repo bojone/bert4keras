@@ -500,7 +500,7 @@ class PositionEmbedding(Layer):
         """
         if self.custom_position_ids:
             inputs, position_ids = inputs
-            if K.dtype(position_ids) != 'int32':
+            if 'int' not in K.dtype(position_ids):
                 position_ids = K.cast(position_ids, 'int32')
         else:
             input_shape = K.shape(inputs)
@@ -569,6 +569,8 @@ class SinusoidalPositionEmbedding(Layer):
         if self.custom_position_ids:
             seq_len = K.shape(inputs)[1]
             inputs, position_ids = inputs
+            if 'float' not in K.dtype(position_ids):
+                position_ids = K.cast(position_ids, K.floatx())
         else:
             input_shape = K.shape(inputs)
             batch_size, seq_len = input_shape[0], input_shape[1]
