@@ -8,6 +8,7 @@ import re
 import sys
 from collections import defaultdict
 import json
+import keras
 
 _open_ = open
 is_py2 = six.PY2
@@ -380,11 +381,12 @@ class AutoRegressiveDecoder(object):
     """通用自回归生成模型解码基类
     包含beam search和random sample两种策略
     """
-    def __init__(self, start_id, end_id, maxlen, minlen=None):
+    def __init__(self, start_id, end_id, maxlen, minlen=1):
         self.start_id = start_id
         self.end_id = end_id
         self.maxlen = maxlen
-        self.minlen = minlen or 1
+        self.minlen = minlen
+        self.models = {}
         if start_id is None:
             self.first_output_ids = np.empty((1, 0), dtype=int)
         else:
@@ -429,6 +431,18 @@ class AutoRegressiveDecoder(object):
             return new_predict
 
         return actual_decorator
+
+    def last_token(self, model):
+        """创建一个只返回最后一个token输出的新Model
+        """
+        if model not in self.models:
+            outputs = [
+                keras.layers.Lambda(lambda x: x[:, -1])(output)
+                for output in model.outputs
+            ]
+            self.models[model] = keras.models.Model(model.inputs, outputs)
+
+        return self.models[model]
 
     def predict(self, inputs, output_ids, states=None):
         """用户需自定义递归预测函数
