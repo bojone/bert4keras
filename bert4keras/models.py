@@ -216,9 +216,13 @@ class Transformer(object):
             embeddings = embeddings[self.keep_tokens]
 
         if self.compound_tokens is not None:
-            ext_embeddings = np.array([
-                embeddings[idxs].mean(0) for idxs in self.compound_tokens
-            ])
+            ext_embeddings = []
+            for item in self.compound_tokens:
+                if isinstance(item, list):
+                    item = (item, [1] * len(item))
+                ext_embeddings.append(
+                    np.average(embeddings[item[0]], 0, item[1])
+                )
             embeddings = np.concatenate([embeddings, ext_embeddings], 0)
 
         return embeddings
