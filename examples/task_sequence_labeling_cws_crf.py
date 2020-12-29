@@ -21,7 +21,7 @@ epochs = 10
 num_labels = 4
 batch_size = 32
 bert_layers = 12
-learing_rate = 1e-5  # bert_layers越小，学习率应该要越大
+learning_rate = 1e-5  # bert_layers越小，学习率应该要越大
 crf_lr_multiplier = 1  # 必要时扩大CRF层的学习率
 
 # bert配置
@@ -123,7 +123,7 @@ model.summary()
 
 model.compile(
     loss=CRF.sparse_loss,
-    optimizer=Adam(learing_rate),
+    optimizer=Adam(learning_rate),
     metrics=[CRF.sparse_accuracy]
 )
 
