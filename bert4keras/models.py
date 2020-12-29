@@ -28,6 +28,7 @@ class Transformer(object):
         sequence_length=None,  # 是否固定序列长度
         keep_tokens=None,  # 要保留的词ID列表
         compound_tokens=None,  # 扩展Embedding
+        residual_attention_scores=False,  # Attention矩阵加残差
         layers=None,  # 外部传入的Keras层
         prefix=None,  # 层名前缀
         name=None,  # 模型名称
@@ -52,6 +53,8 @@ class Transformer(object):
         self.compound_tokens = compound_tokens
         self.attention_bias = None
         self.position_bias = None
+        self.attention_scores = None
+        self.residual_attention_scores = residual_attention_scores
         self.layers = {} if layers is None else layers
         self.prefix = prefix or ''
         self.name = name
@@ -119,6 +122,9 @@ class Transformer(object):
         if layer is Dropout and self.dropout_rate == 0:
             return inputs
 
+        if layer is MultiHeadAttention and self.residual_attention_scores:
+            kwargs['return_attention_scores'] = True
+
         arguments = arguments or {}
         name = self.prefixed(kwargs.get('name'))
         kwargs['name'] = name
@@ -137,6 +143,18 @@ class Transformer(object):
                     k = Concatenate1D(name=k_name)([k_cache, inputs[1]])
                     v = Concatenate1D(name=v_name)([v_cache, inputs[2]])
                     inputs = inputs[:1] + [k, v] + inputs[3:]
+                if self.residual_attention_scores:
+                    if self.attention_scores is not None:
+                        if arguments.get('a_bias'):
+                            a_bias = Add(name=name + '-Attention-Bias'
+                                        )([inputs[3], self.attention_scores])
+                        else:
+                            a_bias = self.attention_scores
+                        inputs = inputs[:3] + [a_bias] + inputs[4:]
+                        arguments['a_bias'] = True
+                    o, a = self.layers[name](inputs, **arguments)
+                    self.attention_scores = a
+                    return o
             return self.layers[name](inputs, **arguments)
 
     def get_inputs(self):
