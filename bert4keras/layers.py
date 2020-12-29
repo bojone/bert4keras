@@ -211,6 +211,7 @@ class MultiHeadAttention(Layer):
         key_size=None,
         use_bias=True,
         attention_scale=True,
+        return_attention_scores=False,
         kernel_initializer='glorot_uniform',
         **kwargs
     ):
@@ -221,6 +222,7 @@ class MultiHeadAttention(Layer):
         self.key_size = key_size or head_size
         self.use_bias = use_bias
         self.attention_scale = attention_scale
+        self.return_attention_scores = return_attention_scores
         self.kernel_initializer = initializers.get(kernel_initializer)
 
     def build(self, input_shape):
@@ -272,13 +274,16 @@ class MultiHeadAttention(Layer):
         # Attention
         qkv_inputs = [qw, kw, vw] + inputs[3:]
         qv_masks = [q_mask, v_mask]
-        o = self.pay_attention_to(qkv_inputs, qv_masks, **kwargs)
+        o, a = self.pay_attention_to(qkv_inputs, qv_masks, **kwargs)
         # 完成输出
         o = K.reshape(o, (-1, K.shape(o)[1], self.head_size * self.heads))
         o = self.o_dense(o)
         # 返回结果
         o = sequence_masking(o, q_mask, 0)
-        return o
+        if self.return_attention_scores:
+            return [o, a]
+        else:
+            return o
 
     def pay_attention_to(self, inputs, mask=None, **kwargs):
         """实现标准的乘性多头注意力
@@ -311,19 +316,30 @@ class MultiHeadAttention(Layer):
         if a_bias is not None:
             a = a + a_bias
         a = sequence_masking(a, v_mask, 1, -1)
-        a = K.softmax(a)
+        A = K.softmax(a)
         # 完成输出
-        o = tf.einsum('bhjk,bkhd->bjhd', a, vw)
+        o = tf.einsum('bhjk,bkhd->bjhd', A, vw)
         if p_bias == 'typical_relative':
-            o = o + tf.einsum('bhjk,jkd->bjhd', a, position_bias)
-        return o
+            o = o + tf.einsum('bhjk,jkd->bjhd', A, position_bias)
+        return o, a
 
     def compute_output_shape(self, input_shape):
-        return (input_shape[0][0], input_shape[0][1], self.out_dim)
+        o_shape = (input_shape[0][0], input_shape[0][1], self.out_dim)
+        if self.return_attention_scores:
+            a_shape = (
+                input_shape[0][0], self.heads, input_shape[0][1],
+                input_shape[1][1]
+            )
+            return [o_shape, a_shape]
+        else:
+            return o_shape
 
     def compute_mask(self, inputs, mask=None):
         if mask is not None:
-            return mask[0]
+            if self.return_attention_scores:
+                return [mask[0], None]
+            else:
+                return mask[0]
 
     def get_config(self):
         config = {
@@ -333,6 +349,7 @@ class MultiHeadAttention(Layer):
             'key_size': self.key_size,
             'use_bias': self.use_bias,
             'attention_scale': self.attention_scale,
+            'return_attention_scores': self.return_attention_scores,
             'kernel_initializer':
                 initializers.serialize(self.kernel_initializer),
         }
