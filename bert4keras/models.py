@@ -138,12 +138,16 @@ class Transformer(object):
         else:
             if isinstance(self.layers[name], MultiHeadAttention):
                 if name in self.attention_caches:
+                    # 如果检测到Cache的传入，那么自动在Key,Value处拼接起来
                     k_cache, v_cache = self.attention_caches[name]
                     k_name, v_name = name + '-Cached-Key', name + '-Cached-Value'
                     k = Concatenate1D(name=k_name)([k_cache, inputs[1]])
                     v = Concatenate1D(name=v_name)([v_cache, inputs[2]])
                     inputs = inputs[:1] + [k, v] + inputs[3:]
                 if self.residual_attention_scores:
+                    # 如果使用残差Attention矩阵，则给每个Attention矩阵加上前上一层的Attention
+                    # 矩阵，这对应RealFormer设计（https://arxiv.org/abs/2012.11747）。目前
+                    # 该实现还相对粗糙，可能欠缺通用性。
                     if self.attention_scores is not None:
                         if arguments.get('a_bias'):
                             a_bias = Add(name=name + '-Attention-Bias'
