@@ -156,7 +156,7 @@ def parallel_apply(
 
     in_queue, out_queue, seed_queue = Queue(max_queue_size), Queue(), Queue()
     if random_seeds is True:
-        random_seeds = np.random.randint(0, 2**32, workers)
+        random_seeds = [None] * workers
     elif random_seeds is None or random_seeds is False:
         random_seeds = []
     for seed in random_seeds:
