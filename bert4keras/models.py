@@ -257,10 +257,13 @@ class Transformer(object):
         else:
             return tf.train.load_variable(checkpoint, name)
 
-    def create_variable(self, name, value):
+    def create_variable(self, name, value, dtype=None):
         """创建一个变量
         """
-        return K.variable(self.initializer(value.shape), name=name), value
+        dtype = dtype or K.floatx()
+        return K.variable(
+            self.initializer(value.shape, dtype), dtype, name=name
+        ), value
 
     def variable_mapping(self):
         """构建keras层与checkpoint的变量名之间的映射表
@@ -307,7 +310,7 @@ class Transformer(object):
 
         K.batch_set_value(weight_value_pairs)
 
-    def save_weights_as_checkpoint(self, filename, mapping=None):
+    def save_weights_as_checkpoint(self, filename, mapping=None, dtype=None):
         """根据mapping将权重保存为checkpoint格式
         """
         mapping = mapping or self.variable_mapping()
@@ -320,7 +323,7 @@ class Transformer(object):
                 layer = self.layers[layer]
                 values = K.batch_get_value(layer.trainable_weights)
                 for name, value in zip(variables, values):
-                    variable, value = self.create_variable(name, value)
+                    variable, value = self.create_variable(name, value, dtype)
                     all_variables.append(variable)
                     all_values.append(value)
             with tf.Session() as sess:
@@ -683,12 +686,12 @@ class BERT(Transformer):
         else:
             return variable
 
-    def create_variable(self, name, value):
+    def create_variable(self, name, value, dtype=None):
         """在tensorflow中创建一个变量
         """
         if name == 'cls/seq_relationship/output_weights':
             value = value.T
-        return super(BERT, self).create_variable(name, value)
+        return super(BERT, self).create_variable(name, value, dtype)
 
     def variable_mapping(self):
         """映射到官方BERT权重格式
@@ -1645,12 +1648,12 @@ class T5_Base(Transformer):
         else:
             return variable
 
-    def create_variable(self, name, value):
+    def create_variable(self, name, value, dtype=None):
         """在tensorflow中创建一个变量
         """
         if 'relative_attention_bias' in name:
             value = value.T
-        return super(T5_Base, self).create_variable(name, value)
+        return super(T5_Base, self).create_variable(name, value, dtype)
 
     def variable_mapping(self):
         """映射到官方T5权重格式
