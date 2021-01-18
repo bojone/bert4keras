@@ -540,7 +540,7 @@ class PositionEmbedding(Layer):
         if self.merge_mode == 'add':
             return inputs + embeddings
         elif self.merge_mode == 'mul':
-            return inputs * embeddings
+            return inputs * (embeddings + 1.0)
         else:
             if not self.custom_position_ids:
                 embeddings = K.tile(embeddings, [batch_size, 1, 1])
@@ -602,7 +602,7 @@ class SinusoidalPositionEmbedding(Layer):
         if self.merge_mode == 'add':
             return inputs + embeddings
         elif self.merge_mode == 'mul':
-            return inputs * embeddings
+            return inputs * (embeddings + 1.0)
         else:
             if not self.custom_position_ids:
                 embeddings = K.tile(embeddings, [batch_size, 1, 1])
