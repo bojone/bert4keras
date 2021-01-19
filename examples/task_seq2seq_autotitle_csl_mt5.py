@@ -125,6 +125,7 @@ autotitle = AutoTitle(
     start_id=0, end_id=tokenizer._token_end_id, maxlen=max_t_len
 )
 
+
 class Evaluator(keras.callbacks.Callback):
     """评估与保存
     """
