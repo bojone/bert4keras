@@ -186,7 +186,9 @@ class Tokenizer(TokenizerBase):
     """Bert原生分词器
     纯Python实现，代码修改自keras_bert的tokenizer实现
     """
-    def __init__(self, token_dict, do_lower_case=False, **kwargs):
+    def __init__(
+        self, token_dict, do_lower_case=False, word_maxlen=200, **kwargs
+    ):
         super(Tokenizer, self).__init__(**kwargs)
         if is_string(token_dict):
             token_dict = load_vocab(token_dict)
@@ -195,6 +197,7 @@ class Tokenizer(TokenizerBase):
         self._token_dict = token_dict
         self._token_dict_inv = {v: k for k, v in token_dict.items()}
         self._vocab_size = len(token_dict)
+        self._word_maxlen = word_maxlen
 
         for token in ['pad', 'unk', 'mask', 'start', 'end']:
             try:
@@ -285,26 +288,31 @@ class Tokenizer(TokenizerBase):
     def _word_piece_tokenize(self, word):
         """word内分成subword
         """
-        if word in self._token_dict:
+        if len(word) > self._word_maxlen:
             return [word]
 
-        tokens = []
-        start, stop = 0, 0
+        tokens, is_bad = [], False
+        start, end = 0, 0
         while start < len(word):
-            stop = len(word)
-            while stop > start:
-                sub = word[start:stop]
+            end = len(word)
+            while end > start:
+                sub = word[start:end]
                 if start > 0:
                     sub = '##' + sub
                 if sub in self._token_dict:
                     break
-                stop -= 1
-            if start == stop:
-                stop += 1
-            tokens.append(sub)
-            start = stop
+                end -= 1
+            if start == end:
+                is_bad = True
+                break
+            else:
+                tokens.append(sub)
+                start = end
 
-        return tokens
+        if is_bad:
+            return [word]
+        else:
+            return tokens
 
     @staticmethod
     def stem(token):
