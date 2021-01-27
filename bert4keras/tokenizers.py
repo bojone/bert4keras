@@ -291,8 +291,7 @@ class Tokenizer(TokenizerBase):
         if len(word) > self._word_maxlen:
             return [word]
 
-        tokens, is_bad = [], False
-        start, end = 0, 0
+        tokens, start, end = [], 0, 0
         while start < len(word):
             end = len(word)
             while end > start:
@@ -303,16 +302,12 @@ class Tokenizer(TokenizerBase):
                     break
                 end -= 1
             if start == end:
-                is_bad = True
-                break
+                return [word]
             else:
                 tokens.append(sub)
                 start = end
 
-        if is_bad:
-            return [word]
-        else:
-            return tokens
+        return tokens
 
     @staticmethod
     def stem(token):
