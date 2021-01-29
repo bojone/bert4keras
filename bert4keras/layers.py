@@ -1128,7 +1128,7 @@ class Loss(Layer):
 
     def call(self, inputs, mask=None):
         loss = self.compute_loss(inputs, mask)
-        self.add_loss(loss)
+        self.add_loss(loss, inputs=inputs)
         if self.output_axis is None:
             return inputs
         elif isinstance(self.output_axis, list):
