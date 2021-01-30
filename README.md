@@ -76,7 +76,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 - 注2：下载下来的ELECTRA权重，如果没有json配置文件的话，参考<a href="https://github.com/ymcui/Chinese-ELECTRA/issues/3">这里</a>自己改一个（需要加上`type_vocab_size`字段）。
 
 ## 更新
-- <strong>2021.01.30</strong>: 完善多GPU支持，增加多GPU例子：[task_seq2seq_autotitle_mltigpu.py](https://github.com/bojone/bert4keras/blob/master/examples/task_seq2seq_autotitle_mltigpu.py)。
+- <strong>2021.01.30</strong>: 完善多GPU支持，增加多GPU例子：[task_seq2seq_autotitle_multigpu.py](https://github.com/bojone/bert4keras/blob/master/examples/task_seq2seq_autotitle_multigpu.py)。
 - <strong>2020.12.29</strong>: 增加`residual_attention_scores`参数来实现RealFormer，只需要在`build_transformer_model`中传入参数`residual_attention_scores=True`启用。
 - <strong>2020.12.04</strong>: `PositionEmbedding`引入层次分解，可以让BERT直接处理超长文本，在`build_transformer_model`中传入参数`hierarchical_position=True`启用。
 - <strong>2020.11.19</strong>: 支持GPT2模型，参考[CPM_LM_bert4keras](https://github.com/bojone/CPM_LM_bert4keras)项目。
