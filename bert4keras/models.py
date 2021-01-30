@@ -234,6 +234,8 @@ class Transformer(object):
     def load_embeddings(self, embeddings):
         """处理Embedding层权重
         """
+        embeddings = embeddings.astype(K.floatx())  # 防止np.average报错
+
         if self.keep_tokens is not None:
             embeddings = embeddings[self.keep_tokens]
 
