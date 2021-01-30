@@ -5,6 +5,7 @@
 ## 简介
 
 - [basic_extract_features.py](https://github.com/bojone/bert4keras/tree/master/examples/basic_extract_features.py): 基础测试，测试BERT对句子的编码序列。
+- [basic_gibbs_sampling_via_mlm.py](https://github.com/bojone/bert4keras/tree/master/examples/basic_gibbs_sampling_via_mlm.py): 基础测试，利用BERT+Gibbs采样进行文本随机生成，参考[这里](https://kexue.fm/archives/8119)。
 - [basic_language_model_cpm_lm.py](https://github.com/bojone/bert4keras/tree/master/examples/basic_language_model_cpm_lm.py): 基础测试，测试[CPM_LM](https://github.com/TsinghuaAI/CPM-Generate)的生成效果。
 - [basic_language_model_gpt2_ml.py](https://github.com/bojone/bert4keras/tree/master/examples/basic_language_model_gpt2_ml.py): 基础测试，测试[GPT2_ML](https://github.com/imcaspar/gpt2-ml)的生成效果。
 - [basic_language_model_nezha_gen_gpt.py](https://github.com/bojone/bert4keras/tree/master/examples/basic_language_model_nezha_gen_gpt.py): 基础测试，测试[GPT Base（又叫NEZHE-GEN）](https://github.com/huawei-noah/Pretrained-Language-Model/tree/master/NEZHA-Gen-TensorFlow)的生成效果。
