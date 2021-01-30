@@ -336,11 +336,8 @@ class DataGenerator(object):
         如果传入names的话，自动把数据包装成dict形式。
         """
         if names is None:
-
             generator = self.forfit
-
         else:
-
             if is_string(names):
                 warps = lambda k, v: {k: v}
             elif is_string(names[0]):
@@ -361,6 +358,7 @@ class DataGenerator(object):
             generator, output_types=types, output_shapes=shapes
         )
         dataset = dataset.batch(self.batch_size)
+
         return dataset
 
 
