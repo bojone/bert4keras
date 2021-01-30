@@ -8,7 +8,8 @@ import re
 import sys
 from collections import defaultdict
 import json
-import keras
+import tensorflow as tf
+from bert4keras.backend import K, keras
 
 _open_ = open
 is_py2 = six.PY2
@@ -16,7 +17,7 @@ is_py2 = six.PY2
 if not is_py2:
     basestring = str
 
-    
+
 def to_array(*args):
     """批量转numpy的array
     """
@@ -692,8 +693,6 @@ class WebServing(object):
     """
     def __init__(self, host='0.0.0.0', port=8000, server='paste'):
 
-        import tensorflow as tf
-        from bert4keras.backend import K
         import bottle
 
         self.host = host
