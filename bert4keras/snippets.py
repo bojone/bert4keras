@@ -330,6 +330,38 @@ class DataGenerator(object):
             for d in self.__iter__(random):
                 yield d
 
+    def to_dataset(self, types, shapes, names=None):
+        """转为tf.data.Dataset格式
+        如果传入names的话，自动把数据包装成dict形式。
+        """
+        if names is None:
+
+            generator = self.forfit
+
+        else:
+
+            if is_string(names):
+                warps = lambda k, v: {k: v}
+            elif is_string(names[0]):
+                warps = lambda k, v: dict(zip(k, v))
+            else:
+                warps = lambda k, v: tuple(
+                    dict(zip(i, j)) for i, j in zip(k, v)
+                )
+
+            def generator():
+                for d in self.forfit():
+                    yield warps(names, d)
+
+            types = warps(names, types)
+            shapes = warps(names, shapes)
+
+        dataset = tf.data.Dataset.from_generator(
+            generator, output_types=types, output_shapes=shapes
+        )
+        dataset = dataset.batch(self.batch_size)
+        return dataset
+
 
 class ViterbiDecoder(object):
     """Viterbi解码算法基类
