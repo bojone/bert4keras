@@ -22,7 +22,7 @@ import tensorflow as tf  # 导入tf，备用
 
 # 基本参数
 maxlen = 256
-batch_size = 16
+batch_size = 64
 steps_per_epoch = 1000
 epochs = 10000
 
@@ -57,9 +57,6 @@ class data_generator(DataGenerator):
                 token_ids, segment_ids = tokenizer.encode(
                     content, title, maxlen=maxlen
                 )
-                # 样本长度需要固定
-                token_ids = token_ids + [0] * (maxlen - len(token_ids))
-                segment_ids = segment_ids + [0] * (maxlen - len(segment_ids))
                 # 返回一条样本
                 yield token_ids, segment_ids
 
@@ -148,8 +145,9 @@ if __name__ == '__main__':
     train_generator = data_generator(txts, batch_size)
     dataset = train_generator.to_dataset(
         types=('float32', 'float32'),
-        shapes=(maxlen, maxlen),
-        names=('Input-Token', 'Input-Segment')
+        shapes=([None], [None]),  # 配合后面的padded_batch=True，实现自动padding
+        names=('Input-Token', 'Input-Segment'),
+        padded_batch=True
     )  # 数据要转为tf.data.Dataset格式，names跟输入层的名字对应
 
     model.fit(
