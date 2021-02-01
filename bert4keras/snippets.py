@@ -239,6 +239,7 @@ def sequence_padding(inputs, length=None, padding=0, mode='post'):
 def truncate_sequences(maxlen, index, *sequences):
     """截断总长度至不超过maxlen
     """
+    sequences = [s for s in sequences if s]
     while True:
         lengths = [len(s) for s in sequences]
         if sum(lengths) > maxlen:
