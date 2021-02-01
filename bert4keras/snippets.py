@@ -236,6 +236,18 @@ def sequence_padding(inputs, length=None, padding=0, mode='post'):
     return np.array(outputs)
 
 
+def truncate_sequences(maxlen, index, *sequences):
+    """截断总长度至不超过maxlen
+    """
+    while True:
+        lengths = [len(s) for s in sequences]
+        if sum(lengths) > maxlen:
+            i = np.argmax(lengths)
+            sequences[i].pop(index)
+        else:
+            return sequences
+
+
 def text_segmentate(text, maxlen, seps='\n', strips=None):
     """将文本按照标点符号划分为若干个短句
     """
