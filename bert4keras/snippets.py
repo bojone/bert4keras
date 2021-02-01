@@ -331,13 +331,16 @@ class DataGenerator(object):
             for d in self.__iter__(random):
                 yield d
 
-    def to_dataset(self, types, shapes, names=None):
+    def to_dataset(self, types, shapes, names=None, padded_batch=False):
         """转为tf.data.Dataset格式
         如果传入names的话，自动把数据包装成dict形式。
         """
         if names is None:
+
             generator = self.forfit
+
         else:
+
             if is_string(names):
                 warps = lambda k, v: {k: v}
             elif is_string(names[0]):
@@ -354,10 +357,16 @@ class DataGenerator(object):
             types = warps(names, types)
             shapes = warps(names, shapes)
 
-        dataset = tf.data.Dataset.from_generator(
-            generator, output_types=types, output_shapes=shapes
-        )
-        dataset = dataset.batch(self.batch_size)
+        if padded_batch:
+            dataset = tf.data.Dataset.from_generator(
+                generator, output_types=types
+            )
+            dataset = dataset.padded_batch(self.batch_size, shapes)
+        else:
+            dataset = tf.data.Dataset.from_generator(
+                generator, output_types=types, output_shapes=shapes
+            )
+            dataset = dataset.batch(self.batch_size)
 
         return dataset
 
