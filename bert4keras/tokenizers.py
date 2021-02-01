@@ -5,6 +5,7 @@ import unicodedata, re
 from bert4keras.snippets import is_string, is_py2
 from bert4keras.snippets import open
 from bert4keras.snippets import convert_to_unicode
+from bert4keras.snippets import truncate_sequences
 
 
 def load_vocab(dict_path, encoding='utf-8', simplified=False, startswith=None):
@@ -95,7 +96,7 @@ class TokenizerBase(object):
 
         if maxlen is not None:
             index = int(self._token_end is not None) + 1
-            self.truncate_sequence(maxlen, tokens, None, -index)
+            truncate_sequences(maxlen, -index, tokens)
 
         return tokens
 
@@ -108,23 +109,6 @@ class TokenizerBase(object):
         """token序列转换为对应的id序列
         """
         return [self.token_to_id(token) for token in tokens]
-
-    def truncate_sequence(
-        self, maxlen, first_sequence, second_sequence=None, pop_index=-1
-    ):
-        """截断总长度
-        """
-        if second_sequence is None:
-            second_sequence = []
-
-        while True:
-            total_length = len(first_sequence) + len(second_sequence)
-            if total_length <= maxlen:
-                break
-            elif len(first_sequence) > len(second_sequence):
-                first_sequence.pop(pop_index)
-            else:
-                second_sequence.pop(pop_index)
 
     def encode(
         self, first_text, second_text=None, maxlen=None, pattern='S*E*E'
@@ -148,7 +132,8 @@ class TokenizerBase(object):
             second_tokens = second_text
 
         if maxlen is not None:
-            self.truncate_sequence(maxlen, first_tokens, second_tokens, -2)
+            index = int(self._token_end is not None) + 1
+            truncate_sequences(maxlen, -index, first_tokens, second_tokens)
 
         first_token_ids = self.tokens_to_ids(first_tokens)
         first_segment_ids = [0] * len(first_token_ids)
