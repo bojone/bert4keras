@@ -83,4 +83,4 @@ if __name__ == '__main__':
     web = WebServing(port=8864)
     web.route('/gen_synonyms', gen_synonyms, arguments)
     web.start()
-    # 现在可以测试访问 https://127.0.0.1:8864/gen_synonyms?text=苹果多少钱一斤
+    # 现在可以测试访问 http://127.0.0.1:8864/gen_synonyms?text=苹果多少钱一斤
