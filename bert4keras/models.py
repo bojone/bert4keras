@@ -29,6 +29,7 @@ class Transformer(object):
         keep_tokens=None,  # 要保留的词ID列表
         compound_tokens=None,  # 扩展Embedding
         residual_attention_scores=False,  # Attention矩阵加残差
+        ignore_invalid_weights=False,  # 允许跳过不存在的权重
         layers=None,  # 外部传入的Keras层
         prefix=None,  # 层名前缀
         name=None,  # 模型名称
@@ -55,6 +56,7 @@ class Transformer(object):
         self.position_bias = None
         self.attention_scores = None
         self.residual_attention_scores = residual_attention_scores
+        self.ignore_invalid_weights = ignore_invalid_weights
         self.layers = {} if layers is None else layers
         self.prefix = prefix or ''
         self.name = name
@@ -283,7 +285,17 @@ class Transformer(object):
         for layer, variables in mapping.items():
             layer = self.layers[layer]
             weights = layer.trainable_weights
-            values = [self.load_variable(checkpoint, v) for v in variables]
+            values = []
+
+            for v in variables:  # 允许跳过不存在的权重
+                try:
+                    values.append(self.load_variable(checkpoint, v))
+                except Exception as e:
+                    if self.ignore_invalid_weights:
+                        values.append(None)
+                        print('%s, but ignored.' % e.message)
+                    else:
+                        raise e
 
             if isinstance(layer, MultiHeadAttention):
                 """如果key_size不等于head_size，则可以通过
@@ -300,6 +312,8 @@ class Transformer(object):
                     W = W * key_size**0.25 / head_size**0.25
                 for i in range(count):
                     w, v = weights[i], values[i]
+                    if v is None:
+                        continue
                     w_shape, v_shape = K.int_shape(w), v.shape
                     if w_shape[-1] != v_shape[-1]:
                         pre_shape = w_shape[:-1]
@@ -308,7 +322,9 @@ class Transformer(object):
                         v = v.reshape(pre_shape + (heads * key_size,))
                         values[i] = v
 
-            weight_value_pairs.extend(zip(weights, values))
+            weight_value_pairs.extend([
+                (w, v) for w, v in zip(weights, values) if v is not None
+            ])
 
         K.batch_set_value(weight_value_pairs)
 
