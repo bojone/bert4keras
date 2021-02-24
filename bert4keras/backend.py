@@ -123,13 +123,15 @@ def sequence_masking(x, mask, value=0.0, axis=None):
     if mask is None:
         return x
     else:
+        if K.dtype(mask) != K.dtype(x):
+            mask = K.cast(mask, K.dtype(x))
         if value == '-inf':
             value = -1e12
         elif value == 'inf':
             value = 1e12
         if axis is None:
             axis = 1
-        if axis < 0:
+        elif axis < 0:
             axis = K.ndim(x) + axis
         assert axis > 0, 'axis must be greater than 0'
         for _ in range(axis - 1):
