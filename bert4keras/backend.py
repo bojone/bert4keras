@@ -114,16 +114,19 @@ def search_layer(inputs, name, exclude_from=None):
                     return layer
 
 
-def sequence_masking(x, mask, mode=0, axis=None):
+def sequence_masking(x, mask, value=0.0, axis=None):
     """为序列条件mask的函数
     mask: 形如(batch_size, seq_len)的0-1矩阵；
-    mode: 如果是0，则直接乘以mask；
-          如果是1，则在padding部分减去一个大正数。
+    value: mask部分要被替换成的值，可以是'-inf'或'inf'；
     axis: 序列所在轴，默认为1；
     """
-    if mask is None or mode not in [0, 1]:
+    if mask is None:
         return x
     else:
+        if value == '-inf':
+            value = -1e12
+        elif value == 'inf':
+            value = 1e12
         if axis is None:
             axis = 1
         if axis < 0:
@@ -133,10 +136,7 @@ def sequence_masking(x, mask, mode=0, axis=None):
             mask = K.expand_dims(mask, 1)
         for _ in range(K.ndim(x) - K.ndim(mask)):
             mask = K.expand_dims(mask, K.ndim(mask))
-        if mode == 0:
-            return x * mask
-        else:
-            return x - (1 - mask) * 1e12
+        return x * mask + value * (1 - mask)
 
 
 def batch_gather(params, indices):
