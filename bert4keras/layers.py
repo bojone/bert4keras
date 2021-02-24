@@ -122,17 +122,22 @@ if (not is_tf_keras) or tf.__version__ < '1.15':
 class Embedding(keras.layers.Embedding):
     """拓展Embedding层
     """
+
     def compute_mask(self, inputs, mask=None):
         """为了适配T5，保证第一个token不被mask
         """
-        if K.ndim(inputs) == 2:
-            mask = super(Embedding, self).compute_mask(inputs, mask)
-            if mask is not None:
-                mask1 = K.ones_like(mask[:, :1], dtype='bool')
-                mask2 = mask[:, 1:]
-                return K.concatenate([mask1, mask2], 1)
-        else:
+        mask = super(Embedding, self).compute_mask(inputs, mask)
+        if mask is None:
             return mask
+
+        if K.ndim(inputs) > 1:
+            mask1 = K.ones_like(mask[:, :1], dtype='bool')
+            mask2 = mask[:, 1:]
+            return K.concatenate([mask1, mask2], 1)
+        else:
+            mask1 = K.ones_like(mask[:1], dtype='bool')
+            mask2 = mask[1:]
+            return K.concatenate([mask1, mask2], 0)
 
     def call(self, inputs, mode='embedding'):
         """新增mode参数，可以为embedding或dense。如果为embedding，
