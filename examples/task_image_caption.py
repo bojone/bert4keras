@@ -166,13 +166,13 @@ class AutoCaption(AutoRegressiveDecoder):
         image = inputs[0]
         token_ids = output_ids
         segment_ids = np.zeros_like(token_ids)
-        return model.predict([token_ids, segment_ids, image])[:, -1]
+        return self.last_token(model).predict([token_ids, segment_ids, image])
 
     def generate(self, image, topk=1):
         if is_string(image):
             image = read_image(image)
         image = preprocess_input(image)
-        output_ids = self.beam_search([image], topk)  # 基于beam search
+        output_ids = self.beam_search([image], topk=topk)  # 基于beam search
         return tokenizer.decode(output_ids)
 
 

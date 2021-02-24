@@ -124,16 +124,16 @@ class QuestionAnswerGeneration(AutoRegressiveDecoder):
         token_ids, segment_ids = inputs
         token_ids = np.concatenate([token_ids, output_ids], 1)
         segment_ids = np.concatenate([segment_ids, np.ones_like(output_ids)], 1)
-        return model.predict([token_ids, segment_ids])[:, -1]
+        return self.last_token(model).predict([token_ids, segment_ids])
 
-    def generate(self, passage, topk=5):
+    def generate(self, passage, topk=1, topp=0.95):
         token_ids, segment_ids = tokenizer.encode(passage, maxlen=max_p_len)
         a_ids = self.random_sample([token_ids, segment_ids], 1,
-                                   topk)[0]  # 基于随机采样
+                                   topp=topp)[0]  # 基于随机采样
         token_ids += list(a_ids)
         segment_ids += [1] * len(a_ids)
         q_ids = self.beam_search([token_ids, segment_ids],
-                                 topk)  # 基于beam search
+                                 topk=topk)  # 基于beam search
         return (tokenizer.decode(q_ids), tokenizer.decode(a_ids))
 
 

@@ -13,7 +13,7 @@ from bert4keras.models import build_transformer_model
 from bert4keras.tokenizers import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, open
-from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
+from bert4keras.snippets import DataGenerator
 from keras.models import Model
 from cchess import *
 

@@ -5,8 +5,11 @@
 ## 简介
 
 - [basic_extract_features.py](https://github.com/bojone/bert4keras/tree/master/examples/basic_extract_features.py): 基础测试，测试BERT对句子的编码序列。
+- [basic_gibbs_sampling_via_mlm.py](https://github.com/bojone/bert4keras/tree/master/examples/basic_gibbs_sampling_via_mlm.py): 基础测试，利用BERT+Gibbs采样进行文本随机生成，参考[这里](https://kexue.fm/archives/8119)。
+- [basic_language_model_cpm_lm.py](https://github.com/bojone/bert4keras/tree/master/examples/basic_language_model_cpm_lm.py): 基础测试，测试[CPM_LM](https://github.com/TsinghuaAI/CPM-Generate)的生成效果。
 - [basic_language_model_gpt2_ml.py](https://github.com/bojone/bert4keras/tree/master/examples/basic_language_model_gpt2_ml.py): 基础测试，测试[GPT2_ML](https://github.com/imcaspar/gpt2-ml)的生成效果。
 - [basic_language_model_nezha_gen_gpt.py](https://github.com/bojone/bert4keras/tree/master/examples/basic_language_model_nezha_gen_gpt.py): 基础测试，测试[GPT Base（又叫NEZHE-GEN）](https://github.com/huawei-noah/Pretrained-Language-Model/tree/master/NEZHA-Gen-TensorFlow)的生成效果。
+- [basic_make_uncased_model_cased.py](https://github.com/bojone/bert4keras/tree/master/examples/basic_make_uncased_model_cased.py): 基础测试，通过简单修改词表，使得不区分大小写的模型有区分大小写的能力。
 - [basic_masked_language_model.py](https://github.com/bojone/bert4keras/tree/master/examples/basic_masked_language_model.py): 基础测试，测试BERT的MLM模型效果。
 - [basic_simple_web_serving_simbert.py](https://github.com/bojone/bert4keras/tree/master/examples/basic_simple_web_serving_simbert.py): 基础测试，测试自带的WebServing（将模型转化为Web接口）。
 - [task_conditional_language_model.py](https://github.com/bojone/bert4keras/tree/master/examples/task_conditional_language_model.py): 任务例子，结合 BERT + [Conditional Layer Normalization](https://kexue.fm/archives/7124) 做条件语言模型。
@@ -28,6 +31,7 @@
 - [task_seq2seq_autotitle.py](https://github.com/bojone/bert4keras/tree/master/examples/task_seq2seq_autotitle.py): 任务例子，通过[UniLM](https://kexue.fm/archives/6933)式的Seq2Seq模型来做新闻标题生成。
 - [task_seq2seq_autotitle_csl.py](https://github.com/bojone/bert4keras/tree/master/examples/task_seq2seq_autotitle_csl.py): 任务例子，通过[UniLM](https://kexue.fm/archives/6933)式的Seq2Seq模型来做论文标题生成，包含了评测代码。
 - [task_seq2seq_autotitle_csl_mt5.py](https://github.com/bojone/bert4keras/tree/master/examples/task_seq2seq_autotitle_csl_mt5.py): 任务例子，通过[多国语言版T5](https://kexue.fm/archives/7867)式的Seq2Seq模型来做论文标题生成，包含了评测代码。
+- [task_seq2seq_autotitle_multigpu.py](https://github.com/bojone/bert4keras/tree/master/examples/task_seq2seq_autotitle_multigpu.py): 任务例子，通过[UniLM](https://kexue.fm/archives/6933)式的Seq2Seq模型来做新闻标题生成，单机多卡版本。
 - [task_sequence_labeling_cws_crf.py](https://github.com/bojone/bert4keras/tree/master/examples/task_sequence_labeling_cws_crf.py): 任务例子，通过 BERT + [CRF](https://kexue.fm/archives/7196) 来做中文分词。
 - [task_sequence_labeling_ner_crf.py](https://github.com/bojone/bert4keras/tree/master/examples/task_sequence_labeling_ner_crf.py): 
 任务例子，通过 BERT + [CRF](https://kexue.fm/archives/7196) 来做中文NER。

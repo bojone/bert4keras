@@ -8,6 +8,8 @@ import re
 import sys
 from collections import defaultdict
 import json
+import tensorflow as tf
+from bert4keras.backend import K, keras
 
 _open_ = open
 is_py2 = six.PY2
@@ -15,7 +17,7 @@ is_py2 = six.PY2
 if not is_py2:
     basestring = str
 
-    
+
 def to_array(*args):
     """批量转numpy的array
     """
@@ -132,24 +134,40 @@ class open:
 
 
 def parallel_apply(
-    func, iterable, workers, max_queue_size, callback=None, dummy=False
+    func,
+    iterable,
+    workers,
+    max_queue_size,
+    callback=None,
+    dummy=False,
+    random_seeds=True
 ):
     """多进程或多线程地将func应用到iterable的每个元素中。
     注意这个apply是异步且无序的，也就是说依次输入a,b,c，但是
     输出可能是func(c), func(a), func(b)。
     参数：
+        callback: 处理单个输出的回调函数；
         dummy: False是多进程/线性，True则是多线程/线性；
-        callback: 处理单个输出的回调函数。
+        random_seeds: 每个进程的随机种子。
     """
     if dummy:
         from multiprocessing.dummy import Pool, Queue
     else:
         from multiprocessing import Pool, Queue
 
-    in_queue, out_queue = Queue(max_queue_size), Queue()
+    in_queue, out_queue, seed_queue = Queue(max_queue_size), Queue(), Queue()
+    if random_seeds is True:
+        random_seeds = [None] * workers
+    elif random_seeds is None or random_seeds is False:
+        random_seeds = []
+    for seed in random_seeds:
+        seed_queue.put(seed)
 
     def worker_step(in_queue, out_queue):
-        # 单步函数包装成循环执行
+        """单步函数包装成循环执行
+        """
+        if not seed_queue.empty():
+            np.random.seed(seed_queue.get())
         while True:
             i, d = in_queue.get()
             r = func(d)
@@ -196,7 +214,7 @@ def parallel_apply(
         return [r[1] for r in results]
 
 
-def sequence_padding(inputs, length=None, padding=0):
+def sequence_padding(inputs, length=None, padding=0, mode='post'):
     """Numpy函数，将序列padding到同一长度
     """
     if length is None:
@@ -206,11 +224,29 @@ def sequence_padding(inputs, length=None, padding=0):
     outputs = []
     for x in inputs:
         x = x[:length]
-        pad_width[0] = (0, length - len(x))
+        if mode == 'post':
+            pad_width[0] = (0, length - len(x))
+        elif mode == 'pre':
+            pad_width[0] = (length - len(x), 0)
+        else:
+            raise ValueError('"mode" argument must be "post" or "pre".')
         x = np.pad(x, pad_width, 'constant', constant_values=padding)
         outputs.append(x)
 
     return np.array(outputs)
+
+
+def truncate_sequences(maxlen, index, *sequences):
+    """截断总长度至不超过maxlen
+    """
+    sequences = [s for s in sequences if s]
+    while True:
+        lengths = [len(s) for s in sequences]
+        if sum(lengths) > maxlen:
+            i = np.argmax(lengths)
+            sequences[i].pop(index)
+        else:
+            return sequences
 
 
 def text_segmentate(text, maxlen, seps='\n', strips=None):
@@ -308,6 +344,45 @@ class DataGenerator(object):
             for d in self.__iter__(random):
                 yield d
 
+    def to_dataset(self, types, shapes, names=None, padded_batch=False):
+        """转为tf.data.Dataset格式
+        如果传入names的话，自动把数据包装成dict形式。
+        """
+        if names is None:
+
+            generator = self.forfit
+
+        else:
+
+            if is_string(names):
+                warps = lambda k, v: {k: v}
+            elif is_string(names[0]):
+                warps = lambda k, v: dict(zip(k, v))
+            else:
+                warps = lambda k, v: tuple(
+                    dict(zip(i, j)) for i, j in zip(k, v)
+                )
+
+            def generator():
+                for d in self.forfit():
+                    yield warps(names, d)
+
+            types = warps(names, types)
+            shapes = warps(names, shapes)
+
+        if padded_batch:
+            dataset = tf.data.Dataset.from_generator(
+                generator, output_types=types
+            )
+            dataset = dataset.padded_batch(self.batch_size, shapes)
+        else:
+            dataset = tf.data.Dataset.from_generator(
+                generator, output_types=types, output_shapes=shapes
+            )
+            dataset = dataset.batch(self.batch_size)
+
+        return dataset
+
 
 class ViterbiDecoder(object):
     """Viterbi解码算法基类
@@ -359,11 +434,12 @@ class AutoRegressiveDecoder(object):
     """通用自回归生成模型解码基类
     包含beam search和random sample两种策略
     """
-    def __init__(self, start_id, end_id, maxlen, minlen=None):
+    def __init__(self, start_id, end_id, maxlen, minlen=1):
         self.start_id = start_id
         self.end_id = end_id
         self.maxlen = maxlen
-        self.minlen = minlen or 1
+        self.minlen = minlen
+        self.models = {}
         if start_id is None:
             self.first_output_ids = np.empty((1, 0), dtype=int)
         else:
@@ -373,11 +449,17 @@ class AutoRegressiveDecoder(object):
     def wraps(default_rtype='probas', use_states=False):
         """用来进一步完善predict函数
         目前包含：1. 设置rtype参数，并做相应处理；
-                  2. 确定states的使用，并做相应处理。
+                  2. 确定states的使用，并做相应处理；
+                  3. 设置温度参数，并做相应处理。
         """
         def actual_decorator(predict):
             def new_predict(
-                self, inputs, output_ids, states, rtype=default_rtype
+                self,
+                inputs,
+                output_ids,
+                states,
+                temperature=1,
+                rtype=default_rtype
             ):
                 assert rtype in ['probas', 'logits']
                 prediction = predict(self, inputs, output_ids, states)
@@ -386,7 +468,13 @@ class AutoRegressiveDecoder(object):
                     prediction = (prediction, None)
 
                 if default_rtype == 'logits':
-                    prediction = (softmax(prediction[0]), prediction[1])
+                    prediction = (
+                        softmax(prediction[0] / temperature), prediction[1]
+                    )
+                elif temperature != 1:
+                    probas = np.power(prediction[0], 1.0 / temperature)
+                    probas = probas / probas.sum(axis=-1, keepdims=True)
+                    prediction = (probas, prediction[1])
 
                 if rtype == 'probas':
                     return prediction
@@ -397,16 +485,28 @@ class AutoRegressiveDecoder(object):
 
         return actual_decorator
 
-    def predict(self, inputs, output_ids, states=None, rtype='logits'):
+    def last_token(self, model):
+        """创建一个只返回最后一个token输出的新Model
+        """
+        if model not in self.models:
+            outputs = [
+                keras.layers.Lambda(lambda x: x[:, -1])(output)
+                for output in model.outputs
+            ]
+            self.models[model] = keras.models.Model(model.inputs, outputs)
+
+        return self.models[model]
+
+    def predict(self, inputs, output_ids, states=None):
         """用户需自定义递归预测函数
-        说明：rtype为字符串logits或probas，用户定义的时候，应当根据rtype来
-              返回不同的结果，rtype=probas时返回归一化的概率，rtype=logits时
-              则返回softmax前的结果或者概率对数。
+        说明：定义的时候，需要用wraps方法进行装饰，传入default_rtype和use_states，
+             其中default_rtype为字符串logits或probas，probas时返回归一化的概率，
+             rtype=logits时则返回softmax前的结果或者概率对数。
         返回：二元组 (得分或概率, states)
         """
         raise NotImplementedError
 
-    def beam_search(self, inputs, topk, states=None, min_ends=1):
+    def beam_search(self, inputs, topk, states=None, temperature=1, min_ends=1):
         """beam search解码
         说明：这里的topk即beam size；
         返回：最优解码序列。
@@ -415,7 +515,7 @@ class AutoRegressiveDecoder(object):
         output_ids, output_scores = self.first_output_ids, np.zeros(1)
         for step in range(self.maxlen):
             scores, states = self.predict(
-                inputs, output_ids, states, 'logits'
+                inputs, output_ids, states, temperature, 'logits'
             )  # 计算当前得分
             if step == 0:  # 第1步预测后将输入重复topk次
                 inputs = [np.repeat(i, topk, axis=0) for i in inputs]
@@ -445,7 +545,14 @@ class AutoRegressiveDecoder(object):
         return output_ids[output_scores.argmax()]
 
     def random_sample(
-        self, inputs, n, topk=None, topp=None, states=None, min_ends=1
+        self,
+        inputs,
+        n,
+        topk=None,
+        topp=None,
+        states=None,
+        temperature=1,
+        min_ends=1
     ):
         """随机采样n个结果
         说明：非None的topk表示每一步只从概率最高的topk个中采样；而非None的topp
@@ -457,7 +564,7 @@ class AutoRegressiveDecoder(object):
         results = []
         for step in range(self.maxlen):
             probas, states = self.predict(
-                inputs, output_ids, states, 'probas'
+                inputs, output_ids, states, temperature, 'probas'
             )  # 计算当前概率
             probas /= probas.sum(axis=1, keepdims=True)  # 确保归一化
             if step == 0:  # 第1步预测后将结果重复n次
@@ -606,8 +713,6 @@ class WebServing(object):
     """
     def __init__(self, host='0.0.0.0', port=8000, server='paste'):
 
-        import tensorflow as tf
-        from bert4keras.backend import K
         import bottle
 
         self.host = host

@@ -1,9 +1,11 @@
 #! -*- coding: utf-8 -*-
-# 工具函数
+# 分词函数
 
 import unicodedata, re
 from bert4keras.snippets import is_string, is_py2
 from bert4keras.snippets import open
+from bert4keras.snippets import convert_to_unicode
+from bert4keras.snippets import truncate_sequences
 
 
 def load_vocab(dict_path, encoding='utf-8', simplified=False, startswith=None):
@@ -54,19 +56,39 @@ def save_vocab(dict_path, token_dict, encoding='utf-8'):
 class TokenizerBase(object):
     """分词器基类
     """
-    def __init__(self, token_start='[CLS]', token_end='[SEP]'):
-        """初始化
+    def __init__(
+        self,
+        token_start='[CLS]',
+        token_end='[SEP]',
+        pre_tokenize=None,
+        token_translate=None
+    ):
+        """参数说明：
+        pre_tokenize：外部传入的分词函数，用作对文本进行预分词。如果传入
+                      pre_tokenize，则先执行pre_tokenize(text)，然后在它
+                      的基础上执行原本的tokenize函数；
+        token_translate：映射字典，主要用在tokenize之后，将某些特殊的token
+                         替换为对应的token。
         """
         self._token_pad = '[PAD]'
         self._token_unk = '[UNK]'
         self._token_mask = '[MASK]'
         self._token_start = token_start
         self._token_end = token_end
+        self._pre_tokenize = pre_tokenize
+        self._token_translate = token_translate or {}
+        self._token_translate_inv = {
+            v: k
+            for k, v in self._token_translate.items()
+        }
 
     def tokenize(self, text, maxlen=None):
         """分词函数
         """
-        tokens = self._tokenize(text)
+        tokens = [
+            self._token_translate.get(token) or token
+            for token in self._tokenize(text)
+        ]
         if self._token_start is not None:
             tokens.insert(0, self._token_start)
         if self._token_end is not None:
@@ -74,7 +96,7 @@ class TokenizerBase(object):
 
         if maxlen is not None:
             index = int(self._token_end is not None) + 1
-            self.truncate_sequence(maxlen, tokens, None, -index)
+            truncate_sequences(maxlen, -index, tokens)
 
         return tokens
 
@@ -87,23 +109,6 @@ class TokenizerBase(object):
         """token序列转换为对应的id序列
         """
         return [self.token_to_id(token) for token in tokens]
-
-    def truncate_sequence(
-        self, maxlen, first_sequence, second_sequence=None, pop_index=-1
-    ):
-        """截断总长度
-        """
-        if second_sequence is None:
-            second_sequence = []
-
-        while True:
-            total_length = len(first_sequence) + len(second_sequence)
-            if total_length <= maxlen:
-                break
-            elif len(first_sequence) > len(second_sequence):
-                first_sequence.pop(pop_index)
-            else:
-                second_sequence.pop(pop_index)
 
     def encode(
         self, first_text, second_text=None, maxlen=None, pattern='S*E*E'
@@ -127,7 +132,8 @@ class TokenizerBase(object):
             second_tokens = second_text
 
         if maxlen is not None:
-            self.truncate_sequence(maxlen, first_tokens, second_tokens, -2)
+            index = int(self._token_end is not None) + 1
+            truncate_sequences(maxlen, -index, first_tokens, second_tokens)
 
         first_token_ids = self.tokens_to_ids(first_tokens)
         first_segment_ids = [0] * len(first_token_ids)
@@ -166,21 +172,17 @@ class Tokenizer(TokenizerBase):
     纯Python实现，代码修改自keras_bert的tokenizer实现
     """
     def __init__(
-        self, token_dict, do_lower_case=False, pre_tokenize=None, **kwargs
+        self, token_dict, do_lower_case=False, word_maxlen=200, **kwargs
     ):
-        """这里的pre_tokenize是外部传入的分词函数，用作对文本进行预分词。如果传入
-        pre_tokenize，则先执行pre_tokenize(text)，然后在它的基础上执行原本的
-        tokenize函数。
-        """
         super(Tokenizer, self).__init__(**kwargs)
         if is_string(token_dict):
             token_dict = load_vocab(token_dict)
 
         self._do_lower_case = do_lower_case
-        self._pre_tokenize = pre_tokenize
         self._token_dict = token_dict
         self._token_dict_inv = {v: k for k, v in token_dict.items()}
         self._vocab_size = len(token_dict)
+        self._word_maxlen = word_maxlen
 
         for token in ['pad', 'unk', 'mask', 'start', 'end']:
             try:
@@ -271,24 +273,24 @@ class Tokenizer(TokenizerBase):
     def _word_piece_tokenize(self, word):
         """word内分成subword
         """
-        if word in self._token_dict:
+        if len(word) > self._word_maxlen:
             return [word]
 
-        tokens = []
-        start, stop = 0, 0
+        tokens, start, end = [], 0, 0
         while start < len(word):
-            stop = len(word)
-            while stop > start:
-                sub = word[start:stop]
+            end = len(word)
+            while end > start:
+                sub = word[start:end]
                 if start > 0:
                     sub = '##' + sub
                 if sub in self._token_dict:
                     break
-                stop -= 1
-            if start == stop:
-                stop += 1
-            tokens.append(sub)
-            start = stop
+                end -= 1
+            if start == end:
+                return [word]
+            else:
+                tokens.append(sub)
+                start = end
 
         return tokens
 
@@ -424,13 +426,19 @@ class SpTokenizer(TokenizerBase):
     def decode(self, ids):
         """转为可读文本
         """
-        ids = [i for i in ids if self._is_decodable(i)]
-        text = self.sp_model.decode_ids(ids)
-        return text.decode('utf-8') if is_py2 else text
+        tokens = [
+            self._token_translate_inv.get(token) or token
+            for token in self.ids_to_tokens(ids)
+        ]
+        text = self.sp_model.decode_pieces(tokens)
+        return convert_to_unicode(text)
 
     def _tokenize(self, text):
         """基本分词函数
         """
+        if self._pre_tokenize is not None:
+            text = ' '.join(self._pre_tokenize(text))
+
         tokens = self.sp_model.encode_as_pieces(text)
         return tokens
 

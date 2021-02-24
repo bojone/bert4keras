@@ -3,6 +3,7 @@
 # use_vat=True比use_vat=False约有1%的提升
 # 数据集：情感分析数据集
 # 博客：https://kexue.fm/archives/7466
+# 适用于Keras 2.3.1
 
 import json
 import numpy as np
