@@ -537,6 +537,8 @@ class PositionEmbedding(Layer):
             return inputs + embeddings
         elif self.merge_mode == 'mul':
             return inputs * (embeddings + 1.0)
+        elif self.merge_mode == 'zero':
+            return embeddings
         else:
             if not self.custom_position_ids:
                 embeddings = K.tile(embeddings, [batch_size, 1, 1])
@@ -546,8 +548,8 @@ class PositionEmbedding(Layer):
         if self.custom_position_ids:
             input_shape = input_shape[0]
 
-        if self.merge_mode in ['add', 'mul']:
-            return input_shape
+        if self.merge_mode in ['add', 'mul', 'zero']:
+            return input_shape[:2] + (self.output_dim,)
         else:
             return input_shape[:2] + (input_shape[2] + self.output_dim,)
 
@@ -599,6 +601,8 @@ class SinusoidalPositionEmbedding(Layer):
             return inputs + embeddings
         elif self.merge_mode == 'mul':
             return inputs * (embeddings + 1.0)
+        elif self.merge_mode == 'zero':
+            return embeddings
         else:
             if not self.custom_position_ids:
                 embeddings = K.tile(embeddings, [batch_size, 1, 1])
@@ -608,8 +612,8 @@ class SinusoidalPositionEmbedding(Layer):
         if self.custom_position_ids:
             input_shape = input_shape[0]
 
-        if self.merge_mode in ['add', 'mul']:
-            return input_shape
+        if self.merge_mode in ['add', 'mul', 'zero']:
+            return input_shape[:2] + (self.output_dim,)
         else:
             return input_shape[:2] + (input_shape[2] + self.output_dim,)
 
