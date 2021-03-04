@@ -2319,6 +2319,8 @@ def build_transformer_model(
     if is_string(model):
         model = model.lower()
         MODEL = models[model]
+        if model.startswith('t5.1.1'):
+            configs['version'] = 't5.1.1'
     else:
         MODEL = model
 
@@ -2333,9 +2335,6 @@ def build_transformer_model(
         MODEL = extend_with_language_model(MODEL)
     elif application == 'unilm':
         MODEL = extend_with_unified_language_model(MODEL)
-
-    if model.startswith('t5.1.1'):
-        configs['version'] = 't5.1.1'
 
     transformer = MODEL(**configs)
     transformer.build(**configs)
