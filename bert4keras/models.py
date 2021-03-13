@@ -5,7 +5,7 @@ import numpy as np
 from bert4keras.layers import *
 from bert4keras.snippets import insert_arguments
 from bert4keras.snippets import delete_arguments
-from bert4keras.snippets import is_string
+from bert4keras.snippets import is_string, is_one_of
 from keras.models import Model
 import json
 
@@ -310,7 +310,7 @@ class Transformer(object):
                 if layer.attention_scale:
                     W = W * key_size**0.25 / head_size**0.25
                 for w in layer.trainable_weights[:count]:
-                    if w in weights:
+                    if is_one_of(w, weights):
                         v = values[weights.index(w)]
                         w_shape, v_shape = K.int_shape(w), v.shape
                         if w_shape[-1] != v_shape[-1]:
