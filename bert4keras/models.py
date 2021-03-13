@@ -309,9 +309,8 @@ class Transformer(object):
                 W = np.linalg.qr(np.random.randn(key_size, head_size))[0].T
                 if layer.attention_scale:
                     W = W * key_size**0.25 / head_size**0.25
-                for w in layer.trainable_weights[:count]:
-                    if is_one_of(w, weights):
-                        v = values[weights.index(w)]
+                for w, v in zip(weights, values):
+                    if is_one_of(w, layer.trainable_weights[:count]):
                         w_shape, v_shape = K.int_shape(w), v.shape
                         if w_shape[-1] != v_shape[-1]:
                             pre_shape = w_shape[:-1]
