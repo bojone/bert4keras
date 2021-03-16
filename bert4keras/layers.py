@@ -259,10 +259,7 @@ class MultiHeadAttention(Layer):
         q, k, v = inputs[:3]
         q_mask, v_mask = None, None
         if mask is not None:
-            if mask[0] is not None:
-                q_mask = K.cast(mask[0], K.floatx())
-            if mask[2] is not None:
-                v_mask = K.cast(mask[2], K.floatx())
+            q_mask, v_mask = mask[0], mask[2]
         # 线性变换
         qw = self.q_dense(q)
         kw = self.k_dense(k)
@@ -279,7 +276,6 @@ class MultiHeadAttention(Layer):
         o = K.reshape(o, (-1, K.shape(o)[1], self.head_size * self.heads))
         o = self.o_dense(o)
         # 返回结果
-        o = sequence_masking(o, q_mask, 0)
         if self.return_attention_scores:
             return [o, a]
         else:
@@ -315,7 +311,7 @@ class MultiHeadAttention(Layer):
             a = a / self.key_size**0.5
         if a_bias is not None:
             a = a + a_bias
-        a = sequence_masking(a, v_mask, 1, -1)
+        a = sequence_masking(a, v_mask, '-inf', -1)
         A = K.softmax(a)
         # 完成输出
         o = tf.einsum('bhjk,bkhd->bjhd', A, vw)
@@ -541,6 +537,8 @@ class PositionEmbedding(Layer):
             return inputs + embeddings
         elif self.merge_mode == 'mul':
             return inputs * (embeddings + 1.0)
+        elif self.merge_mode == 'zero':
+            return embeddings
         else:
             if not self.custom_position_ids:
                 embeddings = K.tile(embeddings, [batch_size, 1, 1])
@@ -550,8 +548,8 @@ class PositionEmbedding(Layer):
         if self.custom_position_ids:
             input_shape = input_shape[0]
 
-        if self.merge_mode in ['add', 'mul']:
-            return input_shape
+        if self.merge_mode in ['add', 'mul', 'zero']:
+            return input_shape[:2] + (self.output_dim,)
         else:
             return input_shape[:2] + (input_shape[2] + self.output_dim,)
 
@@ -603,6 +601,8 @@ class SinusoidalPositionEmbedding(Layer):
             return inputs + embeddings
         elif self.merge_mode == 'mul':
             return inputs * (embeddings + 1.0)
+        elif self.merge_mode == 'zero':
+            return embeddings
         else:
             if not self.custom_position_ids:
                 embeddings = K.tile(embeddings, [batch_size, 1, 1])
@@ -612,8 +612,8 @@ class SinusoidalPositionEmbedding(Layer):
         if self.custom_position_ids:
             input_shape = input_shape[0]
 
-        if self.merge_mode in ['add', 'mul']:
-            return input_shape
+        if self.merge_mode in ['add', 'mul', 'zero']:
+            return input_shape[:2] + (self.output_dim,)
         else:
             return input_shape[:2] + (input_shape[2] + self.output_dim,)
 
@@ -837,10 +837,7 @@ class ConditionalRandomField(Layer):
         return None
 
     def call(self, inputs, mask=None):
-        if mask is not None:
-            mask = K.cast(mask, K.floatx())
-
-        return sequence_masking(inputs, mask, 1, 1)
+        return sequence_masking(inputs, mask, '-inf', 1)
 
     def target_score(self, y_true, y_pred):
         """计算目标路径的相对概率（还没有归一化）
@@ -1004,10 +1001,7 @@ class MaximumEntropyMarkovModel(Layer):
         return None
 
     def call(self, inputs, mask=None):
-        if mask is not None:
-            mask = K.cast(mask, K.floatx())
-
-        return sequence_masking(inputs, mask, 1, 1)
+        return sequence_masking(inputs, mask, '-inf', 1)
 
     def reverse_sequence(self, inputs, mask=None):
         if mask is None:
