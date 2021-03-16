@@ -115,6 +115,21 @@ class open:
             text = convert_to_unicode(text, self.encoding, self.errors)
         return text
 
+    def readline(self):
+        text = self.file.readline()
+        if self.encoding:
+            text = convert_to_unicode(text, self.encoding, self.errors)
+        return text
+
+    def readlines(self):
+        if self.encoding:
+            return [
+                convert_to_unicode(text, self.encoding, self.errors)
+                for text in self.file.readlines()
+            ]
+        else:
+            return self.file.readlines()
+
     def write(self, text):
         if self.encoding:
             text = convert_to_str(text, self.encoding, self.errors)
@@ -125,6 +140,12 @@ class open:
 
     def close(self):
         self.file.close()
+
+    def tell(self):
+        return self.file.tell()
+
+    def seek(self, whence=0):
+        return self.file.seek(whence)
 
     def __enter__(self):
         return self
