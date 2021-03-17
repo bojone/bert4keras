@@ -1981,6 +1981,13 @@ class T5_Decoder(LM_Mask, T5_Base):
                 name='Decoder-Embedding-Mapping'
             )
 
+        c = self.apply(
+            inputs=c,
+            layer=Masking,
+            mask_value=0.,
+            name='Masked-Context'
+        )
+
         return [c, x]
 
     def apply_main_layers(self, inputs, index):
