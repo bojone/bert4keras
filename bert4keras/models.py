@@ -1957,6 +1957,9 @@ class T5_Decoder(LM_Mask, T5_Base):
         """
         c, x = inputs
 
+        c = self.apply(
+            inputs=c, layer=Masking, mask_value=0.0, name='Masked-Context'
+        )
         x = self.apply(
             inputs=x,
             layer=Embedding,
@@ -1980,13 +1983,6 @@ class T5_Decoder(LM_Mask, T5_Base):
                 kernel_initializer=self.initializer,
                 name='Decoder-Embedding-Mapping'
             )
-
-        c = self.apply(
-            inputs=c,
-            layer=Masking,
-            mask_value=0.,
-            name='Masked-Context'
-        )
 
         return [c, x]
 
