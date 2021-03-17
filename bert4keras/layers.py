@@ -119,6 +119,40 @@ if (not is_tf_keras) or tf.__version__ < '1.15':
         base_layer.Node = Node
 
 
+class GlobalAveragePooling1D(keras.layers.GlobalAveragePooling1D):
+    """重新定义GlobalAveragePooling1D，支持序列长度为None
+    """
+    def call(self, inputs, mask=None):
+        axis = 1 if self.data_format == 'channels_last' else 2
+        if mask is not None:
+            mask = K.cast(mask, K.floatx())
+            mask = mask[..., None] if axis == 1 else mask[:, None]
+            return K.sum(inputs * mask, axis=axis) / K.sum(mask, axis=axis)
+        else:
+            return K.mean(inputs, axis=axis)
+
+
+class GlobalMaxPooling1D(keras.layers.GlobalMaxPooling1D):
+    """重新定义GlobalMaxPooling1D，支持mask
+    """
+    def __init__(self, data_format='channels_last', **kwargs):
+        super(GlobalMaxPooling1D, self).__init__(data_format, **kwargs)
+        self.supports_masking = True
+
+    def call(self, inputs, mask=None):
+        axis = 1 if self.data_format == 'channels_last' else 2
+        inputs = sequence_masking(inputs, mask, '-inf', axis)
+        return K.max(inputs, axis=axis)
+
+    def compute_mask(self, inputs, mask=None):
+        return None
+
+
+# 直接覆盖原对象
+keras.layers.GlobalAveragePooling1D = GlobalAveragePooling1D
+keras.layers.GlobalMaxPooling1D = GlobalMaxPooling1D
+
+        
 class Embedding(keras.layers.Embedding):
     """拓展Embedding层
     """
