@@ -111,7 +111,12 @@ class TokenizerBase(object):
         return [self.token_to_id(token) for token in tokens]
 
     def encode(
-        self, first_text, second_text=None, maxlen=None, pattern='S*E*E'
+        self,
+        first_text,
+        second_text=None,
+        maxlen=None,
+        pattern='S*E*E',
+        truncate_from='right'
     ):
         """输出文本对应token id和segment id
         """
@@ -123,22 +128,28 @@ class TokenizerBase(object):
         if second_text is None:
             second_tokens = None
         elif is_string(second_text):
-            if pattern == 'S*E*E':
-                idx = int(bool(self._token_start))
-                second_tokens = self.tokenize(second_text)[idx:]
-            elif pattern == 'S*ES*E':
-                second_tokens = self.tokenize(second_text)
+            second_tokens = self.tokenize(second_text)
         else:
             second_tokens = second_text
 
         if maxlen is not None:
-            index = int(self._token_end is not None) + 1
-            truncate_sequences(maxlen, -index, first_tokens, second_tokens)
+            if truncate_from == 'right':
+                index = -int(self._token_end is not None) - 1
+            elif truncate_from == 'left':
+                index = int(self._token_start is not None)
+            else:
+                index = truncate_from
+            if second_text is not None and pattern == 'S*E*E':
+                maxlen += 1
+            truncate_sequences(maxlen, index, first_tokens, second_tokens)
 
         first_token_ids = self.tokens_to_ids(first_tokens)
         first_segment_ids = [0] * len(first_token_ids)
 
         if second_text is not None:
+            if pattern == 'S*E*E':
+                idx = int(bool(self._token_start))
+                second_tokens = second_tokens[idx:]
             second_token_ids = self.tokens_to_ids(second_tokens)
             second_segment_ids = [1] * len(second_token_ids)
             first_token_ids.extend(second_token_ids)
