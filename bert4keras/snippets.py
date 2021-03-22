@@ -373,7 +373,7 @@ class DataGenerator(object):
             else:
 
                 def generator():
-                    indices = list(range(len(self.data)))
+                    indices = np.arange(len(self.data))
                     np.random.shuffle(indices)
                     for i in indices:
                         yield self.data[i]
