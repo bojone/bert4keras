@@ -1092,12 +1092,12 @@ class NEZHA(BERT):
         return self.position_bias
 
 
-class  (NEZHA):
+class RoFormer(NEZHA):
     """旋转式位置编码的BERT模型
     链接：https://kexue.fm/archives/8265
     """
     def apply_main_layers(self, inputs, index):
-        """NEZHA的主体是基于Self-Attention的模块
+        """RoFormer的主体是基于Self-Attention的模块
         顺序：Att --> Add --> LN --> FFN --> Add --> LN
         """
         x = inputs
@@ -1177,7 +1177,7 @@ class  (NEZHA):
         return x
 
     def compute_position_bias(self, inputs=None):
-        """经典相对位置编码
+        """Sinusoidal位置编码（直接返回）
         """
         if self.position_bias is None:
 
