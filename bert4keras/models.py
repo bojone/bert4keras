@@ -1110,7 +1110,7 @@ class RoFormer(NEZHA):
 
         # Self Attention
         xi, x = x, [x, x, x, position_bias]
-        arguments = {'a_bias': None, 'p_bias': 'ratory'}
+        arguments = {'a_bias': None, 'p_bias': 'rotary'}
         if attention_mask is not None:
             arguments['a_bias'] = True
             x.insert(3, attention_mask)
