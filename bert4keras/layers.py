@@ -331,6 +331,15 @@ class MultiHeadAttention(Layer):
         if a_bias:
             a_bias = inputs[n]
             n += 1
+        if p_bias == 'rotary':
+            cos_pos = K.repeat_elements(inputs[n][..., None, 1::2], 2, -1)
+            sin_pos = K.repeat_elements(inputs[n][..., None, ::2], 2, -1)
+            qw2 = K.stack([-qw[..., 1::2], qw[..., ::2]], 4)
+            qw2 = K.reshape(qw2, K.shape(qw))
+            qw = qw * cos_pos + qw2 * sin_pos
+            kw2 = K.stack([-kw[..., 1::2], kw[..., ::2]], 4)
+            kw2 = K.reshape(kw2, K.shape(kw))
+            kw = kw * cos_pos + kw2 * sin_pos
         # Attention
         a = tf.einsum('bjhd,bkhd->bhjk', qw, kw)
         # 处理位置编码
