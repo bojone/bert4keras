@@ -1083,7 +1083,7 @@ class NEZHA(BERT):
                 inputs=[x, x],
                 layer=RelativePositionEmbedding,
                 input_dim=2 * 64 + 1,
-                output_dim=self.attention_head_size,
+                output_dim=self.attention_key_size,
                 embeddings_initializer='Sinusoidal',
                 name='Embedding-Relative-Position',
                 trainable=False
@@ -1185,7 +1185,7 @@ class RoFormer(NEZHA):
             self.position_bias = self.apply(
                 inputs=x,
                 layer=SinusoidalPositionEmbedding,
-                output_dim=self.attention_head_size,
+                output_dim=self.attention_key_size,
                 merge_mode='zero',
                 name='Embedding-Rotary-Position'
             )
