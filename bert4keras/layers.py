@@ -494,8 +494,7 @@ class LayerNormalization(Layer):
         if self.scale:
             variance = K.mean(K.square(outputs), axis=-1, keepdims=True)
             std = K.sqrt(variance + self.epsilon)
-            outputs = outputs / std
-            outputs = outputs * gamma
+            outputs = outputs / std * gamma
         if self.center:
             outputs = outputs + beta
 
