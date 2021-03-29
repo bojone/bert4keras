@@ -2238,7 +2238,7 @@ class T5_Decoder(LM_Mask, T5_Base):
         x = self.apply(
             inputs=x,
             layer=Lambda,
-            function=lambda x: x / np.sqrt(self.hidden_size),
+            function=lambda x: x / self.hidden_size**0.5,
             mask=lambda i, m: m,
             name='Decoder-Output-Scale'
         )
