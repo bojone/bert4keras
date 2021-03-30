@@ -154,9 +154,10 @@ class Transformer(object):
                         if arguments.get('a_bias'):
                             a_bias = Add(name=name + '-Attention-Bias'
                                         )([inputs[3], self.attention_scores])
+                            inputs = inputs[:3] + [a_bias] + inputs[4:]
                         else:
                             a_bias = self.attention_scores
-                        inputs = inputs[:3] + [a_bias] + inputs[4:]
+                            inputs = inputs[:3] + [a_bias] + inputs[3:]
                         arguments['a_bias'] = True
                     o, a = self.layers[name](inputs, **arguments)
                     self.attention_scores = a
