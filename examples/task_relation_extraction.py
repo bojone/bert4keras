@@ -99,7 +99,7 @@ class data_generator(DataGenerator):
                 for s in spoes:
                     subject_labels[s[0], 0] = 1
                     subject_labels[s[1], 1] = 1
-                # 随机选一个subject
+                # 随机选一个subject（这里没有实现错误！这就是想要的效果！！）
                 start, end = np.array(list(spoes.keys())).T
                 start = np.random.choice(start)
                 end = np.random.choice(end[end >= start])
