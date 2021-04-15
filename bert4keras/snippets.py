@@ -271,7 +271,7 @@ def sequence_padding(inputs, length=None, value=0, seq_dims=1, mode='post'):
     """Numpy函数，将序列padding到同一长度
     """
     if length is None:
-        length = np.max([x.shape[:seq_dims] for x in inputs])
+        length = np.max([np.shape(x)[:seq_dims] for x in inputs])
 
     slices = tuple([np.s_[:length] for _ in range(seq_dims)])
     pad_width = [(0, 0) for _ in np.shape(inputs[0])]
