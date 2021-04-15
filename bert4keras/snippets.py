@@ -267,23 +267,26 @@ def parallel_apply(
         return [r[1] for r in results]
 
 
-def sequence_padding(inputs, length=None, padding=0, mode='post'):
+def sequence_padding(inputs, length=None, value=0, seq_dims=1, mode='post'):
     """Numpy函数，将序列padding到同一长度
     """
     if length is None:
-        length = max([len(x) for x in inputs])
+        length = np.max([x.shape[:seq_dims] for x in inputs])
 
+    slices = tuple([np.s_[:length] for _ in range(seq_dims)])
     pad_width = [(0, 0) for _ in np.shape(inputs[0])]
+
     outputs = []
     for x in inputs:
-        x = x[:length]
-        if mode == 'post':
-            pad_width[0] = (0, length - len(x))
-        elif mode == 'pre':
-            pad_width[0] = (length - len(x), 0)
-        else:
-            raise ValueError('"mode" argument must be "post" or "pre".')
-        x = np.pad(x, pad_width, 'constant', constant_values=padding)
+        x = x[slices]
+        for i in range(seq_dims):
+            if mode == 'post':
+                pad_width[i] = (0, length - x.shape[i])
+            elif mode == 'pre':
+                pad_width[i] = (length - x.shape[i], 0)
+            else:
+                raise ValueError('"mode" argument must be "post" or "pre".')
+        x = np.pad(x, pad_width, 'constant', constant_values=value)
         outputs.append(x)
 
     return np.array(outputs)
