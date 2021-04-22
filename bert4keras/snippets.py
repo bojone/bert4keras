@@ -84,7 +84,7 @@ class open:
     作用：1.主要是为了同时兼容py2和py3；2.增加了索引功能，方便读取大文件。
     """
     def __init__(
-        self, name, mode='r', encoding=None, errors=None, indexable=False
+        self, name, mode='r', encoding=None, errors='strict', indexable=False
     ):
         self.name = name
         if is_py2:
