@@ -1159,15 +1159,15 @@ class GlobalPointer(Layer):
     """全局指针模块
     将序列的每个(start, end)作为整体来进行判断
     """
-    def __init__(self, units, heads=1, RoPE=True, **kwargs):
+    def __init__(self, heads, head_size, RoPE=True, **kwargs):
         super(GlobalPointer, self).__init__(**kwargs)
-        self.units = units
         self.heads = heads
+        self.head_size = head_size
         self.RoPE = RoPE
 
     def build(self, input_shape):
         super(GlobalPointer, self).build(input_shape)
-        self.dense = Dense(self.units * self.heads * 2)
+        self.dense = Dense(self.head_size * self.heads * 2)
 
     def compute_mask(self, inputs, mask=None):
         return None
@@ -1178,10 +1178,10 @@ class GlobalPointer(Layer):
         inputs = self.dense(inputs)
         inputs = tf.split(inputs, self.heads, axis=-1)
         inputs = K.stack(inputs, axis=-2)
-        qw, kw = inputs[..., :self.units], inputs[..., self.units:]
+        qw, kw = inputs[..., :self.head_size], inputs[..., self.head_size:]
         # RoPE编码
         if self.RoPE:
-            pos = SinusoidalPositionEmbedding(self.units, 'zero')(inputs)
+            pos = SinusoidalPositionEmbedding(self.head_size, 'zero')(inputs)
             cos_pos = K.repeat_elements(pos[..., None, 1::2], 2, -1)
             sin_pos = K.repeat_elements(pos[..., None, ::2], 2, -1)
             qw2 = K.stack([-qw[..., 1::2], qw[..., ::2]], 4)
@@ -1199,15 +1199,15 @@ class GlobalPointer(Layer):
         mask = tf.matrix_band_part(K.ones_like(logits), 0, -1)
         logits = logits - (1 - mask) * 1e12
         # scale返回
-        return logits / self.units**0.5
+        return logits / self.head_size**0.5
 
     def compute_output_shape(self, input_shape):
         return (input_shape[0], self.heads, input_shape[1], input_shape[1])
 
     def get_config(self):
         config = {
-            'units': self.units,
             'heads': self.heads,
+            'head_size': self.head_size,
             'RoPE': self.RoPE,
         }
         base_config = super(GlobalPointer, self).get_config()
