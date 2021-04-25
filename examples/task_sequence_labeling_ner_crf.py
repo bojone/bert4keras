@@ -21,6 +21,7 @@ batch_size = 32
 bert_layers = 12
 learning_rate = 1e-5  # bert_layers越小，学习率应该要越大
 crf_lr_multiplier = 1000  # 必要时扩大CRF层的学习率
+categories = set()
 
 # bert配置
 config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
@@ -30,7 +31,8 @@ dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
 def load_data(filename):
     """加载数据
-    单条格式：[(片段1, 标签1), (片段2, 标签2), (片段3, 标签3), ...]
+    单条格式：[text, (start, end, label), (start, end, label), ...]，
+              意味着text[start:end + 1]是类型为label的实体。
     """
     D = []
     with open(filename, encoding='utf-8') as f:
@@ -38,18 +40,15 @@ def load_data(filename):
         for l in f.split('\n\n'):
             if not l:
                 continue
-            d, last_flag = [], ''
-            for c in l.split('\n'):
-                char, this_flag = c.split(' ')
-                if this_flag == 'O' and last_flag == 'O':
-                    d[-1][0] += char
-                elif this_flag == 'O' and last_flag != 'O':
-                    d.append([char, 'O'])
-                elif this_flag[:1] == 'B':
-                    d.append([char, this_flag[2:]])
-                else:
-                    d[-1][0] += char
-                last_flag = this_flag
+            d = ['']
+            for i, c in enumerate(l.split('\n')):
+                char, flag = c.split(' ')
+                d[0] += char
+                if flag[0] == 'B':
+                    d.append([i, i, flag[2:]])
+                    categories.add(flag[2:])
+                elif flag[0] == 'I':
+                    d[-1][1] = i
             D.append(d)
     return D
 
@@ -58,15 +57,10 @@ def load_data(filename):
 train_data = load_data('/root/ner/china-people-daily-ner-corpus/example.train')
 valid_data = load_data('/root/ner/china-people-daily-ner-corpus/example.dev')
 test_data = load_data('/root/ner/china-people-daily-ner-corpus/example.test')
+categories = list(sorted(categories))
 
 # 建立分词器
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
-
-# 类别映射
-labels = ['PER', 'LOC', 'ORG']
-id2label = dict(enumerate(labels))
-label2id = {j: i for i, j in id2label.items()}
-num_labels = len(labels) * 2 + 1
 
 
 class data_generator(DataGenerator):
@@ -74,23 +68,20 @@ class data_generator(DataGenerator):
     """
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids, batch_labels = [], [], []
-        for is_end, item in self.sample(random):
-            token_ids, labels = [tokenizer._token_start_id], [0]
-            for w, l in item:
-                w_token_ids = tokenizer.encode(w)[0][1:-1]
-                if len(token_ids) + len(w_token_ids) < maxlen:
-                    token_ids += w_token_ids
-                    if l == 'O':
-                        labels += [0] * len(w_token_ids)
-                    else:
-                        B = label2id[l] * 2 + 1
-                        I = label2id[l] * 2 + 2
-                        labels += ([B] + [I] * (len(w_token_ids) - 1))
-                else:
-                    break
-            token_ids += [tokenizer._token_end_id]
-            labels += [0]
+        for is_end, d in self.sample(random):
+            tokens = tokenizer.tokenize(d[0], maxlen=maxlen)
+            mapping = tokenizer.rematch(d[0], tokens)
+            start_mapping = {j[0]: i for i, j in enumerate(mapping) if j}
+            end_mapping = {j[-1]: i for i, j in enumerate(mapping) if j}
+            token_ids = tokenizer.tokens_to_ids(tokens)
             segment_ids = [0] * len(token_ids)
+            labels = np.zeros(len(token_ids))
+            for start, end, label in d[1:]:
+                if start in start_mapping and end in end_mapping:
+                    start = start_mapping[start]
+                    end = end_mapping[end]
+                    labels[start] = categories.index(label) * 2 + 1
+                    labels[start + 1:end + 1] = categories.index(label) * 2 + 2
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
             batch_labels.append(labels)
@@ -104,13 +95,11 @@ class data_generator(DataGenerator):
 
 """
 后面的代码使用的是bert类型的模型，如果你用的是albert，那么前几行请改为：
-
 model = build_transformer_model(
     config_path,
     checkpoint_path,
     model='albert',
 )
-
 output_layer = 'Transformer-FeedForward-Norm'
 output = model.get_layer(output_layer).get_output_at(bert_layers - 1)
 """
@@ -122,7 +111,7 @@ model = build_transformer_model(
 
 output_layer = 'Transformer-%s-FeedForward-Norm' % (bert_layers - 1)
 output = model.get_layer(output_layer).output
-output = Dense(num_labels)(output)
+output = Dense(len(categories) * 2 + 1)(output)
 CRF = ConditionalRandomField(lr_multiplier=crf_lr_multiplier)
 output = CRF(output)
 
@@ -140,9 +129,7 @@ class NamedEntityRecognizer(ViterbiDecoder):
     """命名实体识别器
     """
     def recognize(self, text):
-        tokens = tokenizer.tokenize(text)
-        while len(tokens) > 512:
-            tokens.pop(-2)
+        tokens = tokenizer.tokenize(text, maxlen=512)
         mapping = tokenizer.rematch(text, tokens)
         token_ids = tokenizer.tokens_to_ids(tokens)
         segment_ids = [0] * len(token_ids)
@@ -154,16 +141,14 @@ class NamedEntityRecognizer(ViterbiDecoder):
             if label > 0:
                 if label % 2 == 1:
                     starting = True
-                    entities.append([[i], id2label[(label - 1) // 2]])
+                    entities.append([[i], categories[(label - 1) // 2]])
                 elif starting:
                     entities[-1][0].append(i)
                 else:
                     starting = False
             else:
                 starting = False
-
-        return [(text[mapping[w[0]][0]:mapping[w[-1]][-1] + 1], l)
-                for w, l in entities]
+        return [(mapping[w[0]][0], mapping[w[-1]][-1], l) for w, l in entities]
 
 
 NER = NamedEntityRecognizer(trans=K.eval(CRF.trans), starts=[0], ends=[0])
@@ -173,10 +158,9 @@ def evaluate(data):
     """评测函数
     """
     X, Y, Z = 1e-10, 1e-10, 1e-10
-    for d in tqdm(data):
-        text = ''.join([i[0] for i in d])
-        R = set(NER.recognize(text))
-        T = set([tuple(i) for i in d if i[1] != 'O'])
+    for d in tqdm(data, ncols=100):
+        R = set(NER.recognize(d[0]))
+        T = set([tuple(i) for i in d[1:]])
         X += len(R & T)
         Y += len(R)
         Z += len(T)
