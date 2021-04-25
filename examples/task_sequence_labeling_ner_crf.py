@@ -1,7 +1,7 @@
 #! -*- coding: utf-8 -*-
 # 用CRF做中文命名实体识别
 # 数据集 http://s3.bmio.net/kashgari/china-people-daily-ner-corpus.tar.gz
-# 实测验证集的F1可以到96.18%，测试集的F1可以到95.35%
+# 实测验证集的F1可以到96.48%，测试集的F1可以到95.38%
 
 import numpy as np
 from bert4keras.backend import keras, K
@@ -19,7 +19,7 @@ maxlen = 256
 epochs = 10
 batch_size = 32
 bert_layers = 12
-learning_rate = 1e-5  # bert_layers越小，学习率应该要越大
+learning_rate = 2e-5  # bert_layers越小，学习率应该要越大
 crf_lr_multiplier = 1000  # 必要时扩大CRF层的学习率
 categories = set()
 
