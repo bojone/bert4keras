@@ -26,19 +26,9 @@ def load_vocab(dict_path, encoding='utf-8', simplified=False, startswith=None):
             keep_tokens.append(token_dict[t])
 
         for t, _ in sorted(token_dict.items(), key=lambda s: s[1]):
-            if t not in new_token_dict:
-                keep = True
-                if len(t) > 1:
-                    for c in Tokenizer.stem(t):
-                        if (
-                            Tokenizer._is_cjk_character(c) or
-                            Tokenizer._is_punctuation(c)
-                        ):
-                            keep = False
-                            break
-                if keep:
-                    new_token_dict[t] = len(new_token_dict)
-                    keep_tokens.append(token_dict[t])
+            if t not in new_token_dict and not Tokenizer._is_redundant(t):
+                new_token_dict[t] = len(new_token_dict)
+                keep_tokens.append(token_dict[t])
 
         return new_token_dict, keep_tokens
     else:
@@ -365,6 +355,19 @@ class Tokenizer(TokenizerBase):
         """判断是不是有特殊含义的符号
         """
         return bool(ch) and (ch[0] == '[') and (ch[-1] == ']')
+
+    @staticmethod
+    def _is_redundant(token):
+        """判断该token是否冗余（默认情况下不可能分出来）
+        """
+        if len(token) > 1:
+            for ch in Tokenizer.stem(token):
+                if (
+                    Tokenizer._is_cjk_character(ch) or
+                    Tokenizer._is_punctuation(ch)
+                ):
+                    return True
+
 
     def rematch(self, text, tokens):
         """给出原始的text和tokenize后的tokens的映射关系
