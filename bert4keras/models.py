@@ -6,6 +6,7 @@ from bert4keras.layers import *
 from bert4keras.snippets import insert_arguments
 from bert4keras.snippets import delete_arguments
 from bert4keras.snippets import is_string, is_one_of
+from bert4keras.snippets import orthogonally_resize
 from keras.models import Model
 import json
 
@@ -30,6 +31,7 @@ class Transformer(object):
         compound_tokens=None,  # 扩展Embedding
         residual_attention_scores=False,  # Attention矩阵加残差
         ignore_invalid_weights=False,  # 允许跳过不存在的权重
+        shape_adaptive_weights=False,  # 自动变换形状不匹配的权重
         layers=None,  # 外部传入的Keras层
         prefix=None,  # 层名前缀
         name=None,  # 模型名称
@@ -57,6 +59,7 @@ class Transformer(object):
         self.attention_scores = None
         self.residual_attention_scores = residual_attention_scores
         self.ignore_invalid_weights = ignore_invalid_weights
+        self.shape_adaptive_weights = shape_adaptive_weights
         self.layers = {} if layers is None else layers
         self.prefix = prefix or ''
         self.name = name
@@ -275,7 +278,9 @@ class Transformer(object):
         """
         return {}
 
-    def load_weights_from_checkpoint(self, checkpoint, mapping=None):
+    def load_weights_from_checkpoint(
+        self, checkpoint, mapping=None, key_scale='auto'
+    ):
         """根据mapping从checkpoint加载权重
         """
         mapping = mapping or self.variable_mapping()
@@ -297,30 +302,21 @@ class Transformer(object):
                     else:
                         raise e
 
-            if isinstance(layer, MultiHeadAttention):
-                """如果key_size不等于head_size，则可以通过
-                正交矩阵将相应的权重投影到合适的shape。
-                """
-                count = 2
-                if layer.use_bias:
-                    count += 2
-                heads = self.num_attention_heads
-                head_size = self.attention_head_size
-                key_size = self.attention_key_size
-                W = np.linalg.qr(np.random.randn(key_size, head_size))[0].T
-                if layer.attention_scale:
-                    W = W * key_size**0.25 / head_size**0.25
-                for w, v in zip(weights, values):
-                    if is_one_of(w, layer.trainable_weights[:count]):
-                        w_shape, v_shape = K.int_shape(w), v.shape
-                        if w_shape[-1] != v_shape[-1]:
-                            pre_shape = w_shape[:-1]
-                            v = v.reshape(pre_shape + (heads, head_size))
-                            v = np.dot(v, W)
-                            v = v.reshape(pre_shape + (heads * key_size,))
-                            values[weights.index(w)] = v
-
-            weight_value_pairs.extend(zip(weights, values))
+            for i, (w, v) in enumerate(zip(weights, values)):
+                if v is not None:
+                    if self.shape_adaptive_weights and K.int_shape(w) != v.shape:
+                        v = orthogonally_resize(v, K.int_shape(w))
+                        if isinstance(layer, MultiHeadAttention):
+                            count = 2
+                            if layer.use_bias:
+                                count += 2
+                            if layer.attention_scale and i < count:
+                                if key_scale == 'auto':
+                                    head_size = self.attention_head_size
+                                    key_size = self.attention_key_size
+                                    key_scale = 1.0 * key_size / head_size
+                                v = v * key_scale**0.25
+                    weight_value_pairs.append((w, v))
 
         K.batch_set_value(weight_value_pairs)
 
@@ -2380,6 +2376,7 @@ def build_transformer_model(
     model='bert',
     application='encoder',
     return_keras_model=True,
+    key_scale='auto',
     **kwargs
 ):
     """根据配置文件构建模型，可选加载checkpoint权重
@@ -2441,7 +2438,9 @@ def build_transformer_model(
     transformer.build(**configs)
 
     if checkpoint_path is not None:
-        transformer.load_weights_from_checkpoint(checkpoint_path)
+        transformer.load_weights_from_checkpoint(
+            checkpoint_path, key_scale=key_scale
+        )
 
     if return_keras_model:
         return transformer.model
