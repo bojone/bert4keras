@@ -5,7 +5,7 @@ import numpy as np
 from bert4keras.layers import *
 from bert4keras.snippets import insert_arguments
 from bert4keras.snippets import delete_arguments
-from bert4keras.snippets import is_string, is_one_of
+from bert4keras.snippets import is_string
 from bert4keras.snippets import orthogonally_resize
 from keras.models import Model
 import json
