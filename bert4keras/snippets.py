@@ -756,6 +756,24 @@ def longest_common_subsequence(source, target):
     return l, mapping[::-1]
 
 
+def orthogonally_resize(a, new_shape, window=2):
+    """简单的正交化缩放矩阵
+    """
+    assert a.ndim == len(new_shape)
+    slices, a_norm, w = [], np.linalg.norm(a), window
+    for i, (d1, d2) in enumerate(zip(a.shape, new_shape)):
+        if d1 != d2:
+            k = d2 // d1 + int(d2 % d1 != 0)
+            if k > 1:
+                assert d1 % w == 0
+                a = a.reshape(a.shape[:i] + (d1 // w, w) + a.shape[i + 1:])
+                a = np.repeat(a, k, axis=i)
+                a = a.reshape(a.shape[:i] + (d1 * k,) + a.shape[i + 2:])
+        slices.append(np.s_[:d2])
+    a = a[tuple(slices)]
+    return a / np.linalg.norm(a) * a_norm
+
+
 class WebServing(object):
     """简单的Web接口
     用法：
