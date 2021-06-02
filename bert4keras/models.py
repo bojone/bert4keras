@@ -312,12 +312,12 @@ class Transformer(object):
                             if layer.attention_scale and i < count:
                                 scale = 1.0 * w_shape[-1] / v_shape[-1]
                                 v = v * scale**0.25
-                        if isinstance(
-                            layer, FeedForward
-                        ) and self.hidden_act != 'relu':
+                        if isinstance(layer, FeedForward):
                             count = 1
                             if layer.use_bias:
                                 count += 1
+                            if self.hidden_act == 'relu':
+                                count -= 2
                             if i < count:
                                 v *= np.sqrt(1.0 * w_shape[-1] / v_shape[-1])
                             else:
