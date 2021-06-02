@@ -31,7 +31,7 @@ class Transformer(object):
         compound_tokens=None,  # 扩展Embedding
         residual_attention_scores=False,  # Attention矩阵加残差
         ignore_invalid_weights=False,  # 允许跳过不存在的权重
-        autoresize_weight_shapes=False,  # 自动变换形状不匹配的权重
+        autoresize_weights=False,  # 自动变换形状不匹配的权重
         layers=None,  # 外部传入的Keras层
         prefix=None,  # 层名前缀
         name=None,  # 模型名称
@@ -59,7 +59,7 @@ class Transformer(object):
         self.attention_scores = None
         self.residual_attention_scores = residual_attention_scores
         self.ignore_invalid_weights = ignore_invalid_weights
-        self.autoresize_weight_shapes = autoresize_weight_shapes
+        self.autoresize_weights = autoresize_weights
         self.layers = {} if layers is None else layers
         self.prefix = prefix or ''
         self.name = name
@@ -303,7 +303,7 @@ class Transformer(object):
             for i, (w, v) in enumerate(zip(weights, values)):
                 if v is not None:
                     w_shape, v_shape = K.int_shape(w), v.shape
-                    if self.autoresize_weight_shapes and w_shape != v_shape:
+                    if self.autoresize_weights and w_shape != v_shape:
                         v = orthogonally_resize(v, w_shape)
                         if isinstance(layer, MultiHeadAttention):
                             count = 2
@@ -2450,4 +2450,3 @@ def build_transformer_model(
         return transformer.model
     else:
         return transformer
-    
