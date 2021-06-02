@@ -31,7 +31,7 @@ class Transformer(object):
         compound_tokens=None,  # 扩展Embedding
         residual_attention_scores=False,  # Attention矩阵加残差
         ignore_invalid_weights=False,  # 允许跳过不存在的权重
-        shape_adaptive_weights=False,  # 自动变换形状不匹配的权重
+        autoresize_weight_shapes=False,  # 自动变换形状不匹配的权重
         layers=None,  # 外部传入的Keras层
         prefix=None,  # 层名前缀
         name=None,  # 模型名称
@@ -59,7 +59,7 @@ class Transformer(object):
         self.attention_scores = None
         self.residual_attention_scores = residual_attention_scores
         self.ignore_invalid_weights = ignore_invalid_weights
-        self.shape_adaptive_weights = shape_adaptive_weights
+        self.autoresize_weight_shapes = autoresize_weight_shapes
         self.layers = {} if layers is None else layers
         self.prefix = prefix or ''
         self.name = name
@@ -278,9 +278,7 @@ class Transformer(object):
         """
         return {}
 
-    def load_weights_from_checkpoint(
-        self, checkpoint, mapping=None, key_scale='auto'
-    ):
+    def load_weights_from_checkpoint(self, checkpoint, mapping=None):
         """根据mapping从checkpoint加载权重
         """
         mapping = mapping or self.variable_mapping()
@@ -304,18 +302,27 @@ class Transformer(object):
 
             for i, (w, v) in enumerate(zip(weights, values)):
                 if v is not None:
-                    if self.shape_adaptive_weights and K.int_shape(w) != v.shape:
-                        v = orthogonally_resize(v, K.int_shape(w))
+                    w_shape, v_shape = K.int_shape(w), v.shape
+                    if self.autoresize_weight_shapes and w_shape != v_shape:
+                        v = orthogonally_resize(v, w_shape)
                         if isinstance(layer, MultiHeadAttention):
                             count = 2
                             if layer.use_bias:
                                 count += 2
                             if layer.attention_scale and i < count:
-                                if key_scale == 'auto':
-                                    head_size = self.attention_head_size
-                                    key_size = self.attention_key_size
-                                    key_scale = 1.0 * key_size / head_size
-                                v = v * key_scale**0.25
+                                scale = 1.0 * w_shape[-1] / v_shape[-1]
+                                v = v * scale**0.25
+                        if isinstance(
+                            layer, FeedForward
+                        ) and self.hidden_act != 'relu':
+                            count = 1
+                            if layer.use_bias:
+                                count += 1
+                            if i < count:
+                                v *= np.sqrt(1.0 * w_shape[-1] / v_shape[-1])
+                            else:
+                                v *= np.sqrt(1.0 * v_shape[0] / w_shape[0])
+
                     weight_value_pairs.append((w, v))
 
         K.batch_set_value(weight_value_pairs)
@@ -2376,7 +2383,6 @@ def build_transformer_model(
     model='bert',
     application='encoder',
     return_keras_model=True,
-    key_scale='auto',
     **kwargs
 ):
     """根据配置文件构建模型，可选加载checkpoint权重
@@ -2438,11 +2444,10 @@ def build_transformer_model(
     transformer.build(**configs)
 
     if checkpoint_path is not None:
-        transformer.load_weights_from_checkpoint(
-            checkpoint_path, key_scale=key_scale
-        )
+        transformer.load_weights_from_checkpoint(checkpoint_path)
 
     if return_keras_model:
         return transformer.model
     else:
         return transformer
+    
