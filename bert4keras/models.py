@@ -316,7 +316,7 @@ class Transformer(object):
                             count = 1
                             if layer.use_bias:
                                 count += 1
-                            if self.hidden_act == 'relu':
+                            if self.hidden_act in ['relu', 'leaky_relu']:
                                 count -= 2
                             if i < count:
                                 v *= np.sqrt(1.0 * w_shape[-1] / v_shape[-1])
