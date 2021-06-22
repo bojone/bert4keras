@@ -1196,7 +1196,7 @@ class GlobalPointer(Layer):
         logits = sequence_masking(logits, mask, '-inf', 2)
         logits = sequence_masking(logits, mask, '-inf', 3)
         # 排除下三角
-        mask = tf.matrix_band_part(K.ones_like(logits), 0, -1)
+        mask = tf.linalg.band_part(K.ones_like(logits), 0, -1)
         logits = logits - (1 - mask) * 1e12
         # scale返回
         return logits / self.head_size**0.5
