@@ -131,6 +131,10 @@ class Transformer(object):
             kwargs['return_attention_scores'] = True
 
         arguments = arguments or {}
+        if layer is Lambda:
+            kwargs['arguments'] = arguments
+            arguments = {}
+
         name = self.prefixed(kwargs.get('name'))
         kwargs['name'] = name
         if name not in self.layers:
