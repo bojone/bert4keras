@@ -225,6 +225,7 @@ def extract_spoes(text):
     token_ids, segment_ids = to_array([token_ids], [segment_ids])
     # 抽取subject
     subject_preds = subject_model.predict([token_ids, segment_ids])
+    subject_preds[:, [0, -1]] *= 0
     start = np.where(subject_preds[0, :, 0] > 0.6)[0]
     end = np.where(subject_preds[0, :, 1] > 0.5)[0]
     subjects = []
@@ -240,6 +241,7 @@ def extract_spoes(text):
         subjects = np.array(subjects)
         # 传入subject，抽取object和predicate
         object_preds = object_model.predict([token_ids, segment_ids, subjects])
+        object_preds[:, [0, -1]] *= 0
         for subject, object_pred in zip(subjects, object_preds):
             start = np.where(object_pred[:, :, 0] > 0.6)
             end = np.where(object_pred[:, :, 1] > 0.5)
