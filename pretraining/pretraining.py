@@ -308,6 +308,10 @@ class ModelCheckpoint(keras.callbacks.Callback):
     """自动保存最新模型
     """
     def on_epoch_end(self, epoch, logs=None):
+        # model.save_weights 保存的模型，用 model.load_weights 加载
+        # bert.save_weights_as_checkpoint 保存的模型，用 bert.load_weights_from_checkpoint 加载
+        # 不要问为什么保存的模型用 build_transformer_model 加载不了
+        # 先搞清楚对应情况，build_transformer_model 是用 load_weights_from_checkpoint 加载的。
         self.model.save_weights(model_saved_path, overwrite=True)
 
 
