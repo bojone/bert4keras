@@ -152,7 +152,7 @@ class GlobalMaxPooling1D(keras.layers.GlobalMaxPooling1D):
 keras.layers.GlobalAveragePooling1D = GlobalAveragePooling1D
 keras.layers.GlobalMaxPooling1D = GlobalMaxPooling1D
 
-        
+
 class Embedding(keras.layers.Embedding):
     """拓展Embedding层
     """
@@ -197,10 +197,7 @@ class BiasAdd(Layer):
         super(BiasAdd, self).build(input_shape)
         output_dim = input_shape[-1]
         self.bias = self.add_weight(
-            name='bias',
-            shape=(output_dim,),
-            initializer='zeros',
-            trainable=True
+            name='bias', shape=(output_dim,), initializer='zeros'
         )
 
     def call(self, inputs):
@@ -613,7 +610,11 @@ class SinusoidalPositionEmbedding(Layer):
     """定义Sin-Cos位置Embedding
     """
     def __init__(
-        self, output_dim, merge_mode='add', custom_position_ids=False, **kwargs
+        self,
+        output_dim,
+        merge_mode='add',
+        custom_position_ids=False,
+        **kwargs
     ):
         super(SinusoidalPositionEmbedding, self).__init__(**kwargs)
         self.output_dim = output_dim
@@ -862,8 +863,7 @@ class ConditionalRandomField(Layer):
         self._trans = self.add_weight(
             name='trans',
             shape=(output_dim, output_dim),
-            initializer='glorot_uniform',
-            trainable=True
+            initializer='glorot_uniform'
         )
         if self.lr_multiplier != 1:
             K.set_value(self._trans, K.eval(self._trans) / self.lr_multiplier)
@@ -986,8 +986,7 @@ class MaximumEntropyMarkovModel(Layer):
             self._trans = self.add_weight(
                 name='trans',
                 shape=(output_dim, output_dim),
-                initializer='glorot_uniform',
-                trainable=True
+                initializer='glorot_uniform'
             )
             if self.lr_multiplier != 1:
                 K.set_value(
@@ -998,14 +997,12 @@ class MaximumEntropyMarkovModel(Layer):
             self._l_trans = self.add_weight(
                 name='l_trans',
                 shape=(output_dim, self.hidden_dim),
-                initializer='glorot_uniform',
-                trainable=True
+                initializer='glorot_uniform'
             )
             self._r_trans = self.add_weight(
                 name='r_trans',
                 shape=(output_dim, self.hidden_dim),
-                initializer='glorot_uniform',
-                trainable=True
+                initializer='glorot_uniform'
             )
 
             if self.lr_multiplier != 1:
