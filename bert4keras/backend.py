@@ -51,7 +51,7 @@ def set_gelu(version):
         keras.utils.get_custom_objects()['gelu'] = gelu_tanh
 
 
-def piecewise_linear(t, schedule):
+def piecewise_linear(t, schedule, from_zero=True):
     """分段线性函数
     其中schedule是形如{1000: 1, 2000: 0.1}的字典，
     表示 t ∈ [0, 1000]时，输出从0均匀增加至1，而
@@ -59,11 +59,11 @@ def piecewise_linear(t, schedule):
     t > 2000时，保持0.1不变。
     """
     schedule = sorted(schedule.items())
-    if schedule[0][0] != 0:
+    if from_zero and schedule[0][0] != 0:
         schedule = [(0, 0.0)] + schedule
 
-    x = K.constant(schedule[0][1], dtype=K.floatx())
     t = K.cast(t, K.floatx())
+    x = (t * 0 + 1) * schedule[0][1]
     for i in range(len(schedule)):
         t_begin = schedule[i][0]
         x_begin = x
@@ -73,7 +73,7 @@ def piecewise_linear(t, schedule):
             slope = 1.0 * dx / dt
             x = schedule[i][1] + slope * (t - t_begin)
         else:
-            x = K.constant(schedule[i][1], dtype=K.floatx())
+            x = (t * 0 + 1) * schedule[i][1]
         x = K.switch(t >= t_begin, x, x_begin)
 
     return x
