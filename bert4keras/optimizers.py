@@ -206,8 +206,10 @@ class AdaFactorV1(AdaFactorBase):
                 vc = K.zeros(shape2, dtype=dtype, name='vc_' + str(i))
                 self.weights.extend([vr, vc])
                 # 定义更新
-                vr_t = self.beta2 * vr + K.mean(g2, axis=axis1, keepdims=True)
-                vc_t = self.beta2 * vc + K.mean(g2, axis=axis2, keepdims=True)
+                g2r = K.mean(g2, axis=axis1, keepdims=True)
+                g2c = K.mean(g2, axis=axis2, keepdims=True)
+                vr_t = self.beta2 * vr + (1.0 - self.beta2) * g2r
+                vc_t = self.beta2 * vc + (1.0 - self.beta2) * g2c
                 self.updates.extend([K.update(vr, vr_t), K.update(vc, vc_t)])
                 # 合成矩阵
                 v_t = vr_t * vc_t / K.mean(vr_t, axis=axis2, keepdims=True)
@@ -272,8 +274,10 @@ class AdaFactorV2(AdaFactorBase):
             vr = self.get_slot(var, 'vr')
             vc = self.get_slot(var, 'vc')
             # 定义更新
-            vr_t = self.beta2 * vr + K.mean(g2, axis=axis1, keepdims=True)
-            vc_t = self.beta2 * vc + K.mean(g2, axis=axis2, keepdims=True)
+            g2r = K.mean(g2, axis=axis1, keepdims=True)
+            g2c = K.mean(g2, axis=axis2, keepdims=True)
+            vr_t = self.beta2 * vr + (1.0 - self.beta2) * g2r
+            vc_t = self.beta2 * vc + (1.0 - self.beta2) * g2c
             vr_t, vc_t = K.update(vr, vr_t), K.update(vc, vc_t)
             # 合成矩阵
             v_t = vr_t * vc_t / K.mean(vr_t, axis=axis2, keepdims=True)
