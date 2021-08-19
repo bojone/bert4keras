@@ -186,7 +186,7 @@ class AdaFactorV1(AdaFactorBase):
         lr = self.learning_rate
 
         for i, (p, g) in enumerate(zip(params, grads)):
-            g2 = K.square(g) + self.epsilon1
+            g2 = g**2 + self.epsilon1
             shape, dtype = K.int_shape(p), K.dtype(p)
             factored_shape = self.factored_shape(shape)
             if factored_shape is None:
@@ -212,9 +212,7 @@ class AdaFactorV1(AdaFactorBase):
             u = g / K.sqrt(v_t)
             # 增量裁剪
             if self.clipping_threshold is not None:
-                u_rms = K.mean(K.square(u))
-                d = self.clipping_threshold
-                u = u / K.maximum(1.0, u_rms / d)
+                u = u / K.maximum(1.0, K.mean(u**2) / self.clipping_threshold)
             # 增量滑动
             if self.beta1 > 0.0:
                 # 定义参数
@@ -226,7 +224,7 @@ class AdaFactorV1(AdaFactorBase):
                 u = m_t
             # 增量调整
             if self.multiply_by_parameter_scale:
-                u = u * K.maximum(K.mean(K.square(p)), self.epsilon2)
+                u = u * K.maximum(K.mean(p**2), self.epsilon2)
             # 更新参数
             self.updates.append(K.update(p, p - lr * u))
 
@@ -258,7 +256,7 @@ class AdaFactorV2(AdaFactorBase):
 
     def _resource_apply(self, grad, var, indices=None):
         lr = self.learning_rate
-        g2 = K.square(grad) + self.epsilon1
+        g2 = grad**2 + self.epsilon1
         shape = K.int_shape(var)
         factored_shape = self.factored_shape(shape)
         if factored_shape is None:
@@ -280,9 +278,7 @@ class AdaFactorV2(AdaFactorBase):
         u = grad / K.sqrt(v_t)
         # 增量裁剪
         if self.clipping_threshold is not None:
-            u_rms = K.mean(K.square(u))
-            d = self.clipping_threshold
-            u = u / K.maximum(1.0, u_rms / d)
+            u = u / K.maximum(1.0, K.mean(u**2) / self.clipping_threshold)
         # 增量滑动
         if self.beta1 > 0.0:
             m = self.get_slot(var, 'm')
@@ -291,7 +287,7 @@ class AdaFactorV2(AdaFactorBase):
             u = K.update(m, m_t)
         # 增量调整
         if self.multiply_by_parameter_scale:
-            u = u * K.maximum(K.mean(K.square(var)), self.epsilon2)
+            u = u * K.maximum(K.mean(var**2), self.epsilon2)
         # 更新参数
         return K.update(var, var - lr * u)
 
