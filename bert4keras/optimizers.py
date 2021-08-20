@@ -259,8 +259,11 @@ class AdaFactorV2(AdaFactorBase):
                 self.add_slot(var, 'vr', value1)
                 self.add_slot(var, 'vc', value2)
 
+    def _decayed_lr(self, var_dtype):
+        return self.learning_rate
+
     def _resource_apply(self, grad, var, indices=None):
-        lr = self.learning_rate
+        lr = self._decayed_lr(var.dtype.base_dtype)
         g2 = grad**2 + self.epsilon1
         shape = K.int_shape(var)
         factored_shape = self.factored_shape(shape)
