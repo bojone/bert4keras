@@ -214,7 +214,7 @@ class AdaFactorV1(AdaFactorBase):
                 # 合成矩阵
                 v_t = vr_t * vc_t / K.mean(vr_t, axis=axis2, keepdims=True)
             # 增量主体
-            u = g / K.sqrt(v_t)
+            u = g / K.sqrt(v_t + self.epsilon1)
             # 增量裁剪
             if self.clipping_threshold is not None:
                 u = u / K.maximum(1.0, self.rms(u) / self.clipping_threshold)
@@ -285,7 +285,7 @@ class AdaFactorV2(AdaFactorBase):
             # 合成矩阵
             v_t = vr_t * vc_t / K.mean(vr_t, axis=axis2, keepdims=True)
         # 增量主体
-        u = grad / K.sqrt(v_t)
+        u = grad / K.sqrt(v_t + self.epsilon1)
         # 增量裁剪
         if self.clipping_threshold is not None:
             u = u / K.maximum(1.0, self.rms(u) / self.clipping_threshold)
