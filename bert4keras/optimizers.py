@@ -7,6 +7,7 @@ from bert4keras.backend import keras, K, is_tf_keras
 from bert4keras.snippets import is_string, string_matching
 from bert4keras.snippets import is_one_of, insert_arguments
 from bert4keras.backend import piecewise_linear
+from bert4keras.backend import root_mean_square as rms
 import re
 
 
@@ -153,9 +154,6 @@ class AdaFactorBase(keras.optimizers.Optimizer):
         shape2[indices[-2]] = 1
         return shape1, indices[-1], shape2, indices[-2]
 
-    def rms(self, x):
-        return K.sqrt(K.mean(K.square(x)))
-
     def get_config(self):
         config = {
             'learning_rate': self._learning_rate,
@@ -217,7 +215,7 @@ class AdaFactorV1(AdaFactorBase):
             u = g / K.sqrt(v_t + self.epsilon1)
             # 增量裁剪
             if self.clipping_threshold is not None:
-                u = u / K.maximum(1.0, self.rms(u) / self.clipping_threshold)
+                u = u / K.maximum(1.0, rms(u) / self.clipping_threshold)
             # 增量滑动
             if self.beta1 > 0.0:
                 # 定义参数
@@ -229,7 +227,7 @@ class AdaFactorV1(AdaFactorBase):
                 u = m_t
             # 增量调整
             if self.multiply_by_parameter_scale:
-                u = u * K.maximum(self.rms(p), self.epsilon2)
+                u = u * K.maximum(rms(p), self.epsilon2)
             # 更新参数
             self.updates.append(K.update(p, p - lr * u))
 
@@ -288,7 +286,7 @@ class AdaFactorV2(AdaFactorBase):
         u = grad / K.sqrt(v_t + self.epsilon1)
         # 增量裁剪
         if self.clipping_threshold is not None:
-            u = u / K.maximum(1.0, self.rms(u) / self.clipping_threshold)
+            u = u / K.maximum(1.0, rms(u) / self.clipping_threshold)
         # 增量滑动
         if self.beta1 > 0.0:
             m = self.get_slot(var, 'm')
@@ -297,7 +295,7 @@ class AdaFactorV2(AdaFactorBase):
             u = K.update(m, m_t)
         # 增量调整
         if self.multiply_by_parameter_scale:
-            u = u * K.maximum(self.rms(var), self.epsilon2)
+            u = u * K.maximum(rms(var), self.epsilon2)
         # 更新参数
         return K.update(var, var - lr * u)
 
