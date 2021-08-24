@@ -186,6 +186,12 @@ def divisible_temporal_padding(x, n):
     return K.temporal_padding(x, (0, p_len))
 
 
+def root_mean_square(x, axis=None, keepdims=True):
+    """均方根，相当于模长的变体
+    """
+    return K.sqrt(K.mean(K.square(x), axis=axis, keepdims=keepdims))
+
+
 def swish(x):
     """swish函数（这样封装过后才有 __name__ 属性）
     """
