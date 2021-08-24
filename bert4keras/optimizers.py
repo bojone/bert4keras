@@ -189,7 +189,7 @@ class AdaFactorV1(AdaFactorBase):
         lr = self.learning_rate
 
         for i, (p, g) in enumerate(zip(params, grads)):
-            g2 = K.square(g) + self.epsilon1
+            g2 = K.square(g) + self.epsilon1  # 如果换成g**2，在keras下Embedding层会报错
             shape, dtype = K.int_shape(p), K.dtype(p)
             factored_shape = self.factored_shape(shape)
             if factored_shape is None:
