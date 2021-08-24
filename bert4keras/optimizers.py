@@ -52,7 +52,7 @@ class Adam(keras.optimizers.Optimizer):
         # 更新公式
         if indices is None:
             m_t = K.update(m, beta_1_t * m + (1 - beta_1_t) * grad)
-            v_t = K.update(v, beta_2_t * v + (1 - beta_2_t) * grad**2)
+            v_t = K.update(v, beta_2_t * v + (1 - beta_2_t) * K.square(grad))
         else:
             mv_ops = [K.update(m, beta_1_t * m), K.update(v, beta_2_t * v)]
             with tf.control_dependencies(mv_ops):
@@ -60,7 +60,7 @@ class Adam(keras.optimizers.Optimizer):
                     m, indices, (1 - beta_1_t) * grad
                 )
                 v_t = self._resource_scatter_add(
-                    v, indices, (1 - beta_2_t) * grad**2
+                    v, indices, (1 - beta_2_t) * K.square(grad)
                 )
 
         # 返回算子
@@ -154,7 +154,7 @@ class AdaFactorBase(keras.optimizers.Optimizer):
         return shape1, indices[-1], shape2, indices[-2]
 
     def rms(self, x):
-        return K.sqrt(K.mean(x**2))
+        return K.sqrt(K.mean(K.square(x)))
 
     def get_config(self):
         config = {
@@ -189,7 +189,7 @@ class AdaFactorV1(AdaFactorBase):
         lr = self.learning_rate
 
         for i, (p, g) in enumerate(zip(params, grads)):
-            g2 = g**2 + self.epsilon1
+            g2 = K.square(g) + self.epsilon1
             shape, dtype = K.int_shape(p), K.dtype(p)
             factored_shape = self.factored_shape(shape)
             if factored_shape is None:
@@ -264,7 +264,7 @@ class AdaFactorV2(AdaFactorBase):
 
     def _resource_apply(self, grad, var, indices=None):
         lr = self._decayed_lr(var.dtype.base_dtype)
-        g2 = grad**2 + self.epsilon1
+        g2 = K.square(grad) + self.epsilon1
         shape = K.int_shape(var)
         factored_shape = self.factored_shape(shape)
         if factored_shape is None:
