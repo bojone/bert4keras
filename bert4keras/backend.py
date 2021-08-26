@@ -334,6 +334,7 @@ custom_objects = {
     'gelu_erf': gelu_erf,
     'gelu_tanh': gelu_tanh,
     'gelu': gelu_erf,
+    'root_mean_square': root_mean_square,
     'swish': swish,
     'leaky_relu': leaky_relu,
     'Sinusoidal': Sinusoidal,
