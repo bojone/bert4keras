@@ -2,6 +2,7 @@
 # 主要模型
 
 import numpy as np
+from bert4keras.backend import sequence_masking
 from bert4keras.layers import *
 from bert4keras.snippets import insert_arguments
 from bert4keras.snippets import delete_arguments
@@ -2014,6 +2015,12 @@ class T5_Encoder(T5_Base):
             layer=Dropout,
             rate=self.dropout_rate,
             name='Encoder-Output-Dropout'
+        )
+        x = self.apply(
+            inputs=x,
+            layer=Lambda,
+            function=sequence_masking,
+            name='Encoder-Output-Masked'
         )
 
         return x
