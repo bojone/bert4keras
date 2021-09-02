@@ -186,20 +186,14 @@ class open:
         self.close()
 
 
-def parallel_apply(
-    func,
-    iterable,
-    workers,
-    max_queue_size,
-    callback=None,
-    dummy=False,
-    random_seeds=True
+def parallel_apply_generator(
+    func, iterable, workers, max_queue_size, dummy=False, random_seeds=True
 ):
     """多进程或多线程地将func应用到iterable的每个元素中。
     注意这个apply是异步且无序的，也就是说依次输入a,b,c，但是
-    输出可能是func(c), func(a), func(b)。
+    输出可能是func(c), func(a), func(b)。返回一个generator，
+    generator是输入的序号以及该输入对应的处理结果。
     参数：
-        callback: 处理单个输出的回调函数；
         dummy: False是多进程/线性，True则是多线程/线性；
         random_seeds: 每个进程的随机种子。
     """
@@ -229,21 +223,6 @@ def parallel_apply(
     # 启动多进程/线程
     pool = Pool(workers, worker_step, (in_queue, out_queue))
 
-    if callback is None:
-        results = []
-
-    # 后处理函数
-    def process_out_queue():
-        out_count = 0
-        for _ in range(out_queue.qsize()):
-            i, d = out_queue.get()
-            out_count += 1
-            if callback is None:
-                results.append((i, d))
-            else:
-                callback(d)
-        return out_count
-
     # 存入数据，取出结果
     in_count, out_count = 0, 0
     for i, d in enumerate(iterable):
@@ -253,18 +232,54 @@ def parallel_apply(
                 in_queue.put((i, d), block=False)
                 break
             except six.moves.queue.Full:
-                out_count += process_out_queue()
+                for _ in range(out_queue.qsize()):
+                    yield out_queue.get()
+                    out_count += 1
         if in_count % max_queue_size == 0:
-            out_count += process_out_queue()
+            for _ in range(out_queue.qsize()):
+                yield out_queue.get()
+                out_count += 1
 
     while out_count != in_count:
-        out_count += process_out_queue()
+        for _ in range(out_queue.qsize()):
+            yield out_queue.get()
+            out_count += 1
 
     pool.terminate()
 
+
+def parallel_apply(
+    func,
+    iterable,
+    workers,
+    max_queue_size,
+    callback=None,
+    dummy=False,
+    random_seeds=True,
+    unordered=True
+):
+    """多进程或多线程地将func应用到iterable的每个元素中。
+    注意这个apply是异步且无序的，也就是说依次输入a,b,c，但是
+    输出可能是func(c), func(a), func(b)。
+    参数：
+        callback: 处理单个输出的回调函数；
+        dummy: False是多进程/线性，True则是多线程/线性；
+        random_seeds: 每个进程的随机种子；
+        unordered: 若为False，则按照输入顺序返回，仅当callback为None时生效。
+    """
+    generator = parallel_apply_generator(
+        func, iterable, workers, max_queue_size, dummy, random_seeds
+    )
+
     if callback is None:
-        results = sorted(results, key=lambda r: r[0])
-        return [r[1] for r in results]
+        if unordered:
+            return [d for i, d in generator]
+        else:
+            results = sorted(generator, key=lambda d: d[0])
+            return [d for i, d in results]
+    else:
+        for d in generator:
+            callback(d)
 
 
 def sequence_padding(inputs, length=None, value=0, seq_dims=1, mode='post'):
