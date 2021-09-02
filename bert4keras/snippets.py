@@ -191,8 +191,9 @@ def parallel_apply_generator(
 ):
     """多进程或多线程地将func应用到iterable的每个元素中。
     注意这个apply是异步且无序的，也就是说依次输入a,b,c，但是
-    输出可能是func(c), func(a), func(b)。返回一个generator，
-    generator是输入的序号以及该输入对应的处理结果。
+    输出可能是func(c), func(a), func(b)。结果将作为一个
+    generator返回，其中每个item是输入的序号以及该输入对应的
+    处理结果。
     参数：
         dummy: False是多进程/线性，True则是多线程/线性；
         random_seeds: 每个进程的随机种子。
