@@ -105,6 +105,7 @@ class AdaFactorBase(keras.optimizers.Optimizer):
         multiply_by_parameter_scale=True,
         clipping_threshold=1.0,
         min_dim_size_to_factor=128,
+        exclude_from_parameter_scale=None,
         **kwargs
     ):
         super(AdaFactorBase, self).__init__(**kwargs)
@@ -116,6 +117,7 @@ class AdaFactorBase(keras.optimizers.Optimizer):
         self.multiply_by_parameter_scale = multiply_by_parameter_scale
         self.clipping_threshold = clipping_threshold
         self.min_dim_size_to_factor = min_dim_size_to_factor
+        self.exclude_from_parameter_scale = exclude_from_parameter_scale or []
 
     @property
     def learning_rate(self):
@@ -154,6 +156,11 @@ class AdaFactorBase(keras.optimizers.Optimizer):
         shape2[indices[-2]] = 1
         return shape1, indices[-1], shape2, indices[-2]
 
+    def _do_parameter_scale(self, w):
+        return self.multiply_by_parameter_scale and (
+            not string_matching(w.name, self.exclude_from_parameter_scale)
+        )
+
     def get_config(self):
         config = {
             'learning_rate': self._learning_rate,
@@ -164,6 +171,7 @@ class AdaFactorBase(keras.optimizers.Optimizer):
             'multiply_by_parameter_scale': self.multiply_by_parameter_scale,
             'clipping_threshold': self.clipping_threshold,
             'min_dim_size_to_factor': self.min_dim_size_to_factor,
+            'exclude_from_parameter_scale': self.exclude_from_parameter_scale,
         }
         base_config = super(AdaFactorBase, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
@@ -226,7 +234,7 @@ class AdaFactorV1(AdaFactorBase):
                 self.updates.append(K.update(m, m_t))
                 u = m_t
             # 增量调整
-            if self.multiply_by_parameter_scale:
+            if self._do_parameter_scale(p):
                 u = u * K.maximum(rms(p), self.epsilon2)
             # 更新参数
             self.updates.append(K.update(p, p - lr * u))
@@ -294,7 +302,7 @@ class AdaFactorV2(AdaFactorBase):
             m_t = self.beta1 * m + (1.0 - self.beta1) * u
             u = K.update(m, m_t)
         # 增量调整
-        if self.multiply_by_parameter_scale:
+        if self._do_parameter_scale(var):
             u = u * K.maximum(rms(var), self.epsilon2)
         # 更新参数
         return K.update(var, var - lr * u)
