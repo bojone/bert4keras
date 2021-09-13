@@ -242,6 +242,7 @@ class MultiHeadAttention(Layer):
         key_size=None,
         use_bias=True,
         attention_scale=True,
+        attention_dropout=None,
         return_attention_scores=False,
         kernel_initializer='glorot_uniform',
         **kwargs
@@ -253,6 +254,7 @@ class MultiHeadAttention(Layer):
         self.key_size = key_size or head_size
         self.use_bias = use_bias
         self.attention_scale = attention_scale
+        self.attention_dropout = attention_dropout
         self.return_attention_scores = return_attention_scores
         self.kernel_initializer = initializers.get(kernel_initializer)
 
@@ -353,6 +355,8 @@ class MultiHeadAttention(Layer):
             a = a + a_bias
         a = sequence_masking(a, v_mask, '-inf', -1)
         A = K.softmax(a)
+        if self.attention_dropout:
+            A = Dropout(self.attention_dropout)(A)
         # 完成输出
         o = tf.einsum('bhjk,bkhd->bjhd', A, vw)
         if p_bias == 'typical_relative':
@@ -385,6 +389,7 @@ class MultiHeadAttention(Layer):
             'key_size': self.key_size,
             'use_bias': self.use_bias,
             'attention_scale': self.attention_scale,
+            'attention_dropout': self.attention_dropout,
             'return_attention_scores': self.return_attention_scores,
             'kernel_initializer':
                 initializers.serialize(self.kernel_initializer),
