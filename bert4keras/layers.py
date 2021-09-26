@@ -1232,15 +1232,6 @@ class GlobalPointer(Layer):
         base_config = super(GlobalPointer, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
-    def get_config(self):
-        config = {
-            'heads': self.heads,
-            'head_size': self.head_size,
-            'RoPE': self.RoPE,
-        }
-        base_config = super(GlobalPointer, self).get_config()
-        return dict(list(base_config.items()) + list(config.items()))
-
 
 class Loss(Layer):
     """特殊的层，用来定义复杂loss
