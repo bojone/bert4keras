@@ -1161,15 +1161,29 @@ class GlobalPointer(Layer):
     """全局指针模块
     将序列的每个(start, end)作为整体来进行判断
     """
-    def __init__(self, heads, head_size, RoPE=True, **kwargs):
+    def __init__(
+        self,
+        heads,
+        head_size,
+        RoPE=True,
+        use_bias=True,
+        kernel_initializer='glorot_uniform',
+        **kwargs
+    ):
         super(GlobalPointer, self).__init__(**kwargs)
         self.heads = heads
         self.head_size = head_size
         self.RoPE = RoPE
+        self.use_bias = use_bias
+        self.kernel_initializer = initializers.get(kernel_initializer)
 
     def build(self, input_shape):
         super(GlobalPointer, self).build(input_shape)
-        self.dense = Dense(self.head_size * self.heads * 2)
+        self.dense = Dense(
+            units=self.head_size * self.heads * 2,
+            use_bias=self.use_bias,
+            kernel_initializer=self.kernel_initializer
+        )
 
     def compute_mask(self, inputs, mask=None):
         return None
@@ -1205,6 +1219,18 @@ class GlobalPointer(Layer):
 
     def compute_output_shape(self, input_shape):
         return (input_shape[0], self.heads, input_shape[1], input_shape[1])
+
+    def get_config(self):
+        config = {
+            'heads': self.heads,
+            'head_size': self.head_size,
+            'RoPE': self.RoPE,
+            'use_bias': self.use_bias,
+            'kernel_initializer':
+                initializers.serialize(self.kernel_initializer),
+        }
+        base_config = super(GlobalPointer, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
 
     def get_config(self):
         config = {
