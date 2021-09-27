@@ -6,6 +6,7 @@ from bert4keras.snippets import is_string, is_py2
 from bert4keras.snippets import open
 from bert4keras.snippets import convert_to_unicode
 from bert4keras.snippets import truncate_sequences
+from bert4keras.snippets import lowercase_and_normalize
 
 
 def load_vocab(dict_path, encoding='utf-8', simplified=False, startswith=None):
@@ -41,17 +42,6 @@ def save_vocab(dict_path, token_dict, encoding='utf-8'):
     with open(dict_path, 'w', encoding=encoding) as writer:
         for k, v in sorted(token_dict.items(), key=lambda s: s[1]):
             writer.write(k + '\n')
-
-
-def lowercase_and_normalize(text):
-    """转小写，并进行简单的标准化
-    """
-    if is_py2:
-        text = unicode(text)
-    text = text.lower()
-    text = unicodedata.normalize('NFD', text)
-    text = ''.join([ch for ch in text if unicodedata.category(ch) != 'Mn'])
-    return text
 
 
 class TokenizerBase(object):
