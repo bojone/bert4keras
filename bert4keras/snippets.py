@@ -79,6 +79,17 @@ def convert_to_str(text, encoding='utf-8', errors='ignore'):
     return text
 
 
+def lowercase_and_normalize(text):
+    """转小写，并进行简单的标准化
+    """
+    if is_py2:
+        text = unicode(text)
+    text = text.lower()
+    text = unicodedata.normalize('NFD', text)
+    text = ''.join([ch for ch in text if unicodedata.category(ch) != 'Mn'])
+    return text
+
+
 class open:
     """模仿python自带的open函数
     作用：1.主要是为了同时兼容py2和py3；2.增加了索引功能，方便读取大文件。
