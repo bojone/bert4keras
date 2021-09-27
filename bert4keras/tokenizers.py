@@ -43,6 +43,17 @@ def save_vocab(dict_path, token_dict, encoding='utf-8'):
             writer.write(k + '\n')
 
 
+def lowercase_and_normalize(text):
+    """转小写，并进行简单的标准化
+    """
+    if is_py2:
+        text = unicode(text)
+    text = text.lower()
+    text = unicodedata.normalize('NFD', text)
+    text = ''.join([ch for ch in text if unicodedata.category(ch) != 'Mn'])
+    return text
+
+
 class TokenizerBase(object):
     """分词器基类
     """
@@ -237,13 +248,7 @@ class Tokenizer(TokenizerBase):
         """基本分词函数
         """
         if self._do_lower_case:
-            if is_py2:
-                text = unicode(text)
-            text = text.lower()
-            text = unicodedata.normalize('NFD', text)
-            text = ''.join([
-                ch for ch in text if unicodedata.category(ch) != 'Mn'
-            ])
+            text = lowercase_and_normalize(text)
 
         if pre_tokenize and self._pre_tokenize is not None:
             tokens = []
@@ -368,7 +373,6 @@ class Tokenizer(TokenizerBase):
                 ):
                     return True
 
-
     def rematch(self, text, tokens):
         """给出原始的text和tokenize后的tokens的映射关系
         """
@@ -381,8 +385,7 @@ class Tokenizer(TokenizerBase):
         normalized_text, char_mapping = '', []
         for i, ch in enumerate(text):
             if self._do_lower_case:
-                ch = unicodedata.normalize('NFD', ch)
-                ch = ''.join([c for c in ch if unicodedata.category(c) != 'Mn'])
+                ch = lowercase_and_normalize(ch)
             ch = ''.join([
                 c for c in ch
                 if not (ord(c) == 0 or ord(c) == 0xfffd or self._is_control(c))
