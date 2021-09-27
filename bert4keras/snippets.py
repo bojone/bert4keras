@@ -2,6 +2,7 @@
 # 代码合集
 
 import os, sys, six, re, json
+import unicodedata
 import logging
 import numpy as np
 from collections import defaultdict
