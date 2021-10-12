@@ -204,6 +204,25 @@ class BiasAdd(Layer):
         return K.bias_add(inputs, self.bias)
 
 
+class Scale(Layer):
+    """尺度缩放层
+    说明：选择自定义一个层而不是用Lambda层的原因是要存储scale参数。
+    """
+    def __init__(self, scale=1, **kwargs):
+        super(Scale, self).__init__(**kwargs)
+        self.scale = scale
+
+    def call(self, inputs):
+        return inputs * self.scale
+
+    def get_config(self):
+        config = {
+            'scale': self.scale,
+        }
+        base_config = super(Scale, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+
 class Concatenate1D(Layer):
     """1维序列拼接层
     说明：本来该功能可以直接通过Concatenate层来实现，无奈Keras
@@ -1281,6 +1300,7 @@ class Loss(Layer):
 custom_objects = {
     'Embedding': Embedding,
     'BiasAdd': BiasAdd,
+    'Scale': Scale,
     'Concatenate1D': Concatenate1D,
     'MultiHeadAttention': MultiHeadAttention,
     'LayerNormalization': LayerNormalization,
