@@ -51,6 +51,18 @@ def set_gelu(version):
         keras.utils.get_custom_objects()['gelu'] = gelu_tanh
 
 
+def infinity():
+    """返回默认的代表无穷大的数值
+    """
+    return keras.utils.get_custom_objects().get('infinity', 1e12)
+
+
+def set_infinity(value):
+    """设置新的代表无穷大的数值
+    """
+    keras.utils.get_custom_objects()['infinity'] = value
+
+
 def piecewise_linear(t, schedule, from_zero=True):
     """分段线性函数
     其中schedule是形如{1000: 1, 2000: 0.1}的字典，
@@ -126,9 +138,9 @@ def sequence_masking(x, mask, value=0.0, axis=None):
         if K.dtype(mask) != K.dtype(x):
             mask = K.cast(mask, K.dtype(x))
         if value == '-inf':
-            value = -1e12
+            value = -K.infinity()
         elif value == 'inf':
-            value = 1e12
+            value = K.infinity()
         if axis is None:
             axis = 1
         elif axis < 0:
@@ -233,8 +245,8 @@ def multilabel_categorical_crossentropy(y_true, y_pred):
         4. 详情请看：https://kexue.fm/archives/7359 。
     """
     y_pred = (1 - 2 * y_true) * y_pred
-    y_pred_neg = y_pred - y_true * 1e12
-    y_pred_pos = y_pred - (1 - y_true) * 1e12
+    y_pred_neg = y_pred - y_true * K.infinity()
+    y_pred_pos = y_pred - (1 - y_true) * K.infinity()
     zeros = K.zeros_like(y_pred[..., :1])
     y_pred_neg = K.concatenate([y_pred_neg, zeros], axis=-1)
     y_pred_pos = K.concatenate([y_pred_pos, zeros], axis=-1)
@@ -326,9 +338,13 @@ def recompute_grad(call):
     return inner
 
 
-# 给旧版本keras新增symbolic方法（装饰器），
-# 以便兼容optimizers.py中的代码
+# 给旧版keras新增symbolic（装饰器），以兼容optimizers.py
 K.symbolic = getattr(K, 'symbolic', None) or symbolic
+
+# 添加到 keras.backend 上，使其可以像 K.epsilon() 那样操作
+K.infinity = infinity
+K.set_infinity = set_infinity
+sys.modules['keras.backend'] = K
 
 custom_objects = {
     'gelu_erf': gelu_erf,
