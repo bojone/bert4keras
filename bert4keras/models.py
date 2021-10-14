@@ -369,7 +369,7 @@ class LM_Mask(object):
                 idxs = K.arange(0, seq_len)
                 mask = idxs[None, :] <= idxs[:, None]
                 mask = K.cast(mask, K.floatx())
-                return -(1 - mask[None, None]) * 1e12
+                return -(1 - mask[None, None]) * K.infinity()
 
             self.attention_bias = self.apply(
                 inputs=self.inputs[0],
@@ -395,7 +395,7 @@ class UniLM_Mask(object):
                 idxs = K.cumsum(s, axis=1)
                 mask = idxs[:, None, :] <= idxs[:, :, None]
                 mask = K.cast(mask, K.floatx())
-                return -(1 - mask[:, None]) * 1e12
+                return -(1 - mask[:, None]) * K.infinity()
 
             self.attention_bias = self.apply(
                 inputs=self.inputs[1],
