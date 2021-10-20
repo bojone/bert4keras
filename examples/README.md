@@ -16,6 +16,7 @@
 - [task_iflytek_adversarial_training.py](https://github.com/bojone/bert4keras/tree/master/examples/task_iflytek_adversarial_training.py): 任务例子，通过[对抗训练](https://kexue.fm/archives/7234)提升分类效果。
 - [task_iflytek_bert_of_theseus.py](https://github.com/bojone/bert4keras/tree/master/examples/task_iflytek_bert_of_theseus.py): 任务例子，通过[BERT-of-Theseus](https://kexue.fm/archives/7575)来进行模型压缩。
 - [task_iflytek_gradient_penalty.py](https://github.com/bojone/bert4keras/tree/master/examples/task_iflytek_gradient_penalty.py): 任务例子，通过[梯度惩罚](https://kexue.fm/archives/7234)提升分类效果，可以视为另一种对抗训练。
+- [task_iflytek_multigpu.py](https://github.com/bojone/bert4keras/tree/master/examples/task_iflytek_multigpu.py): 任务例子，文本分类多GPU版。
 - [task_image_caption.py](https://github.com/bojone/bert4keras/tree/master/examples/task_image_caption.py): 任务例子，BERT + [Conditional Layer Normalization](https://kexue.fm/archives/7124) + ImageNet预训练模型 来做图像描述生成。
 - [task_language_model.py](https://github.com/bojone/bert4keras/tree/master/examples/task_language_model.py): 任务例子，加载BERT的预训练权重做无条件语言模型，效果上等价于GPT。
 - [task_language_model_chinese_chess.py](https://github.com/bojone/bert4keras/tree/master/examples/task_language_model_chinese_chess.py): 任务例子，用GPT的方式下中国象棋，过程请参考[博客](https://kexue.fm/archives/7877)。
