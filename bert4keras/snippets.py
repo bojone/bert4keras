@@ -432,6 +432,11 @@ class DataGenerator(object):
             for d in self.__iter__(random):
                 yield d
 
+    def fortest(self, random=False):
+        while True:
+            for d in self.__iter__(random):
+                yield d[0]
+
     def to_dataset(self, types, shapes, names=None, padded_batch=False):
         """转为tf.data.Dataset格式
         如果传入names的话，自动把数据包装成dict形式。
