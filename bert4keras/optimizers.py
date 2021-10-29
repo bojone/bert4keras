@@ -442,7 +442,7 @@ def extend_with_layer_adaptation(BaseOptimizer):
                     g_norm = tf.norm(dx / lr_t)
                     ratio = K.switch(
                         x_norm > 0.0,
-                        K.switch(g_norm > K.epsilon(), x_norm / g_norm, 1.0),
+                        K.switch(g_norm > 0.0, x_norm / g_norm, 1.0),
                         1.0
                     )
                     new_x = x + dx * ratio
@@ -495,7 +495,7 @@ def extend_with_layer_adaptation_v2(BaseOptimizer):
                     g_norm = tf.norm(dx / lr_t)
                     ratio = K.switch(
                         x_norm > 0.0,
-                        K.switch(g_norm > K.epsilon(), x_norm / g_norm, 1.0),
+                        K.switch(g_norm > 0.0, x_norm / g_norm, 1.0),
                         1.0
                     )
                     new_x = x + dx * ratio
