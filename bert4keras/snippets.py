@@ -245,18 +245,16 @@ def parallel_apply_generator(
                 in_queue.put((i, d), block=False)
                 break
             except six.moves.queue.Full:
-                for _ in range(out_queue.qsize()):
+                while out_queue.qsize() > max_queue_size:
                     yield out_queue.get()
                     out_count += 1
-        if in_count % max_queue_size == 0:
-            for _ in range(out_queue.qsize()):
-                yield out_queue.get()
-                out_count += 1
-
-    while out_count != in_count:
-        for _ in range(out_queue.qsize()):
+        if out_queue.qsize() > 0:
             yield out_queue.get()
             out_count += 1
+
+    while out_count != in_count:
+        yield out_queue.get()
+        out_count += 1
 
     pool.terminate()
 
