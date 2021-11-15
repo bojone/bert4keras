@@ -289,7 +289,7 @@ def parallel_apply(
             results = sorted(generator, key=lambda d: d[0])
             return [d for i, d in results]
     else:
-        for d in generator:
+        for i, d in generator:
             callback(d)
 
 
