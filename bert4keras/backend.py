@@ -126,7 +126,7 @@ def search_layer(inputs, name, exclude_from=None):
                     return layer
 
 
-def sequence_masking(x, mask, value=0.0, axis=None):
+def sequence_masking(x, mask, value=0, axis=None):
     """为序列条件mask的函数
     mask: 形如(batch_size, seq_len)的0-1矩阵；
     value: mask部分要被替换成的值，可以是'-inf'或'inf'；
@@ -135,8 +135,8 @@ def sequence_masking(x, mask, value=0.0, axis=None):
     if mask is None:
         return x
     else:
-        if K.dtype(mask) != K.dtype(x):
-            mask = K.cast(mask, K.dtype(x))
+        if K.dtype(mask) != 'bool':
+            mask = K.cast(mask, 'bool')
         if value == '-inf':
             value = -K.infinity()
         elif value == 'inf':
@@ -150,7 +150,10 @@ def sequence_masking(x, mask, value=0.0, axis=None):
             mask = K.expand_dims(mask, 1)
         for _ in range(K.ndim(x) - K.ndim(mask)):
             mask = K.expand_dims(mask, K.ndim(mask))
-        return x * mask + value * (1 - mask)
+        value = tf.fill(K.shape(x), value)
+        if K.dtype(value) != K.dtype(x):
+            value = K.cast(value, K.dtype(x))
+        return K.switch(mask, x, value)
 
 
 def batch_gather(params, indices):
