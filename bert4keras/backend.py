@@ -135,8 +135,11 @@ def sequence_masking(x, mask, value=0, axis=None):
     if mask is None:
         return x
     else:
-        if K.dtype(mask) != 'bool':
-            mask = K.cast(mask, 'bool')
+        x_dtype = K.dtype(x)
+        if x_dtype == 'bool':
+            x = K.cast(x, 'int32')
+        if K.dtype(mask) != K.dtype(x):
+            mask = K.cast(mask, K.dtype(x))
         if value == '-inf':
             value = -K.infinity()
         elif value == 'inf':
@@ -148,12 +151,13 @@ def sequence_masking(x, mask, value=0, axis=None):
         assert axis > 0, 'axis must be greater than 0'
         for _ in range(axis - 1):
             mask = K.expand_dims(mask, 1)
+        value = K.cast(value, K.dtype(x))
         for _ in range(K.ndim(x) - K.ndim(mask)):
             mask = K.expand_dims(mask, K.ndim(mask))
-        value = tf.fill(K.shape(x), value)
-        if K.dtype(value) != K.dtype(x):
-            value = K.cast(value, K.dtype(x))
-        return K.switch(mask, x, value)
+        x = x * mask + value * (1 - mask)
+        if x_dtype == 'bool':
+            x = K.cast(x, 'bool')
+        return x
 
 
 def batch_gather(params, indices):
