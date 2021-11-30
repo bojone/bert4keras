@@ -1852,14 +1852,8 @@ class T5_Base(Transformer):
                 ],
             })
 
-        if self.version == 't5.1.1':
-            mapping['Encoder-Output-Norm'] = ['encoder/rms_norm/scale']
-            mapping['Decoder-Output-Norm'] = ['decoder/rms_norm/scale']
+        if self.version.endswith('t5.1.1'):
             mapping['Decoder-Output-LM'] = ['decoder/logits/kernel']
-            mapping = {
-                k: [i.replace('layer_norm', 'rms_norm') for i in v]
-                for k, v in mapping.items()
-            }
             for i in range(self.num_hidden_layers):
                 for layer in [
                     'Encoder-Transformer-%d-FeedForward' % i,
@@ -1870,6 +1864,13 @@ class T5_Base(Transformer):
                         mapping[layer][0][:-7] + '_1' + mapping[layer][0][-7:],
                         mapping[layer][1]
                     ]
+            if self.version == 'mt5.1.1':
+                mapping['Encoder-Output-Norm'] = ['encoder/rms_norm/scale']
+                mapping['Decoder-Output-Norm'] = ['decoder/rms_norm/scale']
+                mapping = {
+                    k: [i.replace('layer_norm', 'rms_norm') for i in v]
+                    for k, v in mapping.items()
+                }
 
         return mapping
 
