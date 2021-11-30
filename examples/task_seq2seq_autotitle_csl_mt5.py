@@ -89,7 +89,7 @@ t5 = build_transformer_model(
     config_path=config_path,
     checkpoint_path=checkpoint_path,
     keep_tokens=keep_tokens,
-    model='t5.1.1',
+    model='mt5.1.1',
     return_keras_model=False,
     name='T5',
 )
