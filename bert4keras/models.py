@@ -2444,13 +2444,16 @@ def build_transformer_model(
         't5.1.1': T5,
         't5.1.1_encoder': T5_Encoder,
         't5.1.1_decoder': T5_Decoder,
+        'mt5.1.1': T5,
+        'mt5.1.1_encoder': T5_Encoder,
+        'mt5.1.1_decoder': T5_Decoder,
     }
 
     if is_string(model):
         model = model.lower()
         MODEL = models[model]
-        if model.startswith('t5.1.1'):
-            configs['version'] = 't5.1.1'
+        if model.endswith('t5.1.1'):
+            configs['version'] = model
     else:
         MODEL = model
 
