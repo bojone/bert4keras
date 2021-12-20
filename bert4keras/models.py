@@ -2026,12 +2026,6 @@ class T5_Encoder(T5_Base):
             rate=self.dropout_rate,
             name='Encoder-Output-Dropout'
         )
-        x = self.apply(
-            inputs=x,
-            layer=Lambda,
-            function=sequence_masking,
-            name='Encoder-Output-Masked'
-        )
 
         return x
 
@@ -2083,9 +2077,6 @@ class T5_Decoder(LM_Mask, T5_Base):
         """
         c, x = inputs
 
-        c = self.apply(
-            inputs=c, layer=Masking, mask_value=0.0, name='Masked-Context'
-        )
         x = self.apply(
             inputs=x,
             layer=Embedding,
@@ -2363,10 +2354,11 @@ class T5(T5_Base):
         """
         self._encoder.build(**kwargs)
         self._decoder.build(**kwargs)
+        self._decoder.position_bias = None  # 下面call时将重新初始化
         self.encoder = self._encoder.model
         self.decoder = self._decoder.model
         self.inputs = self.encoder.inputs + self.decoder.inputs[1:]
-        self.outputs = self.decoder(
+        self.outputs = self._decoder.call(
             self.encoder.outputs + self.decoder.inputs[1:]
         )
         self.model = Model(self.inputs, self.outputs)
