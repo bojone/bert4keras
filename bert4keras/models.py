@@ -2,7 +2,6 @@
 # 主要模型
 
 import numpy as np
-from bert4keras.backend import sequence_masking
 from bert4keras.layers import *
 from bert4keras.snippets import insert_arguments
 from bert4keras.snippets import delete_arguments
