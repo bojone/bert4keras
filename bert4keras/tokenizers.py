@@ -1,7 +1,7 @@
 #! -*- coding: utf-8 -*-
 # 分词函数
 
-import unicodedata, re
+import unicodedata, re, json
 from bert4keras.snippets import is_string, is_py2
 from bert4keras.snippets import open
 from bert4keras.snippets import convert_to_unicode
@@ -14,10 +14,16 @@ def load_vocab(dict_path, encoding='utf-8', simplified=False, startswith=None):
     """
     token_dict = {}
     with open(dict_path, encoding=encoding) as reader:
-        for line in reader:
-            token = line.split()
-            token = token[0] if token else line.strip()
-            token_dict[token] = len(token_dict)
+        # 加载.json格式的 vacab.json
+        if dict_path[-5:] == '.json':
+            load_dict = json.load(reader)
+            for token in load_dict.keys():
+                token_dict[token] = len(token_dict)
+        else:
+            for line in reader:
+                token = line.split()
+                token = token[0] if token else line.strip()
+                token_dict[token] = len(token_dict)
 
     if simplified:  # 过滤冗余部分token
         new_token_dict, keep_tokens = {}, []
@@ -196,7 +202,7 @@ class Tokenizer(TokenizerBase):
     def token_to_id(self, token):
         """token转换为对应的id
         """
-        return self._token_dict.get(token, self._token_unk_id)
+        return self._token_dict.get(token)
 
     def id_to_token(self, i):
         """id转换为对应的token
