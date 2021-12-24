@@ -2,6 +2,7 @@
 # 主要模型
 
 import numpy as np
+from tensorflow.python.client import device_lib
 from bert4keras.layers import *
 from bert4keras.snippets import insert_arguments
 from bert4keras.snippets import delete_arguments
@@ -2388,6 +2389,37 @@ def extend_with_unified_language_model(BaseModel):
             self.with_mlm = self.with_mlm or True
 
     return UnifiedLanguageModel
+
+
+def data_parallel(model, devices=None, parts=None):
+    """通过数据并行来实现模型并行
+    参数：
+        devices：运行设备，默认为所有可用GPU；
+        parts：batch_size分配，默认为均匀划分；
+    """
+    if devices is None:
+        devices = device_lib.list_local_devices()
+        devices = [x.name for x in devices if x.device_type == 'GPU']
+    elif isinstance(devices, int):
+        devices = ['/device:GPU:%d' % i for i in range(devices)]
+
+    if parts is None:
+        parts = len(devices)
+    else:
+        assert len(devices) == len(parts)
+
+    splited_inputs = BatchSplit(parts)(model.inputs)
+    splited_outputs = [[] for _ in model.outputs]
+    for i, device in enumerate(devices):
+        with tf.device(device):
+            outputs = model(splited_inputs[i::len(devices)])
+            outputs = outputs if isinstance(outputs, list) else [outputs]
+            for j, output in enumerate(outputs):
+                splited_outputs[j].append(output)
+
+    outputs = [BatchConcat()(outputs) for outputs in splited_outputs]
+
+    return Model(model.inputs, outputs)
 
 
 def build_transformer_model(
