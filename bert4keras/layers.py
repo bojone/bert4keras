@@ -250,6 +250,85 @@ class Concatenate1D(Layer):
             return (input_shape[0][0], None, input_shape[0][2])
 
 
+class BatchSplit(Layer):
+    """将第一维进行分割
+    主要是用于自行实现多卡数据并行。
+    """
+    def __init__(self, parts, **kwargs):
+        super(BatchSplit, self).__init__(**kwargs)
+        self.parts = parts
+
+    def compute_mask(self, inputs, mask=None):
+        if isinstance(mask, list):
+            return [o for i in mask for o in self.compute_mask(inputs, i)]
+
+        if mask is not None:
+            return self.call(mask)
+        elif np.ndim(self.parts) > 0:
+            return [None] * len(self.parts)
+        else:
+            return [None] * self.parts
+
+    def call(self, inputs):
+        if isinstance(inputs, list):
+            return [o for i in inputs for o in self.call(i)]
+
+        outputs = []
+
+        if np.ndim(self.parts) > 0:
+            slices = np.cumsum(self.parts)
+        else:
+            batch_size = K.shape(inputs)[0]
+            stride = K.cast(
+                tf.math.ceil(batch_size / self.parts), K.dtype(batch_size)
+            )
+            slices = [stride * (i + 1) for i in range(self.parts)]
+
+        for i, _ in enumerate(slices):
+            if i == 0:
+                outputs.append(inputs[:slices[0]])
+            elif i == len(slices) - 1:
+                outputs.append(inputs[slices[-2]:])
+            else:
+                outputs.append(inputs[slices[i - 1]:slices[i]])
+
+        return outputs
+
+    def compute_output_shape(self, input_shape):
+        if isinstance(input_shape, list):
+            return [
+                o for i in input_shape for o in self.compute_output_shape(i)
+            ]
+
+        if np.ndim(self.parts) > 0:
+            return [input_shape] * len(self.parts)
+        else:
+            return [input_shape] * self.parts
+
+    def get_config(self):
+        config = {
+            'parts': self.parts,
+        }
+        base_config = super(BatchSplit, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+
+class BatchConcat(Layer):
+    """将第一维进行合并
+    主要是用于自行实现多卡数据并行。
+    """
+    def compute_mask(self, inputs, mask=None):
+        if isinstance(mask, list):
+            if all([m is not None for m in mask]):
+                return K.concatenate(mask, 0)
+
+    def call(self, inputs):
+        return K.concatenate(inputs, 0)
+
+    def compute_output_shape(self, input_shape):
+        return input_shape[0]
+
+
 class MultiHeadAttention(Layer):
     """多头注意力机制
     """
@@ -1302,6 +1381,8 @@ custom_objects = {
     'BiasAdd': BiasAdd,
     'Scale': Scale,
     'Concatenate1D': Concatenate1D,
+    'BatchSplit': BatchSplit,
+    'BatchConcat': BatchConcat,
     'MultiHeadAttention': MultiHeadAttention,
     'LayerNormalization': LayerNormalization,
     'PositionEmbedding': PositionEmbedding,
