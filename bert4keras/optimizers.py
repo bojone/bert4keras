@@ -603,27 +603,24 @@ def extend_with_gradient_accumulation(BaseOptimizer):
         @insert_arguments(grad_accum_steps=2)
         def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
-            self._first_get_gradients = True
+            self.accum_grads = {}
 
         def get_gradients(self, loss, params):
-            if self._first_get_gradients:
-                self._first_get_gradients = False
-                return super(NewOptimizer, self).get_gradients(loss, params)
-            else:
-                return [ag / self.grad_accum_steps for ag in self.accum_grads]
+            accum_grads = []
+            for p in params:
+                if p not in self.accum_grads:
+                    self.accum_grads[p] = K.zeros(
+                        K.int_shape(p), dtype=K.dtype(p)
+                    )
+                accum_grads.append(self.accum_grads[p])
+
+            return [ag / self.grad_accum_steps for ag in accum_grads]
 
         @K.symbolic
         def get_updates(self, loss, params):
             # 更新判据
             cond = K.equal(self.iterations % self.grad_accum_steps, 0)
             cond = K.cast(cond, K.floatx())
-            # 获取梯度
-            grads = self.get_gradients(loss, params)
-            self.accum_grads = [
-                K.zeros(
-                    K.int_shape(p), dtype=K.dtype(p), name='accum_grad_%s' % i
-                ) for i, p in enumerate(params)
-            ]
 
             old_update = K.update
 
@@ -635,11 +632,14 @@ def extend_with_gradient_accumulation(BaseOptimizer):
             updates = super(NewOptimizer, self).get_updates(loss, params)
             K.update = old_update
 
+            # 获取梯度
+            grads = super(NewOptimizer, self).get_gradients(loss, params)
+            accum_grads = [self.accum_grads[p] for p in params]
             # 累积梯度
             with tf.control_dependencies(updates):
                 accum_updates = [
                     K.update(ag, g + (1 - cond) * ag)
-                    for g, ag in zip(grads, self.accum_grads)
+                    for g, ag in zip(grads, accum_grads)
                 ]
 
             return accum_updates
