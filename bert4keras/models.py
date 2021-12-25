@@ -2,7 +2,7 @@
 # 主要模型
 
 import numpy as np
-from tensorflow.python.client import device_lib
+from bert4keras.backend import get_available_gpus
 from bert4keras.layers import *
 from bert4keras.snippets import insert_arguments
 from bert4keras.snippets import delete_arguments
@@ -2398,8 +2398,7 @@ def data_parallel(model, devices=None, parts=None):
         parts：batch_size分配，默认为均匀划分；
     """
     if devices is None:
-        devices = device_lib.list_local_devices()
-        devices = [x.name for x in devices if x.device_type == 'GPU']
+        devices = get_available_gpus()
     elif isinstance(devices, int):
         devices = ['/device:GPU:%d' % i for i in range(devices)]
 
