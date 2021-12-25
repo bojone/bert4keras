@@ -279,7 +279,7 @@ class BatchSplit(Layer):
         if np.ndim(self.parts) > 0:
             batch_size = K.cast(batch_size, 'float64')
             slices = [
-                K.cast(p * batch_size / slices[-1], 'int32')
+                K.cast(p * batch_size / sum(self.parts), 'int32')
                 for p in np.cumsum(self.parts).astype('float64')
             ]
         else:
