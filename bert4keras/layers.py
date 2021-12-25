@@ -275,10 +275,14 @@ class BatchSplit(Layer):
 
         outputs = []
 
+        batch_size = K.shape(inputs)[0]
         if np.ndim(self.parts) > 0:
-            slices = np.cumsum(self.parts)
+            batch_size = K.cast(batch_size, 'float64')
+            slices = [
+                K.cast(p * batch_size / slices[-1], 'int32')
+                for p in np.cumsum(self.parts).astype('float64')
+            ]
         else:
-            batch_size = K.shape(inputs)[0]
             stride = K.cast(
                 tf.math.ceil(batch_size / self.parts), K.dtype(batch_size)
             )
