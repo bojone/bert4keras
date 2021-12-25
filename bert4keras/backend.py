@@ -6,6 +6,7 @@ import os, sys
 from distutils.util import strtobool
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.client import device_lib
 from tensorflow.python.util import nest, tf_inspect
 from tensorflow.python.eager import tape
 from tensorflow.python.ops.custom_gradient import _graph_mode_decorator
@@ -23,6 +24,14 @@ else:
 
 # 判断是否启用重计算（通过时间换空间）
 do_recompute = strtobool(os.environ.get('RECOMPUTE', '0'))
+
+
+def get_available_gpus():
+    """获取可用的GPU列表
+    """
+    devices = device_lib.list_local_devices()
+    devices = [x.name for x in devices if x.device_type == 'GPU']
+    return devices
 
 
 def gelu_erf(x):
