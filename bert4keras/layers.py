@@ -1269,6 +1269,7 @@ class GlobalPointer(Layer):
         head_size,
         RoPE=True,
         use_bias=True,
+        tril_mask=True,
         kernel_initializer='glorot_uniform',
         **kwargs
     ):
@@ -1277,6 +1278,7 @@ class GlobalPointer(Layer):
         self.head_size = head_size
         self.RoPE = RoPE
         self.use_bias = use_bias
+        self.tril_mask = tril_mask
         self.kernel_initializer = initializers.get(kernel_initializer)
 
     def build(self, input_shape):
@@ -1314,8 +1316,9 @@ class GlobalPointer(Layer):
         logits = sequence_masking(logits, mask, '-inf', 2)
         logits = sequence_masking(logits, mask, '-inf', 3)
         # 排除下三角
-        mask = tf.linalg.band_part(K.ones_like(logits), 0, -1)
-        logits = logits - (1 - mask) * K.infinity()
+        if self.tril_mask:
+            mask = tf.linalg.band_part(K.ones_like(logits), 0, -1)
+            logits = logits - (1 - mask) * K.infinity()
         # scale返回
         return logits / self.head_size**0.5
 
@@ -1328,6 +1331,7 @@ class GlobalPointer(Layer):
             'head_size': self.head_size,
             'RoPE': self.RoPE,
             'use_bias': self.use_bias,
+            'tril_mask': self.tril_mask,
             'kernel_initializer':
                 initializers.serialize(self.kernel_initializer),
         }
