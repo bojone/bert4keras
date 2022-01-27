@@ -261,14 +261,42 @@ def multilabel_categorical_crossentropy(y_true, y_pred):
         4. 详情请看：https://kexue.fm/archives/7359 。
     """
     y_pred = (1 - 2 * y_true) * y_pred
-    y_pred_neg = y_pred - y_true * K.infinity()
-    y_pred_pos = y_pred - (1 - y_true) * K.infinity()
+    y_neg = y_pred - y_true * K.infinity()
+    y_pos = y_pred - (1 - y_true) * K.infinity()
     zeros = K.zeros_like(y_pred[..., :1])
-    y_pred_neg = K.concatenate([y_pred_neg, zeros], axis=-1)
-    y_pred_pos = K.concatenate([y_pred_pos, zeros], axis=-1)
-    neg_loss = tf.reduce_logsumexp(y_pred_neg, axis=-1)
-    pos_loss = tf.reduce_logsumexp(y_pred_pos, axis=-1)
+    y_neg = K.concatenate([y_neg, zeros], axis=-1)
+    y_pos = K.concatenate([y_pos, zeros], axis=-1)
+    neg_loss = K.logsumexp(y_neg, axis=-1)
+    pos_loss = K.logsumexp(y_pos, axis=-1)
     return neg_loss + pos_loss
+
+
+def sparse_multilabel_categorical_crossentropy(y_true, y_pred, mask_zero=False):
+    """稀疏版多标签分类的交叉熵
+    说明：
+        1. y_true.shape=[..., num_positive]，
+           y_pred.shape=[..., num_classes]；
+        2. 请保证y_pred的值域是全体实数，换言之一般情况下
+           y_pred不用加激活函数，尤其是不能加sigmoid或者
+           softmax；
+        3. 预测阶段则输出y_pred大于0的类；
+        4. 详情请看：https://kexue.fm/archives/7359 。
+    """
+    zeros = K.zeros_like(y_pred[..., :1])
+    y_pred = K.concatenate([y_pred, zeros], axis=-1)
+    if mask_zero:
+        infs = zeros + K.infinity()
+        y_pred = K.concatenate([infs, y_pred[..., 1:]], axis=-1)
+    y_pos_2 = batch_gather(y_pred, y_true)
+    y_pos_1 = K.concatenate([y_pos_2, zeros], axis=-1)
+    if mask_zero:
+        y_pred = K.concatenate([-infs, y_pred[..., 1:]], axis=-1)
+        y_pos_2 = batch_gather(y_pred, y_true)
+    pos_loss = K.logsumexp(-y_pos_1, axis=-1)
+    aux_loss = K.logsumexp(y_pos_2, axis=-1)
+    all_loss = K.logsumexp(y_pred, axis=-1)
+    neg_loss = all_loss + K.log(1 - K.exp(aux_loss - all_loss))
+    return pos_loss + neg_loss
 
 
 def symbolic(f):
