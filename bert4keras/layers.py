@@ -1005,9 +1005,7 @@ class ConditionalRandomField(Layer):
         inputs, mask = inputs[:, :-1], inputs[:, -1:]
         states = K.expand_dims(states[0], 2)  # (batch_size, output_dim, 1)
         trans = K.expand_dims(self.trans, 0)  # (1, output_dim, output_dim)
-        outputs = tf.reduce_logsumexp(
-            states + trans, 1
-        )  # (batch_size, output_dim)
+        outputs = K.logsumexp(states + trans, 1)  # (batch_size, output_dim)
         outputs = outputs + inputs
         outputs = mask * outputs + (1 - mask) * states[:, :, 0]
         return outputs, [outputs]
@@ -1031,7 +1029,7 @@ class ConditionalRandomField(Layer):
             init_states,
             input_length=input_length
         )  # 最后一步的log Z向量
-        log_norm = tf.reduce_logsumexp(log_norm, 1)  # logsumexp得标量
+        log_norm = K.logsumexp(log_norm, 1)  # logsumexp得标量
         # 计算损失 -log p
         return log_norm - target_score
 
