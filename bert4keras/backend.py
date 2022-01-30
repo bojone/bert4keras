@@ -293,9 +293,10 @@ def sparse_multilabel_categorical_crossentropy(y_true, y_pred, mask_zero=False):
         y_pred = K.concatenate([-infs, y_pred[..., 1:]], axis=-1)
         y_pos_2 = batch_gather(y_pred, y_true)
     pos_loss = K.logsumexp(-y_pos_1, axis=-1)
-    aux_loss = K.logsumexp(y_pos_2, axis=-1)
     all_loss = K.logsumexp(y_pred, axis=-1)
-    neg_loss = all_loss + K.log(1 - K.exp(aux_loss - all_loss))
+    aux_loss = K.logsumexp(y_pos_2, axis=-1) - all_loss
+    aux_loss = K.clip(1 - K.exp(aux_loss), K.epsilon(), 1)
+    neg_loss = all_loss + K.log(aux_loss)
     return pos_loss + neg_loss
 
 
