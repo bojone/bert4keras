@@ -15,12 +15,10 @@ from tensorflow.python.ops.custom_gradient import _graph_mode_decorator
 is_tf_keras = strtobool(os.environ.get('TF_KERAS', '0'))
 
 if is_tf_keras:
-    import tensorflow.keras as keras
-    import tensorflow.keras.backend as K
-    sys.modules['keras'] = keras
-else:
-    import keras
-    import keras.backend as K
+    sys.modules['keras'] = tf.keras
+
+import keras
+import keras.backend as K
 
 # 判断是否启用重计算（通过时间换空间）
 do_recompute = strtobool(os.environ.get('RECOMPUTE', '0'))
