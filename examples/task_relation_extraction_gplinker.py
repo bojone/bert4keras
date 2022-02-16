@@ -11,7 +11,7 @@ import numpy as np
 from bert4keras.backend import keras, K
 from bert4keras.backend import sparse_multilabel_categorical_crossentropy
 from bert4keras.tokenizers import Tokenizer
-from bert4keras.layers import GlobalPointer
+from bert4keras.layers import EfficientGlobalPointer as GlobalPointer
 from bert4keras.models import build_transformer_model
 from bert4keras.optimizers import Adam, extend_with_exponential_moving_average
 from bert4keras.snippets import sequence_padding, DataGenerator
