@@ -102,7 +102,6 @@ class data_generator(DataGenerator):
             head_labels = sequence_padding([list(l) for l in head_labels])
             tail_labels = sequence_padding([list(l) for l in tail_labels])
             # 构建batch
-            L = len(token_ids)
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
             batch_entity_labels.append(entity_labels)
