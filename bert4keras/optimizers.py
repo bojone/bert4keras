@@ -26,6 +26,9 @@ class Adam(keras.optimizers.Optimizer):
     ):
         kwargs['name'] = kwargs.get('name') or 'Adam'
         super(Adam, self).__init__(**kwargs)
+        # 兼容tf_keras和keras写法
+        if 'lr' in kwargs:
+            learning_rate = kwargs['lr']
         self._set_hyper('learning_rate', learning_rate)
         self._set_hyper('beta_1', beta_1)
         self._set_hyper('beta_2', beta_2)
@@ -535,59 +538,23 @@ def extend_with_piecewise_linear_lr(BaseOptimizer):
         def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
             self.lr_schedule = {int(i): j for i, j in self.lr_schedule.items()}
-
-        @K.symbolic
-        def get_updates(self, loss, params):
-            lr_multiplier = piecewise_linear(self.iterations, self.lr_schedule)
-
-            old_update = K.update
-
-            def new_update(x, new_x):
-                if is_one_of(x, params):
-                    new_x = x + (new_x - x) * lr_multiplier
-                return old_update(x, new_x)
-
-            K.update = new_update
-            updates = super(NewOptimizer, self).get_updates(loss, params)
-            K.update = old_update
-
-            return updates
+            # keras tf2.x lr和learning_rate都映射到了learning_rate，但是1.x是lr
+            self.init_lr = K.get_value(self.lr)
+            if is_tf_keras:
+                # 其实应该是判断tf.executing_eagerly()，当eager模式时，需要返回callabel，而tf2默认为eager模式，tf1.4+支持eager模式，但是默认不开启
+                self._hyper["learning_rate"] = lambda: self.init_lr * piecewise_linear(self.iterations,
+                                                                                       self.lr_schedule)
+            else:
+                self.lr = self.init_lr * piecewise_linear(self.iterations, self.lr_schedule)
 
         def get_config(self):
             config = {
                 'lr_schedule': self.lr_schedule,
             }
             base_config = super(NewOptimizer, self).get_config()
-            return dict(list(base_config.items()) + list(config.items()))
-
-    return NewOptimizer
-
-
-@export_to_custom_objects
-def extend_with_piecewise_linear_lr_v2(BaseOptimizer):
-    """返回新的优化器类，加入分段线性学习率
-    """
-    class NewOptimizer(BaseOptimizer):
-        """带有分段线性学习率的优化器
-        其中schedule是形如{1000: 1, 2000: 0.1}的字典，
-        表示0～1000步内学习率线性地从零增加到100%，然后
-        1000～2000步内线性地降到10%，2000步以后保持10%
-        """
-        @insert_arguments(lr_schedule={0: 1})
-        def __init__(self, *args, **kwargs):
-            super(NewOptimizer, self).__init__(*args, **kwargs)
-            self.lr_schedule = {int(i): j for i, j in self.lr_schedule.items()}
-
-        def _decayed_lr(self, var_dtype):
-            lr_multiplier = piecewise_linear(self.iterations, self.lr_schedule)
-            lr_t = super(NewOptimizer, self)._decayed_lr(var_dtype)
-            return lr_t * K.cast(lr_multiplier, var_dtype)
-
-        def get_config(self):
-            config = {
-                'lr_schedule': self.lr_schedule,
-            }
-            base_config = super(NewOptimizer, self).get_config()
+            # 序列化时保存为初始值
+            name = "lr" if "lr" in base_config else "learning_rate"
+            base_config[name] = self.init_lr
             return dict(list(base_config.items()) + list(config.items()))
 
     return NewOptimizer
@@ -1121,7 +1088,6 @@ def extend_with_parameter_wise_lr_v2(BaseOptimizer):
 if is_tf_keras:
     extend_with_weight_decay = extend_with_weight_decay_v2
     extend_with_layer_adaptation = extend_with_layer_adaptation_v2
-    extend_with_piecewise_linear_lr = extend_with_piecewise_linear_lr_v2
     extend_with_gradient_accumulation = extend_with_gradient_accumulation_v2
     extend_with_lookahead = extend_with_lookahead_v2
     extend_with_lazy_optimization = extend_with_lazy_optimization_v2
