@@ -387,7 +387,6 @@ K.symbolic = getattr(K, 'symbolic', None) or symbolic
 # 添加到 keras.backend 上，使其可以像 K.epsilon() 那样操作
 K.infinity = infinity
 K.set_infinity = set_infinity
-sys.modules['keras.backend'] = K
 
 custom_objects = {
     'gelu_erf': gelu_erf,
