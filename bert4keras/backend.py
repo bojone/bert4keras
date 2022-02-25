@@ -384,6 +384,9 @@ def recompute_grad(call):
 # 给旧版keras新增symbolic（装饰器），以兼容optimizers.py
 K.symbolic = getattr(K, 'symbolic', None) or symbolic
 
+# 给tf.keras补充上logsumexp
+K.logsumexp = getattr(K, 'logsumexp', None) or tf.math.reduce_logsumexp
+
 # 添加到 keras.backend 上，使其可以像 K.epsilon() 那样操作
 K.infinity = infinity
 K.set_infinity = set_infinity
