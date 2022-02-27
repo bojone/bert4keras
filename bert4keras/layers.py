@@ -1348,12 +1348,12 @@ class EfficientGlobalPointer(GlobalPointer):
     参考：https://kexue.fm/archives/8877
     """
     def build(self, input_shape):
-        self.dense_1 = Dense(
+        self.p_dense = Dense(
             units=self.head_size * 2,
             use_bias=self.use_bias,
             kernel_initializer=self.kernel_initializer
         )
-        self.dense_2 = Dense(
+        self.q_dense = Dense(
             units=self.heads * 2,
             use_bias=self.use_bias,
             kernel_initializer=self.kernel_initializer
@@ -1363,7 +1363,7 @@ class EfficientGlobalPointer(GlobalPointer):
     @recompute_grad
     def call(self, inputs, mask=None):
         # 输入变换
-        inputs = self.dense_1(inputs)
+        inputs = self.p_dense(inputs)
         qw, kw = inputs[..., ::2], inputs[..., 1::2]
         # RoPE编码
         if self.RoPE:
@@ -1378,7 +1378,7 @@ class EfficientGlobalPointer(GlobalPointer):
             kw = kw * cos_pos + kw2 * sin_pos
         # 计算内积
         logits = tf.einsum('bmd,bnd->bmn', qw, kw) / self.head_size**0.5
-        bias = tf.einsum('bnh->bhn', self.dense_2(inputs)) / 2
+        bias = tf.einsum('bnh->bhn', self.q_dense(inputs)) / 2
         logits = logits[:, None] + bias[:, ::2, None] + bias[:, 1::2, :, None]
         # 排除padding
         logits = sequence_masking(logits, mask, '-inf', 2)
