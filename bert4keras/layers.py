@@ -189,37 +189,43 @@ class Embedding(keras.layers.Embedding):
             return input_shape[:2] + (K.int_shape(self.embeddings)[0],)
 
 
-class BiasAdd(Layer):
-    """加上偏置项
+class ScaleOffset(Layer):
+    """简单的仿射变换层（最后一维乘上gamma向量并加上beta向量）
     """
+    def __init__(self, scale=True, offset=True, **kwargs):
+        super(ScaleOffset, self).__init__(**kwargs)
+        self.scale = scale
+        self.offset = offset
+
     @integerize_shape
     def build(self, input_shape):
-        super(BiasAdd, self).build(input_shape)
-        output_dim = input_shape[-1]
-        self.bias = self.add_weight(
-            name='bias', shape=(output_dim,), initializer='zeros'
-        )
+        super(ScaleOffset, self).build(input_shape)
+        if self.scale is True:
+            self.gamma = self.add_weight(
+                name='gamma', shape=(input_shape[-1],), initializer='ones'
+            )
+        if self.offset is True:
+            self.beta = self.add_weight(
+                name='beta', shape=(input_shape[-1],), initializer='zeros'
+            )
 
     def call(self, inputs):
-        return K.bias_add(inputs, self.bias)
-
-
-class Scale(Layer):
-    """尺度缩放层
-    说明：选择自定义一个层而不是用Lambda层的原因是要存储scale参数。
-    """
-    def __init__(self, scale=1, **kwargs):
-        super(Scale, self).__init__(**kwargs)
-        self.scale = scale
-
-    def call(self, inputs):
-        return inputs * self.scale
+        if self.scale is True:
+            inputs = inputs * self.gamma
+        elif self.scale is not False and self.scale is not None:
+            inputs = inputs * self.scale
+        if self.offset is True:
+            inputs = inputs + self.beta
+        elif self.offset is not False and self.offset is not None:
+            inputs = inputs + self.offset
+        return inputs
 
     def get_config(self):
         config = {
             'scale': self.scale,
+            'offset': self.offset,
         }
-        base_config = super(Scale, self).get_config()
+        base_config = super(ScaleOffset, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
 
@@ -1433,8 +1439,7 @@ class Loss(Layer):
 
 custom_objects = {
     'Embedding': Embedding,
-    'BiasAdd': BiasAdd,
-    'Scale': Scale,
+    'ScaleOffset': ScaleOffset,
     'Concatenate1D': Concatenate1D,
     'BatchSplit': BatchSplit,
     'BatchConcat': BatchConcat,

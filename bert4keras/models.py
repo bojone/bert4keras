@@ -678,7 +678,9 @@ class BERT(Transformer):
                 arguments={'mode': 'dense'},
                 name='Embedding-Token'
             )
-            x = self.apply(inputs=x, layer=BiasAdd, name='MLM-Bias')
+            x = self.apply(
+                inputs=x, layer=ScaleOffset, scale=False, name='MLM-Bias'
+            )
             mlm_activation = 'softmax' if self.with_mlm is True else self.with_mlm
             x = self.apply(
                 inputs=x,
@@ -2255,8 +2257,9 @@ class T5_Decoder(LM_Mask, T5_Base):
         )
         x = self.apply(
             inputs=x,
-            layer=Scale,
+            layer=ScaleOffset,
             scale=self.hidden_size**(-0.5),
+            offset=False,
             name='Decoder-Output-Scale'
         )
 
