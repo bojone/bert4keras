@@ -4,7 +4,7 @@
 import numpy as np
 import tensorflow as tf
 from bert4keras.backend import keras, K, is_tf_keras
-from bert4keras.backend import sequence_masking
+from bert4keras.backend import align, sequence_masking
 from bert4keras.backend import recompute_grad
 from keras import initializers, activations
 from keras.layers import *
@@ -585,8 +585,7 @@ class LayerNormalization(Layer):
             inputs, cond = inputs
             if self.hidden_units is not None:
                 cond = self.hidden_dense(cond)
-            for _ in range(K.ndim(inputs) - K.ndim(cond)):
-                cond = K.expand_dims(cond, 1)
+            cond = align(cond, [0, -1], K.ndim(inputs))
             if self.center:
                 beta = self.beta_dense(cond) + self.beta
             if self.scale:

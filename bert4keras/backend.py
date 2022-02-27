@@ -133,6 +133,18 @@ def search_layer(inputs, name, exclude_from=None):
                     return layer
 
 
+def align(tensor, axes, ndim=None):
+    """重新对齐tensor（批量版expand_dims）
+    axes：原来的第i维对齐新tensor的第axes[i]维；
+    ndim：新tensor的维度。
+    """
+    assert len(axes) == K.ndim(tensor)
+    indices = [None] * (ndim or max(axes))
+    for i in axes:
+        indices[i] = slice(None)
+    return tensor[indices]
+
+
 def sequence_masking(x, mask, value=0, axis=None):
     """为序列条件mask的函数
     mask: 形如(batch_size, seq_len)的0-1矩阵；
@@ -156,11 +168,8 @@ def sequence_masking(x, mask, value=0, axis=None):
         elif axis < 0:
             axis = K.ndim(x) + axis
         assert axis > 0, 'axis must be greater than 0'
-        for _ in range(axis - 1):
-            mask = K.expand_dims(mask, 1)
+        mask = align(mask, [0, axis], K.ndim(x))
         value = K.cast(value, K.dtype(x))
-        for _ in range(K.ndim(x) - K.ndim(mask)):
-            mask = K.expand_dims(mask, K.ndim(mask))
         x = x * mask + value * (1 - mask)
         if x_dtype == 'bool':
             x = K.cast(x, 'bool')
