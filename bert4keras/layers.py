@@ -102,8 +102,8 @@ if (not is_tf_keras) or tf.__version__ < '1.15':
     class Node(NodeBase):
         """修改Node来修复keras下孪生网络的bug
         注意：这是keras的bug，并不是bert4keras的bug，但keras已经不更新了，
-              所以只好在这里进行修改。tf 1.15+自带的keras已经修改了这个
-              bug。
+             所以只好在这里进行修改。tf 1.15+自带的keras已经修改了这个
+             bug。
         """
         @property
         def arguments(self):
@@ -192,9 +192,9 @@ class Embedding(keras.layers.Embedding):
 class ScaleOffset(Layer):
     """简单的仿射变换层（最后一维乘上gamma向量并加上beta向量）
     说明：1、具体操作为最后一维乘上gamma向量并加上beta向量；
-          2、如果直接指定scale和offset，那么直接常数缩放和平移；
-          3、hidden_*系列参数仅为有条件输入时(conditional=True)使用，
-             用于通过外部条件控制beta和gamma。
+         2、如果直接指定scale和offset，那么直接常数缩放和平移；
+         3、hidden_*系列参数仅为有条件输入时(conditional=True)使用，
+            用于通过外部条件控制beta和gamma。
     """
     def __init__(
         self,
@@ -306,9 +306,9 @@ class ScaleOffset(Layer):
 class Concatenate1D(Layer):
     """1维序列拼接层
     说明：本来该功能可以直接通过Concatenate层来实现，无奈Keras
-          自带的Concatenate层的compute_mask写得不合理，导致一个
-          带mask的序列与一个不带mask的序列拼接会报错，因此干脆
-          自己重写一个好了。
+         自带的Concatenate层的compute_mask写得不合理，导致一个
+         带mask的序列与一个不带mask的序列拼接会报错，因此干脆
+         自己重写一个好了。
     """
     def call(self, inputs):
         return K.concatenate(inputs, axis=1)
