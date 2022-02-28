@@ -604,6 +604,7 @@ class GatedAttentionUnit(Layer):
         self.attention_dropout = attention_dropout
         self.kernel_initializer = initializers.get(kernel_initializer)
 
+    @integerize_shape
     def build(self, input_shape):
         super(GatedAttentionUnit, self).build(input_shape)
         self.i_dense = Dense(
