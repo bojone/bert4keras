@@ -607,6 +607,9 @@ class GatedAttentionUnit(Layer):
     @integerize_shape
     def build(self, input_shape):
         super(GatedAttentionUnit, self).build(input_shape)
+        hidden_size = input_shape[-1]
+        if isinstance(hidden_size, (list, tuple)):
+            hidden_size = input_shape[0][-1]
         self.i_dense = Dense(
             units=2 * self.units + self.key_size,
             activation=self.activation,
@@ -614,7 +617,7 @@ class GatedAttentionUnit(Layer):
             kernel_initializer=self.kernel_initializer
         )
         self.o_dense = Dense(
-            units=input_shape[-1],
+            units=hidden_size,
             use_bias=self.use_bias,
             kernel_initializer=self.kernel_initializer
         )
