@@ -102,8 +102,8 @@ if (not is_tf_keras) or tf.__version__ < '1.15':
     class Node(NodeBase):
         """修改Node来修复keras下孪生网络的bug
         注意：这是keras的bug，并不是bert4keras的bug，但keras已经不更新了，
-             所以只好在这里进行修改。tf 1.15+自带的keras已经修改了这个
-             bug。
+              所以只好在这里进行修改。tf 1.15+自带的keras已经修改了这个
+              bug。
         """
         @property
         def arguments(self):
@@ -190,11 +190,11 @@ class Embedding(keras.layers.Embedding):
 
 
 class ScaleOffset(Layer):
-    """简单的仿射变换层
+    """简单的仿射变换层（最后一维乘上gamma向量并加上beta向量）
     说明：1、具体操作为最后一维乘上gamma向量并加上beta向量；
-         2、如果直接指定scale和offset，那么直接常数缩放和平移；
-         3、hidden_*系列参数仅为有条件输入时(conditional=True)使用，
-            用于通过外部条件控制beta和gamma。
+          2、如果直接指定scale和offset，那么直接常数缩放和平移；
+          3、hidden_*系列参数仅为有条件输入时(conditional=True)使用，
+             用于通过外部条件控制beta和gamma。
     """
     def __init__(
         self,
@@ -306,9 +306,9 @@ class ScaleOffset(Layer):
 class Concatenate1D(Layer):
     """1维序列拼接层
     说明：本来该功能可以直接通过Concatenate层来实现，无奈Keras
-         自带的Concatenate层的compute_mask写得不合理，导致一个
-         带mask的序列与一个不带mask的序列拼接会报错，因此干脆
-         自己重写一个好了。
+          自带的Concatenate层的compute_mask写得不合理，导致一个
+          带mask的序列与一个不带mask的序列拼接会报错，因此干脆
+          自己重写一个好了。
     """
     def call(self, inputs):
         return K.concatenate(inputs, axis=1)
@@ -577,6 +577,111 @@ class MultiHeadAttention(Layer):
                 initializers.serialize(self.kernel_initializer),
         }
         base_config = super(MultiHeadAttention, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+
+class GatedAttentionUnit(Layer):
+    """门控注意力单元
+    链接：https://arxiv.org/abs/2202.10447
+    说明：没有加入加性相对位置编码，个人认为是不必要的；如果觉得有必要，
+         可以自行通过a_bias传入。
+    """
+    def __init__(
+        self,
+        units,
+        key_size,
+        activation='swish',
+        use_bias=True,
+        attention_dropout=None,
+        kernel_initializer='glorot_uniform',
+        **kwargs
+    ):
+        super(GatedAttentionUnit, self).__init__(**kwargs)
+        self.units = units
+        self.key_size = key_size
+        self.activation = activation
+        self.use_bias = use_bias
+        self.attention_dropout = attention_dropout
+        self.kernel_initializer = initializers.get(kernel_initializer)
+
+    def build(self, input_shape):
+        super(GatedAttentionUnit, self).build(input_shape)
+        self.i_dense = Dense(
+            units=2 * self.units + self.key_size,
+            activation=self.activation,
+            use_bias=self.use_bias,
+            kernel_initializer=self.kernel_initializer
+        )
+        self.o_dense = Dense(
+            units=input_shape[-1],
+            use_bias=self.use_bias,
+            kernel_initializer=self.kernel_initializer
+        )
+        self.q_scaleoffset = ScaleOffset(offset=self.use_bias)
+        self.k_scaleoffset = ScaleOffset(offset=self.use_bias)
+
+    @recompute_grad
+    def call(self, inputs, mask=None, a_bias=None, p_bias=None):
+        if not isinstance(inputs, list):
+            inputs, mask = [inputs], [mask]
+        x, n = inputs[0], 1
+        mask = None if mask is None else mask[0]
+        if mask is None:
+            l = K.cast(K.shape(x)[1], K.floatx())
+        else:
+            l = K.sum(K.cast(mask, dtype=K.floatx()), axis=1)
+            l = K.maximum(l[:, None, None], K.epsilon())
+        if a_bias:
+            a_bias = inputs[n]
+            n += 1
+        # 投影变换
+        x = self.i_dense(x)
+        u, v, qk = tf.split(x, [self.units, self.units, self.key_size], axis=-1)
+        q, k = self.q_scaleoffset(qk), self.k_scaleoffset(qk)
+        # 加入RoPE
+        if p_bias == 'rotary':
+            cos_pos = K.repeat_elements(inputs[n][..., None, 1::2], 2, -1)
+            sin_pos = K.repeat_elements(inputs[n][..., None, ::2], 2, -1)
+            qk = K.stack([q, k], 2)
+            qk2 = K.stack([-qk[..., 1::2], qk[..., ::2]], 4)
+            qk2 = K.reshape(qk2, K.shape(qk))
+            qk = qk * cos_pos + qk2 * sin_pos
+            q, k = qk[:, :, 0], qk[:, :, 1]
+        # Attention
+        a = tf.einsum('bmd,bnd->bmn', q, k) / l
+        if a_bias is not None:
+            a = a + a_bias
+        a = sequence_masking(a, mask, 0, -1)
+        A = K.relu(a)**2
+        if self.attention_dropout:
+            A = Dropout(self.attention_dropout)(A)
+        # 计算输出
+        o = self.o_dense(u * tf.einsum('bmn,bnd->bmd', A, v))
+        return o
+
+    def compute_mask(self, inputs, mask=None):
+        if isinstance(mask, list):
+            return mask[0]
+        else:
+            return mask
+
+    def compute_output_shape(self, input_shape):
+        if isinstance(input_shape[0], (list, tuple)):
+            return input_shape[0]
+        else:
+            return input_shape
+
+    def get_config(self):
+        config = {
+            'units': self.units,
+            'key_size': self.key_size,
+            'activation': activations.serialize(self.activation),
+            'use_bias': self.use_bias,
+            'attention_dropout': self.attention_dropout,
+            'kernel_initializer':
+                initializers.serialize(self.kernel_initializer),
+        }
+        base_config = super(GatedAttentionUnit, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
 
@@ -1432,6 +1537,7 @@ custom_objects = {
     'BatchSplit': BatchSplit,
     'BatchConcat': BatchConcat,
     'MultiHeadAttention': MultiHeadAttention,
+    'GatedAttentionUnit': GatedAttentionUnit,
     'LayerNormalization': LayerNormalization,
     'PositionEmbedding': PositionEmbedding,
     'SinusoidalPositionEmbedding': SinusoidalPositionEmbedding,
