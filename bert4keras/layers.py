@@ -191,39 +191,113 @@ class Embedding(keras.layers.Embedding):
 
 class ScaleOffset(Layer):
     """简单的仿射变换层（最后一维乘上gamma向量并加上beta向量）
+    说明：1、具体操作为最后一维乘上gamma向量并加上beta向量；
+          2、如果直接指定scale和offset，那么直接常数缩放和平移；
+          3、hidden_*系列参数仅为有条件输入时(conditional=True)使用，
+             用于通过外部条件控制beta和gamma。
     """
-    def __init__(self, scale=True, offset=True, **kwargs):
+    def __init__(
+        self,
+        scale=True,
+        offset=True,
+        conditional=False,
+        hidden_units=None,
+        hidden_activation='linear',
+        hidden_initializer='glorot_uniform',
+        **kwargs
+    ):
         super(ScaleOffset, self).__init__(**kwargs)
         self.scale = scale
         self.offset = offset
+        self.conditional = conditional
+        self.hidden_units = hidden_units
+        self.hidden_activation = activations.get(hidden_activation)
+        self.hidden_initializer = initializers.get(hidden_initializer)
 
     @integerize_shape
     def build(self, input_shape):
         super(ScaleOffset, self).build(input_shape)
-        if self.scale is True:
-            self.gamma = self.add_weight(
-                name='gamma', shape=(input_shape[-1],), initializer='ones'
-            )
+
+        if self.conditional:
+            input_shape = input_shape[0]
+
         if self.offset is True:
             self.beta = self.add_weight(
                 name='beta', shape=(input_shape[-1],), initializer='zeros'
             )
-
-    def call(self, inputs):
         if self.scale is True:
-            inputs = inputs * self.gamma
-        elif self.scale is not False and self.scale is not None:
-            inputs = inputs * self.scale
-        if self.offset is True:
-            inputs = inputs + self.beta
-        elif self.offset is not False and self.offset is not None:
-            inputs = inputs + self.offset
+            self.gamma = self.add_weight(
+                name='gamma', shape=(input_shape[-1],), initializer='ones'
+            )
+
+        if self.conditional:
+
+            if self.hidden_units is not None:
+                self.hidden_dense = Dense(
+                    units=self.hidden_units,
+                    activation=self.hidden_activation,
+                    use_bias=False,
+                    kernel_initializer=self.hidden_initializer
+                )
+
+            if self.offset is not False and self.offset is not None:
+                self.beta_dense = Dense(
+                    units=input_shape[-1],
+                    use_bias=False,
+                    kernel_initializer='zeros'
+                )
+            if self.scale is not False and self.scale is not None:
+                self.gamma_dense = Dense(
+                    units=input_shape[-1],
+                    use_bias=False,
+                    kernel_initializer='zeros'
+                )
+
+    def compute_mask(self, inputs, mask=None):
+        if self.conditional:
+            return mask if mask is None else mask[0]
+        else:
+            return mask
+
+    @recompute_grad
+    def call(self, inputs):
+        """如果带有条件，则默认以list为输入，第二个是条件
+        """
+        if self.conditional:
+            inputs, conds = inputs
+            if self.hidden_units is not None:
+                conds = self.hidden_dense(conds)
+            conds = align(conds, [0, -1], K.ndim(inputs))
+
+        if self.scale is not False and self.scale is not None:
+            gamma = self.gamma if self.scale is True else self.scale
+            if self.conditional:
+                gamma = gamma + self.gamma_dense(conds)
+            inputs = inputs * gamma
+
+        if self.offset is not False and self.offset is not None:
+            beta = self.beta if self.offset is True else self.offset
+            if self.conditional:
+                beta = beta + self.beta_dense(conds)
+            inputs = inputs + beta
+
         return inputs
+
+    def compute_output_shape(self, input_shape):
+        if self.conditional:
+            return input_shape[0]
+        else:
+            return input_shape
 
     def get_config(self):
         config = {
             'scale': self.scale,
             'offset': self.offset,
+            'conditional': self.conditional,
+            'hidden_units': self.hidden_units,
+            'hidden_activation': activations.serialize(self.hidden_activation),
+            'hidden_initializer':
+                initializers.serialize(self.hidden_initializer),
         }
         base_config = super(ScaleOffset, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
@@ -506,125 +580,40 @@ class MultiHeadAttention(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
-class LayerNormalization(Layer):
+class LayerNormalization(ScaleOffset):
     """(Conditional) Layer Normalization
-    hidden_*系列参数仅为有条件输入时(conditional=True)使用
     """
     def __init__(
-        self,
-        center=True,
-        scale=True,
-        epsilon=None,
-        conditional=False,
-        hidden_units=None,
-        hidden_activation='linear',
-        hidden_initializer='glorot_uniform',
-        **kwargs
+        self, zero_mean=True, unit_variance=True, epsilon=None, **kwargs
     ):
         super(LayerNormalization, self).__init__(**kwargs)
-        self.center = center
-        self.scale = scale
-        self.conditional = conditional
-        self.hidden_units = hidden_units
-        self.hidden_activation = activations.get(hidden_activation)
-        self.hidden_initializer = initializers.get(hidden_initializer)
+        self.zero_mean = zero_mean
+        self.unit_variance = unit_variance
         self.epsilon = epsilon or 1e-12
-
-    def compute_mask(self, inputs, mask=None):
-        if self.conditional:
-            masks = mask if mask is not None else []
-            masks = [m[None] for m in masks if m is not None]
-            if len(masks) == 0:
-                return None
-            else:
-                return K.all(K.concatenate(masks, axis=0), axis=0)
-        else:
-            return mask
-
-    def build(self, input_shape):
-        super(LayerNormalization, self).build(input_shape)
-
-        if self.conditional:
-            shape = (input_shape[0][-1],)
-        else:
-            shape = (input_shape[-1],)
-
-        if self.center:
-            self.beta = self.add_weight(
-                shape=shape, initializer='zeros', name='beta'
-            )
-        if self.scale:
-            self.gamma = self.add_weight(
-                shape=shape, initializer='ones', name='gamma'
-            )
-
-        if self.conditional:
-
-            if self.hidden_units is not None:
-                self.hidden_dense = Dense(
-                    units=self.hidden_units,
-                    activation=self.hidden_activation,
-                    use_bias=False,
-                    kernel_initializer=self.hidden_initializer
-                )
-
-            if self.center:
-                self.beta_dense = Dense(
-                    units=shape[0], use_bias=False, kernel_initializer='zeros'
-                )
-            if self.scale:
-                self.gamma_dense = Dense(
-                    units=shape[0], use_bias=False, kernel_initializer='zeros'
-                )
 
     @recompute_grad
     def call(self, inputs):
-        """如果是条件Layer Norm，则默认以list为输入，第二个是condition
+        """如果是条件Layer Norm，则默认以list为输入，第二个是条件
         """
         if self.conditional:
-            inputs, cond = inputs
-            if self.hidden_units is not None:
-                cond = self.hidden_dense(cond)
-            cond = align(cond, [0, -1], K.ndim(inputs))
-            if self.center:
-                beta = self.beta_dense(cond) + self.beta
-            if self.scale:
-                gamma = self.gamma_dense(cond) + self.gamma
-        else:
-            if self.center:
-                beta = self.beta
-            if self.scale:
-                gamma = self.gamma
+            inputs, conds = inputs
 
-        outputs = inputs
-        if self.center:
-            mean = K.mean(outputs, axis=-1, keepdims=True)
-            outputs = outputs - mean
-        if self.scale:
-            variance = K.mean(K.square(outputs), axis=-1, keepdims=True)
-            std = K.sqrt(variance + self.epsilon)
-            outputs = outputs / std * gamma
-        if self.center:
-            outputs = outputs + beta
+        if self.zero_mean:
+            mean = K.mean(inputs, axis=-1, keepdims=True)
+            inputs = inputs - mean
+        if self.unit_variance:
+            variance = K.mean(K.square(inputs), axis=-1, keepdims=True)
+            inputs = inputs / K.sqrt(variance + self.epsilon)
 
-        return outputs
-
-    def compute_output_shape(self, input_shape):
         if self.conditional:
-            return input_shape[0]
-        else:
-            return input_shape
+            inputs = [inputs, conds]
+
+        return super(LayerNormalization, self).call(inputs)
 
     def get_config(self):
         config = {
-            'center': self.center,
-            'scale': self.scale,
-            'epsilon': self.epsilon,
-            'conditional': self.conditional,
-            'hidden_units': self.hidden_units,
-            'hidden_activation': activations.serialize(self.hidden_activation),
-            'hidden_initializer':
-                initializers.serialize(self.hidden_initializer),
+            'zero_mean': self.zero_mean,
+            'unit_variance': self.unit_variance,
         }
         base_config = super(LayerNormalization, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))

@@ -1939,7 +1939,7 @@ class T5_Encoder(T5_Base):
         x = self.apply(
             inputs=self.simplify([x, z]),
             layer=LayerNormalization,
-            center=False,
+            zero_mean=False,
             epsilon=1e-6,
             conditional=(z is not None),
             hidden_units=self.layer_norm_conds[1],
@@ -1976,7 +1976,7 @@ class T5_Encoder(T5_Base):
         x = self.apply(
             inputs=self.simplify([x, z]),
             layer=LayerNormalization,
-            center=False,
+            zero_mean=False,
             epsilon=1e-6,
             conditional=(z is not None),
             hidden_units=self.layer_norm_conds[1],
@@ -2014,7 +2014,7 @@ class T5_Encoder(T5_Base):
         x = self.apply(
             inputs=self.simplify([x, z]),
             layer=LayerNormalization,
-            center=False,
+            zero_mean=False,
             epsilon=1e-6,
             conditional=(z is not None),
             hidden_units=self.layer_norm_conds[1],
@@ -2123,7 +2123,7 @@ class T5_Decoder(LM_Mask, T5_Base):
         x = self.apply(
             inputs=self.simplify([x, z]),
             layer=LayerNormalization,
-            center=False,
+            zero_mean=False,
             epsilon=1e-6,
             conditional=(z is not None),
             hidden_units=self.layer_norm_conds[1],
@@ -2163,7 +2163,7 @@ class T5_Decoder(LM_Mask, T5_Base):
         x = self.apply(
             inputs=self.simplify([x, z]),
             layer=LayerNormalization,
-            center=False,
+            zero_mean=False,
             epsilon=1e-6,
             conditional=(z is not None),
             hidden_units=self.layer_norm_conds[1],
@@ -2203,7 +2203,7 @@ class T5_Decoder(LM_Mask, T5_Base):
         x = self.apply(
             inputs=self.simplify([x, z]),
             layer=LayerNormalization,
-            center=False,
+            zero_mean=False,
             epsilon=1e-6,
             conditional=(z is not None),
             hidden_units=self.layer_norm_conds[1],
@@ -2241,7 +2241,7 @@ class T5_Decoder(LM_Mask, T5_Base):
         x = self.apply(
             inputs=self.simplify([x, z]),
             layer=LayerNormalization,
-            center=False,
+            zero_mean=False,
             epsilon=1e-6,
             conditional=(z is not None),
             hidden_units=self.layer_norm_conds[1],
