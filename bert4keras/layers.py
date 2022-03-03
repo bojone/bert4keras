@@ -583,6 +583,7 @@ class MultiHeadAttention(Layer):
 class GatedAttentionUnit(Layer):
     """门控注意力单元
     链接：https://arxiv.org/abs/2202.10447
+    介绍：https://kexue.fm/archives/8934
     说明：没有加入加性相对位置编码，个人认为是不必要的；如果觉得有必要，
          可以自行通过a_bias传入。
     """
@@ -652,11 +653,11 @@ class GatedAttentionUnit(Layer):
             qk = qk * cos_pos + qk2 * sin_pos
             q, k = qk[:, :, 0], qk[:, :, 1]
         # Attention
-        a = tf.einsum('bmd,bnd->bmn', q, k) / l
+        a = tf.einsum('bmd,bnd->bmn', q, k)
         if a_bias is not None:
             a = a + a_bias
         a = sequence_masking(a, mask, 0, -1)
-        A = K.relu(a)**2
+        A = K.relu(a)**2 / (l * self.key_size)
         if self.attention_dropout:
             A = Dropout(self.attention_dropout)(A)
         # 计算输出
