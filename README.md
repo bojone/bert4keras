@@ -76,6 +76,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 - 注2：下载下来的ELECTRA权重，如果没有json配置文件的话，参考<a href="https://github.com/ymcui/Chinese-ELECTRA/issues/3">这里</a>自己改一个（需要加上`type_vocab_size`字段）。
 
 ## 更新
+- <strong>2022.02.28</strong>: 增加[GatedAttentionUnit](https://kexue.fm/archives/8934)。
 - <strong>2021.04.23</strong>: 增加[GlobalPointer](https://kexue.fm/archives/8373)。
 - <strong>2021.03.23</strong>: 增加[RoFormer](https://kexue.fm/archives/8265)。
 - <strong>2021.01.30</strong>: 发布0.9.9版，完善多GPU支持，增加多GPU例子：[task_seq2seq_autotitle_multigpu.py](https://github.com/bojone/bert4keras/blob/master/examples/task_seq2seq_autotitle_multigpu.py)。
