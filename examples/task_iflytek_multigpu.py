@@ -13,7 +13,7 @@ from bert4keras.backend import keras, K
 from bert4keras.tokenizers import Tokenizer
 from bert4keras.models import build_transformer_model
 from bert4keras.optimizers import Adam
-from bert4keras.snippets import sequence_padding, DataGenerator
+from bert4keras.snippets import sequence_padding, DataGenerator, to_array
 from keras.layers import Lambda, Dense
 from tqdm import tqdm
 
@@ -122,7 +122,8 @@ def predict_to_file(in_file, out_file):
             l = json.loads(l)
             text = l['sentence']
             token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
-            label = model.predict([[token_ids], [segment_ids]])[0].argmax()
+            token_ids, segment_ids = to_array([token_ids], [segment_ids])
+            label = model.predict([token_ids, segment_ids])[0].argmax()
             l = json.dumps({'id': str(l['id']), 'label': str(label)})
             fw.write(l + '\n')
     fw.close()
