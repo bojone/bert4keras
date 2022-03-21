@@ -6,6 +6,7 @@ import os, sys
 from distutils.util import strtobool
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.client import device_lib
 from tensorflow.python.util import nest, tf_inspect
 from tensorflow.python.eager import tape
 from tensorflow.python.ops.custom_gradient import _graph_mode_decorator
@@ -14,15 +15,21 @@ from tensorflow.python.ops.custom_gradient import _graph_mode_decorator
 is_tf_keras = strtobool(os.environ.get('TF_KERAS', '0'))
 
 if is_tf_keras:
-    import tensorflow.keras as keras
-    import tensorflow.keras.backend as K
-    sys.modules['keras'] = keras
-else:
-    import keras
-    import keras.backend as K
+    sys.modules['keras'] = tf.keras
+
+import keras
+import keras.backend as K
 
 # 判断是否启用重计算（通过时间换空间）
 do_recompute = strtobool(os.environ.get('RECOMPUTE', '0'))
+
+
+def get_available_gpus():
+    """获取可用的GPU列表
+    """
+    devices = device_lib.list_local_devices()
+    devices = [x.name for x in devices if x.device_type == 'GPU']
+    return devices
 
 
 def gelu_erf(x):
@@ -51,7 +58,19 @@ def set_gelu(version):
         keras.utils.get_custom_objects()['gelu'] = gelu_tanh
 
 
-def piecewise_linear(t, schedule):
+def infinity():
+    """返回默认的代表无穷大的数值
+    """
+    return keras.utils.get_custom_objects().get('infinity', 1e12)
+
+
+def set_infinity(value):
+    """设置新的代表无穷大的数值
+    """
+    keras.utils.get_custom_objects()['infinity'] = value
+
+
+def piecewise_linear(t, schedule, from_zero=True):
     """分段线性函数
     其中schedule是形如{1000: 1, 2000: 0.1}的字典，
     表示 t ∈ [0, 1000]时，输出从0均匀增加至1，而
@@ -59,11 +78,11 @@ def piecewise_linear(t, schedule):
     t > 2000时，保持0.1不变。
     """
     schedule = sorted(schedule.items())
-    if schedule[0][0] != 0:
+    if from_zero and schedule[0][0] != 0:
         schedule = [(0, 0.0)] + schedule
 
-    x = K.constant(schedule[0][1], dtype=K.floatx())
     t = K.cast(t, K.floatx())
+    x = (t * 0 + 1) * schedule[0][1]
     for i in range(len(schedule)):
         t_begin = schedule[i][0]
         x_begin = x
@@ -73,7 +92,7 @@ def piecewise_linear(t, schedule):
             slope = 1.0 * dx / dt
             x = schedule[i][1] + slope * (t - t_begin)
         else:
-            x = K.constant(schedule[i][1], dtype=K.floatx())
+            x = (t * 0 + 1) * schedule[i][1]
         x = K.switch(t >= t_begin, x, x_begin)
 
     return x
@@ -114,29 +133,47 @@ def search_layer(inputs, name, exclude_from=None):
                     return layer
 
 
-def sequence_masking(x, mask, mode=0, axis=None):
+def align(tensor, axes, ndim=None):
+    """重新对齐tensor（批量版expand_dims）
+    axes：原来的第i维对齐新tensor的第axes[i]维；
+    ndim：新tensor的维度。
+    """
+    assert len(axes) == K.ndim(tensor)
+    indices = [None] * (ndim or max(axes))
+    for i in axes:
+        indices[i] = slice(None)
+    return tensor[indices]
+
+
+def sequence_masking(x, mask, value=0, axis=None):
     """为序列条件mask的函数
     mask: 形如(batch_size, seq_len)的0-1矩阵；
-    mode: 如果是0，则直接乘以mask；
-          如果是1，则在padding部分减去一个大正数。
+    value: mask部分要被替换成的值，可以是'-inf'或'inf'；
     axis: 序列所在轴，默认为1；
     """
-    if mask is None or mode not in [0, 1]:
+    if mask is None:
         return x
     else:
+        x_dtype = K.dtype(x)
+        if x_dtype == 'bool':
+            x = K.cast(x, 'int32')
+        if K.dtype(mask) != K.dtype(x):
+            mask = K.cast(mask, K.dtype(x))
+        if value == '-inf':
+            value = -K.infinity()
+        elif value == 'inf':
+            value = K.infinity()
         if axis is None:
             axis = 1
-        if axis == -1:
-            axis = K.ndim(x) - 1
+        elif axis < 0:
+            axis = K.ndim(x) + axis
         assert axis > 0, 'axis must be greater than 0'
-        for _ in range(axis - 1):
-            mask = K.expand_dims(mask, 1)
-        for _ in range(K.ndim(x) - K.ndim(mask) - axis + 1):
-            mask = K.expand_dims(mask, K.ndim(mask))
-        if mode == 0:
-            return x * mask
-        else:
-            return x - (1 - mask) * 1e12
+        mask = align(mask, [0, axis], K.ndim(x))
+        value = K.cast(value, K.dtype(x))
+        x = x * mask + value * (1 - mask)
+        if x_dtype == 'bool':
+            x = K.cast(x, 'bool')
+        return x
 
 
 def batch_gather(params, indices):
@@ -184,6 +221,12 @@ def divisible_temporal_padding(x, n):
     return K.temporal_padding(x, (0, p_len))
 
 
+def root_mean_square(x, axis=None, keepdims=False):
+    """均方根，相当于模长的变体
+    """
+    return K.sqrt(K.mean(K.square(x), axis=axis, keepdims=keepdims))
+
+
 def swish(x):
     """swish函数（这样封装过后才有 __name__ 属性）
     """
@@ -194,6 +237,74 @@ def leaky_relu(x, alpha=0.2):
     """leaky relu函数（这样封装过后才有 __name__ 属性）
     """
     return tf.nn.leaky_relu(x, alpha=alpha)
+
+
+class Sinusoidal(keras.initializers.Initializer):
+    """Sin-Cos位置向量初始化器
+    来自：https://arxiv.org/abs/1706.03762
+    """
+    def __call__(self, shape, dtype=None):
+        """Sin-Cos形式的位置向量
+        """
+        vocab_size, depth = shape
+        embeddings = np.zeros(shape)
+        for pos in range(vocab_size):
+            for i in range(depth // 2):
+                theta = pos / np.power(10000, 2. * i / depth)
+                embeddings[pos, 2 * i] = np.sin(theta)
+                embeddings[pos, 2 * i + 1] = np.cos(theta)
+        return embeddings
+
+
+def multilabel_categorical_crossentropy(y_true, y_pred):
+    """多标签分类的交叉熵
+    说明：
+        1. y_true和y_pred的shape一致，y_true的元素非0即1，
+           1表示对应的类为目标类，0表示对应的类为非目标类；
+        2. 请保证y_pred的值域是全体实数，换言之一般情况下
+           y_pred不用加激活函数，尤其是不能加sigmoid或者
+           softmax；
+        3. 预测阶段则输出y_pred大于0的类；
+        4. 详情请看：https://kexue.fm/archives/7359 。
+    """
+    y_pred = (1 - 2 * y_true) * y_pred
+    y_neg = y_pred - y_true * K.infinity()
+    y_pos = y_pred - (1 - y_true) * K.infinity()
+    zeros = K.zeros_like(y_pred[..., :1])
+    y_neg = K.concatenate([y_neg, zeros], axis=-1)
+    y_pos = K.concatenate([y_pos, zeros], axis=-1)
+    neg_loss = K.logsumexp(y_neg, axis=-1)
+    pos_loss = K.logsumexp(y_pos, axis=-1)
+    return neg_loss + pos_loss
+
+
+def sparse_multilabel_categorical_crossentropy(y_true, y_pred, mask_zero=False):
+    """稀疏版多标签分类的交叉熵
+    说明：
+        1. y_true.shape=[..., num_positive]，
+           y_pred.shape=[..., num_classes]；
+        2. 请保证y_pred的值域是全体实数，换言之一般情况下
+           y_pred不用加激活函数，尤其是不能加sigmoid或者
+           softmax；
+        3. 预测阶段则输出y_pred大于0的类；
+        4. 详情请看：https://kexue.fm/archives/7359 。
+    """
+    zeros = K.zeros_like(y_pred[..., :1])
+    y_pred = K.concatenate([y_pred, zeros], axis=-1)
+    if mask_zero:
+        infs = zeros + K.infinity()
+        y_pred = K.concatenate([infs, y_pred[..., 1:]], axis=-1)
+    y_pos_2 = batch_gather(y_pred, y_true)
+    y_pos_1 = K.concatenate([y_pos_2, zeros], axis=-1)
+    if mask_zero:
+        y_pred = K.concatenate([-infs, y_pred[..., 1:]], axis=-1)
+        y_pos_2 = batch_gather(y_pred, y_true)
+    pos_loss = K.logsumexp(-y_pos_1, axis=-1)
+    all_loss = K.logsumexp(y_pred, axis=-1)
+    aux_loss = K.logsumexp(y_pos_2, axis=-1) - all_loss
+    aux_loss = K.clip(1 - K.exp(aux_loss), K.epsilon(), 1)
+    neg_loss = all_loss + K.log(aux_loss)
+    return pos_loss + neg_loss
 
 
 def symbolic(f):
@@ -279,16 +390,26 @@ def recompute_grad(call):
     return inner
 
 
-# 给旧版本keras新增symbolic方法（装饰器），
-# 以便兼容optimizers.py中的代码
+# 给旧版keras新增symbolic（装饰器），以兼容optimizers.py
 K.symbolic = getattr(K, 'symbolic', None) or symbolic
+
+# 给tf.keras补充上logsumexp
+K.logsumexp = getattr(K, 'logsumexp', None) or tf.math.reduce_logsumexp
+
+# 添加到 keras.backend 上，使其可以像 K.epsilon() 那样操作
+K.infinity = infinity
+K.set_infinity = set_infinity
+sys.modules['tensorflow.keras.backend'] = K
 
 custom_objects = {
     'gelu_erf': gelu_erf,
     'gelu_tanh': gelu_tanh,
     'gelu': gelu_erf,
+    'root_mean_square': root_mean_square,
     'swish': swish,
     'leaky_relu': leaky_relu,
+    'Sinusoidal': Sinusoidal,
+    'multilabel_categorical_crossentropy': multilabel_categorical_crossentropy,
 }
 
 keras.utils.get_custom_objects().update(custom_objects)

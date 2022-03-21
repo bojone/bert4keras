@@ -7,6 +7,7 @@ from bert4keras.backend import keras, K, is_tf_keras
 from bert4keras.snippets import is_string, string_matching
 from bert4keras.snippets import is_one_of, insert_arguments
 from bert4keras.backend import piecewise_linear
+from bert4keras.backend import root_mean_square as rms
 import re
 
 
@@ -52,7 +53,7 @@ class Adam(keras.optimizers.Optimizer):
         # 更新公式
         if indices is None:
             m_t = K.update(m, beta_1_t * m + (1 - beta_1_t) * grad)
-            v_t = K.update(v, beta_2_t * v + (1 - beta_2_t) * grad**2)
+            v_t = K.update(v, beta_2_t * v + (1 - beta_2_t) * K.square(grad))
         else:
             mv_ops = [K.update(m, beta_1_t * m), K.update(v, beta_2_t * v)]
             with tf.control_dependencies(mv_ops):
@@ -60,7 +61,7 @@ class Adam(keras.optimizers.Optimizer):
                     m, indices, (1 - beta_1_t) * grad
                 )
                 v_t = self._resource_scatter_add(
-                    v, indices, (1 - beta_2_t) * grad**2
+                    v, indices, (1 - beta_2_t) * K.square(grad)
                 )
 
         # 返回算子
@@ -83,6 +84,7 @@ class Adam(keras.optimizers.Optimizer):
             'beta_1': self._serialize_hyperparameter('beta_1'),
             'beta_2': self._serialize_hyperparameter('beta_2'),
             'epsilon': self.epsilon,
+            'bias_correction': self.bias_correction,
         }
         base_config = super(Adam, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
@@ -103,6 +105,7 @@ class AdaFactorBase(keras.optimizers.Optimizer):
         multiply_by_parameter_scale=True,
         clipping_threshold=1.0,
         min_dim_size_to_factor=128,
+        exclude_from_parameter_scale=None,
         **kwargs
     ):
         super(AdaFactorBase, self).__init__(**kwargs)
@@ -114,6 +117,7 @@ class AdaFactorBase(keras.optimizers.Optimizer):
         self.multiply_by_parameter_scale = multiply_by_parameter_scale
         self.clipping_threshold = clipping_threshold
         self.min_dim_size_to_factor = min_dim_size_to_factor
+        self.exclude_from_parameter_scale = exclude_from_parameter_scale or []
 
     @property
     def learning_rate(self):
@@ -152,6 +156,11 @@ class AdaFactorBase(keras.optimizers.Optimizer):
         shape2[indices[-2]] = 1
         return shape1, indices[-1], shape2, indices[-2]
 
+    def _do_parameter_scale(self, w):
+        return self.multiply_by_parameter_scale and (
+            not string_matching(w.name, self.exclude_from_parameter_scale)
+        )
+
     def get_config(self):
         config = {
             'learning_rate': self._learning_rate,
@@ -162,6 +171,7 @@ class AdaFactorBase(keras.optimizers.Optimizer):
             'multiply_by_parameter_scale': self.multiply_by_parameter_scale,
             'clipping_threshold': self.clipping_threshold,
             'min_dim_size_to_factor': self.min_dim_size_to_factor,
+            'exclude_from_parameter_scale': self.exclude_from_parameter_scale,
         }
         base_config = super(AdaFactorBase, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
@@ -185,7 +195,7 @@ class AdaFactorV1(AdaFactorBase):
         lr = self.learning_rate
 
         for i, (p, g) in enumerate(zip(params, grads)):
-            g2 = K.square(g) + self.epsilon1
+            g2 = K.square(g) + self.epsilon1  # 如果换成g**2，在keras下Embedding层会报错
             shape, dtype = K.int_shape(p), K.dtype(p)
             factored_shape = self.factored_shape(shape)
             if factored_shape is None:
@@ -202,18 +212,18 @@ class AdaFactorV1(AdaFactorBase):
                 vc = K.zeros(shape2, dtype=dtype, name='vc_' + str(i))
                 self.weights.extend([vr, vc])
                 # 定义更新
-                vr_t = self.beta2 * vr + K.mean(g2, axis=axis1, keepdims=True)
-                vc_t = self.beta2 * vc + K.mean(g2, axis=axis2, keepdims=True)
+                g2r = K.mean(g2, axis=axis1, keepdims=True)
+                g2c = K.mean(g2, axis=axis2, keepdims=True)
+                vr_t = self.beta2 * vr + (1.0 - self.beta2) * g2r
+                vc_t = self.beta2 * vc + (1.0 - self.beta2) * g2c
                 self.updates.extend([K.update(vr, vr_t), K.update(vc, vc_t)])
                 # 合成矩阵
                 v_t = vr_t * vc_t / K.mean(vr_t, axis=axis2, keepdims=True)
             # 增量主体
-            u = g / K.sqrt(v_t)
+            u = g / K.sqrt(v_t + self.epsilon1)
             # 增量裁剪
             if self.clipping_threshold is not None:
-                u_rms = K.mean(K.sum(K.square(u)))
-                d = self.clipping_threshold
-                u = u / K.maximum(1.0, u_rms / d)
+                u = u / K.maximum(1.0, rms(u) / self.clipping_threshold)
             # 增量滑动
             if self.beta1 > 0.0:
                 # 定义参数
@@ -224,8 +234,8 @@ class AdaFactorV1(AdaFactorBase):
                 self.updates.append(K.update(m, m_t))
                 u = m_t
             # 增量调整
-            if self.multiply_by_parameter_scale:
-                u = u * K.maximum(K.mean(K.sum(K.square(p))), self.epsilon2)
+            if self._do_parameter_scale(p):
+                u = u * K.maximum(rms(p), self.epsilon2)
             # 更新参数
             self.updates.append(K.update(p, p - lr * u))
 
@@ -255,8 +265,11 @@ class AdaFactorV2(AdaFactorBase):
                 self.add_slot(var, 'vr', value1)
                 self.add_slot(var, 'vc', value2)
 
+    def _decayed_lr(self, var_dtype):
+        return self.learning_rate
+
     def _resource_apply(self, grad, var, indices=None):
-        lr = self.learning_rate
+        lr = self._decayed_lr(var.dtype.base_dtype)
         g2 = K.square(grad) + self.epsilon1
         shape = K.int_shape(var)
         factored_shape = self.factored_shape(shape)
@@ -270,18 +283,18 @@ class AdaFactorV2(AdaFactorBase):
             vr = self.get_slot(var, 'vr')
             vc = self.get_slot(var, 'vc')
             # 定义更新
-            vr_t = self.beta2 * vr + K.mean(g2, axis=axis1, keepdims=True)
-            vc_t = self.beta2 * vc + K.mean(g2, axis=axis2, keepdims=True)
+            g2r = K.mean(g2, axis=axis1, keepdims=True)
+            g2c = K.mean(g2, axis=axis2, keepdims=True)
+            vr_t = self.beta2 * vr + (1.0 - self.beta2) * g2r
+            vc_t = self.beta2 * vc + (1.0 - self.beta2) * g2c
             vr_t, vc_t = K.update(vr, vr_t), K.update(vc, vc_t)
             # 合成矩阵
             v_t = vr_t * vc_t / K.mean(vr_t, axis=axis2, keepdims=True)
         # 增量主体
-        u = grad / K.sqrt(v_t)
+        u = grad / K.sqrt(v_t + self.epsilon1)
         # 增量裁剪
         if self.clipping_threshold is not None:
-            u_rms = K.mean(K.sum(K.square(u)))
-            d = self.clipping_threshold
-            u = u / K.maximum(1.0, u_rms / d)
+            u = u / K.maximum(1.0, rms(u) / self.clipping_threshold)
         # 增量滑动
         if self.beta1 > 0.0:
             m = self.get_slot(var, 'm')
@@ -289,8 +302,8 @@ class AdaFactorV2(AdaFactorBase):
             m_t = self.beta1 * m + (1.0 - self.beta1) * u
             u = K.update(m, m_t)
         # 增量调整
-        if self.multiply_by_parameter_scale:
-            u = u * K.maximum(K.mean(K.sum(K.square(var))), self.epsilon2)
+        if self._do_parameter_scale(var):
+            u = u * K.maximum(rms(var), self.epsilon2)
         # 更新参数
         return K.update(var, var - lr * u)
 
@@ -424,13 +437,12 @@ def extend_with_layer_adaptation(BaseOptimizer):
             def new_update(x, new_x):
                 if is_one_of(x, params) and self._do_layer_adaptation(x):
                     dx = new_x - x
-                    lr_t = K.clip(self.learning_rate, K.epsilon(), 1e10)
+                    lr_t = K.clip(self.learning_rate, K.epsilon(), K.infinity())
                     x_norm = tf.norm(x)
                     g_norm = tf.norm(dx / lr_t)
                     ratio = K.switch(
                         x_norm > 0.0,
-                        K.switch(g_norm > K.epsilon(), x_norm / g_norm, 1.0),
-                        1.0
+                        K.switch(g_norm > 0.0, x_norm / g_norm, 1.0), 1.0
                     )
                     new_x = x + dx * ratio
                 return old_update(x, new_x)
@@ -477,13 +489,12 @@ def extend_with_layer_adaptation_v2(BaseOptimizer):
                 if x is var and self._do_layer_adaptation(x):
                     dx = new_x - x
                     lr_t = self._decayed_lr(x.dtype.base_dtype)
-                    lr_t = K.clip(lr_t, K.epsilon(), 1e10)
+                    lr_t = K.clip(lr_t, K.epsilon(), K.infinity())
                     x_norm = tf.norm(x)
                     g_norm = tf.norm(dx / lr_t)
                     ratio = K.switch(
                         x_norm > 0.0,
-                        K.switch(g_norm > K.epsilon(), x_norm / g_norm, 1.0),
-                        1.0
+                        K.switch(g_norm > 0.0, x_norm / g_norm, 1.0), 1.0
                     )
                     new_x = x + dx * ratio
                 return old_update(x, new_x)
@@ -592,27 +603,24 @@ def extend_with_gradient_accumulation(BaseOptimizer):
         @insert_arguments(grad_accum_steps=2)
         def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
-            self._first_get_gradients = True
+            self.accum_grads = {}
 
         def get_gradients(self, loss, params):
-            if self._first_get_gradients:
-                self._first_get_gradients = False
-                return super(NewOptimizer, self).get_gradients(loss, params)
-            else:
-                return [ag / self.grad_accum_steps for ag in self.accum_grads]
+            accum_grads = []
+            for p in params:
+                if p not in self.accum_grads:
+                    self.accum_grads[p] = K.zeros(
+                        K.int_shape(p), dtype=K.dtype(p)
+                    )
+                accum_grads.append(self.accum_grads[p])
+
+            return [ag / self.grad_accum_steps for ag in accum_grads]
 
         @K.symbolic
         def get_updates(self, loss, params):
             # 更新判据
             cond = K.equal(self.iterations % self.grad_accum_steps, 0)
             cond = K.cast(cond, K.floatx())
-            # 获取梯度
-            grads = self.get_gradients(loss, params)
-            self.accum_grads = [
-                K.zeros(
-                    K.int_shape(p), dtype=K.dtype(p), name='accum_grad_%s' % i
-                ) for i, p in enumerate(params)
-            ]
 
             old_update = K.update
 
@@ -624,11 +632,14 @@ def extend_with_gradient_accumulation(BaseOptimizer):
             updates = super(NewOptimizer, self).get_updates(loss, params)
             K.update = old_update
 
+            # 获取梯度
+            grads = super(NewOptimizer, self).get_gradients(loss, params)
+            accum_grads = [self.accum_grads[p] for p in params]
             # 累积梯度
             with tf.control_dependencies(updates):
                 accum_updates = [
                     K.update(ag, g + (1 - cond) * ag)
-                    for g, ag in zip(grads, self.accum_grads)
+                    for g, ag in zip(grads, accum_grads)
                 ]
 
             return accum_updates
@@ -1016,6 +1027,97 @@ def extend_with_exponential_moving_average_v2(BaseOptimizer):
     return NewOptimizer
 
 
+@export_to_custom_objects
+def extend_with_parameter_wise_lr(BaseOptimizer):
+    """返回新的优化器类，加入分参数学习率
+    主要场景就是给每层甚至每个参数设置不同的学习率。
+    """
+    class NewOptimizer(BaseOptimizer):
+        """带有分参数学习率的优化器
+        其中schedule是形如{name1: 2, name2: 0.1}的字典，
+        其实name1、name2是字符串，表示变量名包含name1的
+        参数学习率乘以2，变量名包含name2的参数学习率要
+        乘以0.1。
+        """
+        @insert_arguments(paramwise_lr_schedule={})
+        def __init__(self, *args, **kwargs):
+            super(NewOptimizer, self).__init__(*args, **kwargs)
+
+        @K.symbolic
+        def get_updates(self, loss, params):
+            old_update = K.update
+
+            def new_update(x, new_x):
+                if is_one_of(x, params):
+                    lr_multiplier = 1
+                    for k, v in self.paramwise_lr_schedule.items():
+                        if k in x.name:
+                            lr_multiplier *= v
+                    if lr_multiplier != 1:
+                        new_x = x + (new_x - x) * lr_multiplier
+                return old_update(x, new_x)
+
+            K.update = new_update
+            updates = super(NewOptimizer, self).get_updates(loss, params)
+            K.update = old_update
+
+            return updates
+
+        def get_config(self):
+            config = {
+                'paramwise_lr_schedule': self.paramwise_lr_schedule,
+            }
+            base_config = super(NewOptimizer, self).get_config()
+            return dict(list(base_config.items()) + list(config.items()))
+
+    return NewOptimizer
+
+
+@export_to_custom_objects
+def extend_with_parameter_wise_lr_v2(BaseOptimizer):
+    """返回新的优化器类，加入分参数学习率
+    主要场景就是给每层甚至每个参数设置不同的学习率。
+    """
+    class NewOptimizer(BaseOptimizer):
+        """带有分参数学习率的优化器
+        其中schedule是形如{name1: 2, name2: 0.1}的字典，
+        其实name1、name2是字符串，表示变量名包含name1的
+        参数学习率乘以2，变量名包含name2的参数学习率要
+        乘以0.1。
+        """
+        @insert_arguments(paramwise_lr_schedule={})
+        def __init__(self, *args, **kwargs):
+            super(NewOptimizer, self).__init__(*args, **kwargs)
+
+        def _resource_apply(self, grad, var, indices=None):
+            old_update = K.update
+
+            def new_update(x, new_x):
+                if x is var:
+                    lr_multiplier = 1
+                    for k, v in self.paramwise_lr_schedule.items():
+                        if k in x.name:
+                            lr_multiplier *= v
+                    if lr_multiplier != 1:
+                        new_x = x + (new_x - x) * lr_multiplier
+                return old_update(x, new_x)
+
+            K.update = new_update
+            op = super(NewOptimizer, self)._resource_apply(grad, var, indices)
+            K.update = old_update
+
+            return op
+
+        def get_config(self):
+            config = {
+                'paramwise_lr_schedule': self.paramwise_lr_schedule,
+            }
+            base_config = super(NewOptimizer, self).get_config()
+            return dict(list(base_config.items()) + list(config.items()))
+
+    return NewOptimizer
+
+
 if is_tf_keras:
     extend_with_weight_decay = extend_with_weight_decay_v2
     extend_with_layer_adaptation = extend_with_layer_adaptation_v2
@@ -1024,6 +1126,7 @@ if is_tf_keras:
     extend_with_lookahead = extend_with_lookahead_v2
     extend_with_lazy_optimization = extend_with_lazy_optimization_v2
     extend_with_exponential_moving_average = extend_with_exponential_moving_average_v2
+    extend_with_parameter_wise_lr = extend_with_parameter_wise_lr_v2
     AdaFactor = AdaFactorV2
 else:
     Adam = keras.optimizers.Adam

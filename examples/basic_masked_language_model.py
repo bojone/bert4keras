@@ -1,10 +1,10 @@
 #! -*- coding: utf-8 -*-
 # 测试代码可用性: MLM
 
+import numpy as np
 from bert4keras.models import build_transformer_model
 from bert4keras.tokenizers import Tokenizer
 from bert4keras.snippets import to_array
-import numpy as np
 
 config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
 checkpoint_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
@@ -18,7 +18,7 @@ model = build_transformer_model(
 token_ids, segment_ids = tokenizer.encode(u'科学技术是第一生产力')
 
 # mask掉“技术”
-token_ids[3] = token_ids[4] = tokenizer._token_dict['[MASK]']
+token_ids[3] = token_ids[4] = tokenizer._token_mask_id
 token_ids, segment_ids = to_array([token_ids], [segment_ids])
 
 # 用mlm模型预测被mask掉的部分

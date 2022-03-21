@@ -124,11 +124,11 @@ class StoryCompletion(AutoRegressiveDecoder):
         token_ids = inputs[0]
         token_ids = np.concatenate([token_ids, output_ids], 1)
         segment_ids = np.zeros_like(token_ids)
-        return model.predict([token_ids, segment_ids])[:, -1]
+        return self.last_token(model).predict([token_ids, segment_ids])
 
-    def generate(self, text, n=1, topk=5):
+    def generate(self, text, n=1, topp=0.95):
         token_ids, _ = tokenizer.encode(text)
-        results = self.random_sample([token_ids[:-1]], n, topk)  # 基于随机采样
+        results = self.random_sample([token_ids[:-1]], n, topp=topp)  # 基于随机采样
         return [text + tokenizer.decode(ids) for ids in results]
 
 
@@ -167,7 +167,7 @@ if __name__ == '__main__':
     evaluator = Evaluator()
     train_generator = data_generator(data, batch_size)
 
-    model.fit_generator(
+    model.fit(
         train_generator.forfit(),
         steps_per_epoch=steps_per_epoch,
         epochs=epochs,

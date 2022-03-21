@@ -26,6 +26,9 @@ dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
 
 def load_data(filename):
+    """加载数据
+    单条格式：(文本, 标签id)
+    """
     D = []
     with open(filename) as f:
         for i, l in enumerate(f):
@@ -187,7 +190,7 @@ if __name__ == '__main__':
 
     evaluator = Evaluator()
 
-    model.fit_generator(
+    model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=50,

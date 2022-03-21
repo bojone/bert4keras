@@ -1,17 +1,19 @@
 #! -*- coding:utf-8 -*-
-# 通过梯度惩罚增强模型的泛化性能
-# 比CLUE榜单公开的同数据集上的BERT base的成绩高2%
+# 文本分类多gpu版
 # 数据集：IFLYTEK' 长文本分类 (https://github.com/CLUEbenchmark/CLUE)
-# 博客：https://kexue.fm/archives/7234
-# 适用于Keras 2.3.1
+
+import os
+
+os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
 
 import json
 import numpy as np
-from bert4keras.backend import keras, search_layer, K
+import tensorflow as tf
+from bert4keras.backend import keras, K
 from bert4keras.tokenizers import Tokenizer
 from bert4keras.models import build_transformer_model
 from bert4keras.optimizers import Adam
-from bert4keras.snippets import sequence_padding, DataGenerator
+from bert4keras.snippets import sequence_padding, DataGenerator, to_array
 from keras.layers import Lambda, Dense
 from tqdm import tqdm
 
@@ -54,76 +56,43 @@ class data_generator(DataGenerator):
     """数据生成器
     """
     def __iter__(self, random=False):
-        batch_token_ids, batch_segment_ids, batch_labels = [], [], []
         for is_end, (text, label) in self.sample(random):
             token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
-            batch_token_ids.append(token_ids)
-            batch_segment_ids.append(segment_ids)
-            batch_labels.append([label])
-            if len(batch_token_ids) == self.batch_size or is_end:
-                batch_token_ids = sequence_padding(batch_token_ids)
-                batch_segment_ids = sequence_padding(batch_segment_ids)
-                batch_labels = sequence_padding(batch_labels)
-                yield [batch_token_ids, batch_segment_ids], batch_labels
-                batch_token_ids, batch_segment_ids, batch_labels = [], [], []
+            yield [token_ids, segment_ids], [[label]]  # 返回一条样本
 
 
 # 转换数据集
 train_generator = data_generator(train_data, batch_size)
 valid_generator = data_generator(valid_data, batch_size)
 
-# 加载预训练模型
-bert = build_transformer_model(
-    config_path=config_path,
-    checkpoint_path=checkpoint_path,
-    return_keras_model=False,
-)
+# 建立单机多卡策略
+strategy = tf.distribute.MirroredStrategy()
 
-output = Lambda(lambda x: x[:, 0])(bert.model.output)
-output = Dense(
-    units=num_classes,
-    activation='softmax',
-    kernel_initializer=bert.initializer
-)(output)
+with strategy.scope():  # 调用该策略
 
-model = keras.models.Model(bert.model.input, output)
-model.summary()
+    # 加载预训练模型
+    bert = build_transformer_model(
+        config_path=config_path,
+        checkpoint_path=None,
+        return_keras_model=False,
+    )
 
+    output = Lambda(lambda x: x[:, 0])(bert.model.output)
+    output = Dense(
+        units=num_classes,
+        activation='softmax',
+        kernel_initializer=bert.initializer,
+        name='Probas'
+    )(output)
 
-def sparse_categorical_crossentropy(y_true, y_pred):
-    """自定义稀疏交叉熵
-    这主要是因为keras自带的sparse_categorical_crossentropy不支持求二阶梯度。
-    """
-    y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
-    y_true = K.cast(y_true, 'int32')
-    y_true = K.one_hot(y_true, K.shape(y_pred)[-1])
-    return K.categorical_crossentropy(y_true, y_pred)
-
-
-def loss_with_gradient_penalty(y_true, y_pred, epsilon=1):
-    """带梯度惩罚的loss
-    """
-    loss = K.mean(sparse_categorical_crossentropy(y_true, y_pred))
-    embeddings = search_layer(y_pred, 'Embedding-Token').embeddings
-    gp = K.sum(K.gradients(loss, [embeddings])[0].values**2)
-    return loss + 0.5 * epsilon * gp
-
-
-model.compile(
-    loss=loss_with_gradient_penalty,
-    optimizer=Adam(2e-5),
-    metrics=['sparse_categorical_accuracy'],
-)
-
-
-def evaluate(data):
-    total, right = 0., 0.
-    for x_true, y_true in data:
-        y_pred = model.predict(x_true).argmax(axis=1)
-        y_true = y_true[:, 0]
-        total += len(y_true)
-        right += (y_true == y_pred).sum()
-    return right / total
+    model = keras.models.Model(bert.model.input, output)
+    model.compile(
+        loss='sparse_categorical_crossentropy',
+        optimizer=Adam(2e-5),
+        metrics=['sparse_categorical_accuracy'],
+    )
+    model.summary()
+    bert.load_weights_from_checkpoint(checkpoint_path)  # 必须最后才加载预训练权重
 
 
 class Evaluator(keras.callbacks.Callback):
@@ -133,7 +102,7 @@ class Evaluator(keras.callbacks.Callback):
         self.best_val_acc = 0.
 
     def on_epoch_end(self, epoch, logs=None):
-        val_acc = evaluate(valid_generator)
+        val_acc = logs['sparse_categorical_accuracy']
         if val_acc > self.best_val_acc:
             self.best_val_acc = val_acc
             model.save_weights('best_model.weights')
@@ -153,7 +122,8 @@ def predict_to_file(in_file, out_file):
             l = json.loads(l)
             text = l['sentence']
             token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
-            label = model.predict([[token_ids], [segment_ids]])[0].argmax()
+            token_ids, segment_ids = to_array([token_ids], [segment_ids])
+            label = model.predict([token_ids, segment_ids])[0].argmax()
             l = json.dumps({'id': str(l['id']), 'label': str(label)})
             fw.write(l + '\n')
     fw.close()
@@ -163,10 +133,26 @@ if __name__ == '__main__':
 
     evaluator = Evaluator()
 
+    train_dataset = train_generator.to_dataset(
+        types=[('float32', 'float32'), ('float32',)],
+        shapes=[([None], [None]), ([1],)],  # 配合后面的padded_batch=True，实现自动padding
+        names=[('Input-Token', 'Input-Segment'), ('Probas',)],
+        padded_batch=True
+    )  # 数据要转为tf.data.Dataset格式，names跟输入层/输出层的名字对应
+
+    valid_dataset = valid_generator.to_dataset(
+        types=[('float32', 'float32'), ('float32',)],
+        shapes=[([None], [None]), ([1],)],  # 配合后面的padded_batch=True，实现自动padding
+        names=[('Input-Token', 'Input-Segment'), ('Probas',)],
+        padded_batch=True
+    )  # 数据要转为tf.data.Dataset格式，names跟输入层/输出层的名字对应
+
     model.fit(
-        train_generator.forfit(),
+        train_dataset,
         steps_per_epoch=len(train_generator),
-        epochs=50,
+        epochs=10,
+        validation_data=valid_dataset,
+        validation_steps=len(valid_generator),
         callbacks=[evaluator]
     )
 

@@ -26,6 +26,9 @@ dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
 
 def load_data(filename):
+    """加载数据
+    单条格式：(文本, 标签id)
+    """
     D = []
     with open(filename) as f:
         for i, l in enumerate(f):
@@ -198,7 +201,7 @@ if __name__ == '__main__':
 
     # 训练predecessor
     predecessor_evaluator = Evaluator('best_predecessor.weights')
-    predecessor_model.fit_generator(
+    predecessor_model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=5,
@@ -207,7 +210,7 @@ if __name__ == '__main__':
 
     # 训练theseus
     theseus_evaluator = Evaluator('best_theseus.weights')
-    theseus_model.fit_generator(
+    theseus_model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=10,
@@ -217,7 +220,7 @@ if __name__ == '__main__':
 
     # 训练successor
     successor_evaluator = Evaluator('best_successor.weights')
-    successor_model.fit_generator(
+    successor_model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=5,

@@ -1,13 +1,12 @@
 #! -*- coding: utf-8 -*-
 # 代码合集
 
-import six
+import os, sys, six, re, json
+import unicodedata
 import logging
 import numpy as np
-import re
-import sys
 from collections import defaultdict
-import json
+from bert4keras.backend import K, keras, tf
 
 _open_ = open
 is_py2 = six.PY2
@@ -15,7 +14,7 @@ is_py2 = six.PY2
 if not is_py2:
     basestring = str
 
-    
+
 def to_array(*args):
     """批量转numpy的array
     """
@@ -81,28 +80,99 @@ def convert_to_str(text, encoding='utf-8', errors='ignore'):
     return text
 
 
-class open:
-    """模仿python自带的open函数，主要是为了同时兼容py2和py3
+def lowercase_and_normalize(text):
+    """转小写，并进行简单的标准化
     """
-    def __init__(self, name, mode='r', encoding=None, errors='ignore'):
+    if is_py2:
+        text = unicode(text)
+    text = text.lower()
+    text = unicodedata.normalize('NFD', text)
+    text = ''.join([ch for ch in text if unicodedata.category(ch) != 'Mn'])
+    return text
+
+
+class open:
+    """模仿python自带的open函数
+    作用：1.主要是为了同时兼容py2和py3；2.增加了索引功能，方便读取大文件。
+    """
+    def __init__(
+        self, name, mode='r', encoding=None, errors='strict', indexable=False
+    ):
+        self.name = name
         if is_py2:
             self.file = _open_(name, mode)
         else:
             self.file = _open_(name, mode, encoding=encoding, errors=errors)
         self.encoding = encoding
         self.errors = errors
+        self.iterator = None
+        if indexable:
+            if is_string(indexable) and os.path.exists(indexable):
+                self.offsets = json.load(_open_(indexable))
+            else:
+                self.create_indexes()
+                if is_string(indexable):
+                    json.dump(self.offsets, _open_(indexable, 'w'))
+
+    def create_indexes(self):
+        print('creating indexes ...')
+        self.offsets, offset = [], 0
+        pbar = keras.utils.Progbar(os.path.getsize(self.name))
+        while self.readline():
+            self.offsets.append(offset)
+            offset = self.tell()
+            pbar.update(offset)
+        self.seek(0)
+        print('indexes created.')
+
+    def __getitem__(self, key):
+        self.seek(self.offsets[key])
+        l = self.readline()
+        if self.encoding:
+            l = convert_to_unicode(l, self.encoding, self.errors)
+        return l
+
+    def __len__(self):
+        return len(self.offsets)
 
     def __iter__(self):
-        for l in self.file:
-            if self.encoding:
-                l = convert_to_unicode(l, self.encoding, self.errors)
-            yield l
+        if hasattr(self, 'offsets'):
+            for i in range(len(self)):
+                yield self[i]
+        else:
+            for l in self.file:
+                if self.encoding:
+                    l = convert_to_unicode(l, self.encoding, self.errors)
+                yield l
+
+    def next(self):
+        if self.iterator is None:
+            self.iterator = self.__iter__()
+        return next(self.iterator)
+
+    def __next__(self):
+        return self.next()
 
     def read(self):
         text = self.file.read()
         if self.encoding:
             text = convert_to_unicode(text, self.encoding, self.errors)
         return text
+
+    def readline(self):
+        text = self.file.readline()
+        if self.encoding:
+            text = convert_to_unicode(text, self.encoding, self.errors)
+        return text
+
+    def readlines(self):
+        if self.encoding:
+            return [
+                convert_to_unicode(text, self.encoding, self.errors)
+                for text in self.file.readlines()
+            ]
+        else:
+            return self.file.readlines()
 
     def write(self, text):
         if self.encoding:
@@ -115,6 +185,12 @@ class open:
     def close(self):
         self.file.close()
 
+    def tell(self):
+        return self.file.tell()
+
+    def seek(self, offset=0):
+        return self.file.seek(offset)
+
     def __enter__(self):
         return self
 
@@ -122,25 +198,36 @@ class open:
         self.close()
 
 
-def parallel_apply(
-    func, iterable, workers, max_queue_size, callback=None, dummy=False
+def parallel_apply_generator(
+    func, iterable, workers, max_queue_size, dummy=False, random_seeds=True
 ):
     """多进程或多线程地将func应用到iterable的每个元素中。
     注意这个apply是异步且无序的，也就是说依次输入a,b,c，但是
-    输出可能是func(c), func(a), func(b)。
+    输出可能是func(c), func(a), func(b)。结果将作为一个
+    generator返回，其中每个item是输入的序号以及该输入对应的
+    处理结果。
     参数：
         dummy: False是多进程/线性，True则是多线程/线性；
-        callback: 处理单个输出的回调函数。
+        random_seeds: 每个进程的随机种子。
     """
     if dummy:
         from multiprocessing.dummy import Pool, Queue
     else:
         from multiprocessing import Pool, Queue
 
-    in_queue, out_queue = Queue(max_queue_size), Queue()
+    in_queue, out_queue, seed_queue = Queue(max_queue_size), Queue(), Queue()
+    if random_seeds is True:
+        random_seeds = [None] * workers
+    elif random_seeds is None or random_seeds is False:
+        random_seeds = []
+    for seed in random_seeds:
+        seed_queue.put(seed)
 
     def worker_step(in_queue, out_queue):
-        # 单步函数包装成循环执行
+        """单步函数包装成循环执行
+        """
+        if not seed_queue.empty():
+            np.random.seed(seed_queue.get())
         while True:
             i, d = in_queue.get()
             r = func(d)
@@ -148,21 +235,6 @@ def parallel_apply(
 
     # 启动多进程/线程
     pool = Pool(workers, worker_step, (in_queue, out_queue))
-
-    if callback is None:
-        results = []
-
-    # 后处理函数
-    def process_out_queue():
-        out_count = 0
-        for _ in range(out_queue.qsize()):
-            i, d = out_queue.get()
-            out_count += 1
-            if callback is None:
-                results.append((i, d))
-            else:
-                callback(d)
-        return out_count
 
     # 存入数据，取出结果
     in_count, out_count = 0, 0
@@ -173,35 +245,96 @@ def parallel_apply(
                 in_queue.put((i, d), block=False)
                 break
             except six.moves.queue.Full:
-                out_count += process_out_queue()
-        if in_count % max_queue_size == 0:
-            out_count += process_out_queue()
+                while out_queue.qsize() > max_queue_size:
+                    yield out_queue.get()
+                    out_count += 1
+        if out_queue.qsize() > 0:
+            yield out_queue.get()
+            out_count += 1
 
     while out_count != in_count:
-        out_count += process_out_queue()
+        yield out_queue.get()
+        out_count += 1
 
     pool.terminate()
 
+
+def parallel_apply(
+    func,
+    iterable,
+    workers,
+    max_queue_size,
+    callback=None,
+    dummy=False,
+    random_seeds=True,
+    unordered=True
+):
+    """多进程或多线程地将func应用到iterable的每个元素中。
+    注意这个apply是异步且无序的，也就是说依次输入a,b,c，但是
+    输出可能是func(c), func(a), func(b)。
+    参数：
+        callback: 处理单个输出的回调函数；
+        dummy: False是多进程/线性，True则是多线程/线性；
+        random_seeds: 每个进程的随机种子；
+        unordered: 若为False，则按照输入顺序返回，仅当callback为None时生效。
+    """
+    generator = parallel_apply_generator(
+        func, iterable, workers, max_queue_size, dummy, random_seeds
+    )
+
     if callback is None:
-        results = sorted(results, key=lambda r: r[0])
-        return [r[1] for r in results]
+        if unordered:
+            return [d for i, d in generator]
+        else:
+            results = sorted(generator, key=lambda d: d[0])
+            return [d for i, d in results]
+    else:
+        for i, d in generator:
+            callback(d)
 
 
-def sequence_padding(inputs, length=None, padding=0):
+def sequence_padding(inputs, length=None, value=0, seq_dims=1, mode='post'):
     """Numpy函数，将序列padding到同一长度
     """
     if length is None:
-        length = max([len(x) for x in inputs])
+        length = np.max([np.shape(x)[:seq_dims] for x in inputs], axis=0)
+    elif not hasattr(length, '__getitem__'):
+        length = [length]
 
+    slices = [np.s_[:length[i]] for i in range(seq_dims)]
+    slices = tuple(slices) if len(slices) > 1 else slices[0]
     pad_width = [(0, 0) for _ in np.shape(inputs[0])]
+
     outputs = []
     for x in inputs:
-        x = x[:length]
-        pad_width[0] = (0, length - len(x))
-        x = np.pad(x, pad_width, 'constant', constant_values=padding)
+        x = x[slices]
+        for i in range(seq_dims):
+            if mode == 'post':
+                pad_width[i] = (0, length[i] - np.shape(x)[i])
+            elif mode == 'pre':
+                pad_width[i] = (length[i] - np.shape(x)[i], 0)
+            else:
+                raise ValueError('"mode" argument must be "post" or "pre".')
+        x = np.pad(x, pad_width, 'constant', constant_values=value)
         outputs.append(x)
 
     return np.array(outputs)
+
+
+def truncate_sequences(maxlen, indices, *sequences):
+    """截断总长度至不超过maxlen
+    """
+    sequences = [s for s in sequences if s]
+    if not isinstance(indices, (list, tuple)):
+        indices = [indices] * len(sequences)
+
+    while True:
+        lengths = [len(s) for s in sequences]
+        if sum(lengths) > maxlen:
+            i = np.argmax(lengths)
+            sequences[i].pop(indices[i])
+        else:
+            return sequences
 
 
 def text_segmentate(text, maxlen, seps='\n', strips=None):
@@ -275,9 +408,7 @@ class DataGenerator(object):
             else:
 
                 def generator():
-                    indices = list(range(len(self.data)))
-                    np.random.shuffle(indices)
-                    for i in indices:
+                    for i in np.random.permutation(len(self.data)):
                         yield self.data[i]
 
             data = generator()
@@ -294,10 +425,54 @@ class DataGenerator(object):
     def __iter__(self, random=False):
         raise NotImplementedError
 
-    def forfit(self):
+    def forfit(self, random=True):
         while True:
-            for d in self.__iter__(True):
+            for d in self.__iter__(random):
                 yield d
+
+    def fortest(self, random=False):
+        while True:
+            for d in self.__iter__(random):
+                yield d[0]
+
+    def to_dataset(self, types, shapes, names=None, padded_batch=False):
+        """转为tf.data.Dataset格式
+        如果传入names的话，自动把数据包装成dict形式。
+        """
+        if names is None:
+
+            generator = self.forfit
+
+        else:
+
+            if is_string(names):
+                warps = lambda k, v: {k: v}
+            elif is_string(names[0]):
+                warps = lambda k, v: dict(zip(k, v))
+            else:
+                warps = lambda k, v: tuple(
+                    dict(zip(i, j)) for i, j in zip(k, v)
+                )
+
+            def generator():
+                for d in self.forfit():
+                    yield warps(names, d)
+
+            types = warps(names, types)
+            shapes = warps(names, shapes)
+
+        if padded_batch:
+            dataset = tf.data.Dataset.from_generator(
+                generator, output_types=types
+            )
+            dataset = dataset.padded_batch(self.batch_size, shapes)
+        else:
+            dataset = tf.data.Dataset.from_generator(
+                generator, output_types=types, output_shapes=shapes
+            )
+            dataset = dataset.batch(self.batch_size)
+
+        return dataset
 
 
 class ViterbiDecoder(object):
@@ -350,11 +525,12 @@ class AutoRegressiveDecoder(object):
     """通用自回归生成模型解码基类
     包含beam search和random sample两种策略
     """
-    def __init__(self, start_id, end_id, maxlen, minlen=None):
+    def __init__(self, start_id, end_id, maxlen, minlen=1):
         self.start_id = start_id
         self.end_id = end_id
         self.maxlen = maxlen
-        self.minlen = minlen or 1
+        self.minlen = minlen
+        self.models = {}
         if start_id is None:
             self.first_output_ids = np.empty((1, 0), dtype=int)
         else:
@@ -364,11 +540,17 @@ class AutoRegressiveDecoder(object):
     def wraps(default_rtype='probas', use_states=False):
         """用来进一步完善predict函数
         目前包含：1. 设置rtype参数，并做相应处理；
-                  2. 确定states的使用，并做相应处理。
+                  2. 确定states的使用，并做相应处理；
+                  3. 设置温度参数，并做相应处理。
         """
         def actual_decorator(predict):
             def new_predict(
-                self, inputs, output_ids, states, rtype=default_rtype
+                self,
+                inputs,
+                output_ids,
+                states,
+                temperature=1,
+                rtype=default_rtype
             ):
                 assert rtype in ['probas', 'logits']
                 prediction = predict(self, inputs, output_ids, states)
@@ -377,7 +559,13 @@ class AutoRegressiveDecoder(object):
                     prediction = (prediction, None)
 
                 if default_rtype == 'logits':
-                    prediction = (softmax(prediction[0]), prediction[1])
+                    prediction = (
+                        softmax(prediction[0] / temperature), prediction[1]
+                    )
+                elif temperature != 1:
+                    probas = np.power(prediction[0], 1.0 / temperature)
+                    probas = probas / probas.sum(axis=-1, keepdims=True)
+                    prediction = (probas, prediction[1])
 
                 if rtype == 'probas':
                     return prediction
@@ -388,16 +576,28 @@ class AutoRegressiveDecoder(object):
 
         return actual_decorator
 
-    def predict(self, inputs, output_ids, states=None, rtype='logits'):
+    def last_token(self, model):
+        """创建一个只返回最后一个token输出的新Model
+        """
+        if model not in self.models:
+            outputs = [
+                keras.layers.Lambda(lambda x: x[:, -1])(output)
+                for output in model.outputs
+            ]
+            self.models[model] = keras.models.Model(model.inputs, outputs)
+
+        return self.models[model]
+
+    def predict(self, inputs, output_ids, states=None):
         """用户需自定义递归预测函数
-        说明：rtype为字符串logits或probas，用户定义的时候，应当根据rtype来
-              返回不同的结果，rtype=probas时返回归一化的概率，rtype=logits时
-              则返回softmax前的结果或者概率对数。
+        说明：定义的时候，需要用wraps方法进行装饰，传入default_rtype和use_states，
+             其中default_rtype为字符串logits或probas，probas时返回归一化的概率，
+             rtype=logits时则返回softmax前的结果或者概率对数。
         返回：二元组 (得分或概率, states)
         """
         raise NotImplementedError
 
-    def beam_search(self, inputs, topk, states=None, min_ends=1):
+    def beam_search(self, inputs, topk, states=None, temperature=1, min_ends=1):
         """beam search解码
         说明：这里的topk即beam size；
         返回：最优解码序列。
@@ -406,7 +606,7 @@ class AutoRegressiveDecoder(object):
         output_ids, output_scores = self.first_output_ids, np.zeros(1)
         for step in range(self.maxlen):
             scores, states = self.predict(
-                inputs, output_ids, states, 'logits'
+                inputs, output_ids, states, temperature, 'logits'
             )  # 计算当前得分
             if step == 0:  # 第1步预测后将输入重复topk次
                 inputs = [np.repeat(i, topk, axis=0) for i in inputs]
@@ -419,13 +619,14 @@ class AutoRegressiveDecoder(object):
             output_scores = np.take_along_axis(
                 scores, indices, axis=None
             )  # 更新得分
+            is_end = output_ids[:, -1] == self.end_id  # 标记是否以end标记结束
             end_counts = (output_ids == self.end_id).sum(1)  # 统计出现的end标记
             if output_ids.shape[1] >= self.minlen:  # 最短长度判断
-                best_one = output_scores.argmax()  # 得分最大的那个
-                if end_counts[best_one] == min_ends:  # 如果已经终止
-                    return output_ids[best_one]  # 直接输出
+                best = output_scores.argmax()  # 得分最大的那个
+                if is_end[best] and end_counts[best] >= min_ends:  # 如果已经终止
+                    return output_ids[best]  # 直接输出
                 else:  # 否则，只保留未完成部分
-                    flag = (end_counts < min_ends)  # 标记未完成序列
+                    flag = ~is_end | (end_counts < min_ends)  # 标记未完成序列
                     if not flag.all():  # 如果有已完成的
                         inputs = [i[flag] for i in inputs]  # 扔掉已完成序列
                         output_ids = output_ids[flag]  # 扔掉已完成序列
@@ -436,7 +637,14 @@ class AutoRegressiveDecoder(object):
         return output_ids[output_scores.argmax()]
 
     def random_sample(
-        self, inputs, n, topk=None, topp=None, states=None, min_ends=1
+        self,
+        inputs,
+        n,
+        topk=None,
+        topp=None,
+        states=None,
+        temperature=1,
+        min_ends=1
     ):
         """随机采样n个结果
         说明：非None的topk表示每一步只从概率最高的topk个中采样；而非None的topp
@@ -448,7 +656,7 @@ class AutoRegressiveDecoder(object):
         results = []
         for step in range(self.maxlen):
             probas, states = self.predict(
-                inputs, output_ids, states, 'probas'
+                inputs, output_ids, states, temperature, 'probas'
             )  # 计算当前概率
             probas /= probas.sum(axis=1, keepdims=True)  # 确保归一化
             if step == 0:  # 第1步预测后将结果重复n次
@@ -480,9 +688,10 @@ class AutoRegressiveDecoder(object):
                     k_indices, sample_ids, axis=1
                 )  # 对齐原id
             output_ids = np.concatenate([output_ids, sample_ids], 1)  # 更新输出
+            is_end = output_ids[:, -1] == self.end_id  # 标记是否以end标记结束
             end_counts = (output_ids == self.end_id).sum(1)  # 统计出现的end标记
             if output_ids.shape[1] >= self.minlen:  # 最短长度判断
-                flag = (end_counts == min_ends)  # 标记已完成序列
+                flag = is_end & (end_counts >= min_ends)  # 标记已完成序列
                 if flag.any():  # 如果有已完成的
                     for ids in output_ids[flag]:  # 存好已完成序列
                         results.append(ids)
@@ -578,6 +787,24 @@ def longest_common_subsequence(source, target):
     return l, mapping[::-1]
 
 
+def orthogonally_resize(a, new_shape, window=2):
+    """简单的正交化缩放矩阵
+    """
+    assert a.ndim == len(new_shape)
+    slices, a_norm, w = [], np.linalg.norm(a), window
+    for i, (d1, d2) in enumerate(zip(a.shape, new_shape)):
+        if d1 != d2:
+            k = d2 // d1 + int(d2 % d1 != 0)
+            if k > 1:
+                assert d1 % w == 0
+                a = a.reshape(a.shape[:i] + (d1 // w, w) + a.shape[i + 1:])
+                a = np.repeat(a, k, axis=i)
+                a = a.reshape(a.shape[:i] + (d1 * k,) + a.shape[i + 2:])
+        slices.append(np.s_[:d2])
+    a = a[tuple(slices)]
+    return a / np.linalg.norm(a) * a_norm
+
+
 class WebServing(object):
     """简单的Web接口
     用法：
@@ -597,8 +824,6 @@ class WebServing(object):
     """
     def __init__(self, host='0.0.0.0', port=8000, server='paste'):
 
-        import tensorflow as tf
-        from bert4keras.backend import K
         import bottle
 
         self.host = host
@@ -624,18 +849,16 @@ class WebServing(object):
             kwargs = {}
             for key, value in arguments.items():
                 if method == 'GET':
-                    result = self.bottle.request.GET.get(key)
+                    result = self.bottle.request.GET.getunicode(key)
                 else:
-                    result = self.bottle.request.POST.get(key)
+                    result = self.bottle.request.POST.getunicode(key)
                 if result is None:
                     if value[1]:
                         outputs['code'] = 1
                         outputs['desc'] = 'lack of "%s" argument' % key
                         return json.dumps(outputs, ensure_ascii=False)
                 else:
-                    if value[0] is None:
-                        result = convert_to_unicode(result)
-                    else:
+                    if value[0] is not None:
                         result = value[0](result)
                     kwargs[key] = result
             try:
@@ -668,7 +891,7 @@ class Hook:
         self.module = module
 
     def __getattr__(self, attr):
-        """使得 from bert4keras.backend import uniout
+        """使得 from bert4keras.snippets import uniout
         等效于 import uniout （自动识别Python版本，Python3
         下则无操作。）
         """

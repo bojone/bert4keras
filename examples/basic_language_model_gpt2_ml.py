@@ -1,5 +1,5 @@
 #! -*- coding: utf-8 -*-
-# 基本测试：中文GPT2模型
+# 基本测试：中文GPT2_ML模型
 # 介绍链接：https://kexue.fm/archives/7292
 
 import numpy as np
@@ -8,9 +8,9 @@ from bert4keras.tokenizers import Tokenizer
 from bert4keras.snippets import AutoRegressiveDecoder
 from bert4keras.snippets import uniout
 
-config_path = '/root/gpt2/config.json'
-checkpoint_path = '/root/gpt2/model.ckpt-100000'
-dict_path = '/root/gpt2/vocab.txt'
+config_path = '/root/kg/bert/gpt2_ml/config.json'
+checkpoint_path = '/root/kg/bert/gpt2_ml/model.ckpt-100000'
+dict_path = '/root/kg/bert/gpt2_ml/vocab.txt'
 
 tokenizer = Tokenizer(
     dict_path, token_start=None, token_end=None, do_lower_case=True
@@ -27,11 +27,11 @@ class ArticleCompletion(AutoRegressiveDecoder):
     @AutoRegressiveDecoder.wraps(default_rtype='probas')
     def predict(self, inputs, output_ids, states):
         token_ids = np.concatenate([inputs[0], output_ids], 1)
-        return model.predict(token_ids)[:, -1]
+        return self.last_token(model).predict(token_ids)
 
-    def generate(self, text, n=1, topk=5):
+    def generate(self, text, n=1, topp=0.95):
         token_ids, _ = tokenizer.encode(text)
-        results = self.random_sample([token_ids], n, topk)  # 基于随机采样
+        results = self.random_sample([token_ids], n, topp=topp)  # 基于随机采样
         return [text + tokenizer.decode(ids) for ids in results]
 
 

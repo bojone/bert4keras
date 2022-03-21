@@ -200,7 +200,7 @@ class ReadingComprehension(AutoRegressiveDecoder):
             q_token_ids = tokenizer.encode(question, maxlen=max_q_len + 1)[0]
             token_ids.append(p_token_ids + q_token_ids[1:])
         output_ids = self.beam_search(
-            token_ids, topk, states=0
+            token_ids, topk=topk, states=0
         )  # 基于beam search
         return tokenizer.decode(output_ids)
 
@@ -247,7 +247,7 @@ if __name__ == '__main__':
     evaluator = Evaluator()
     train_generator = data_generator(train_data, batch_size)
 
-    model.fit_generator(
+    model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=epochs,

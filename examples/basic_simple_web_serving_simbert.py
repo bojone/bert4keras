@@ -43,12 +43,12 @@ class SynonymsGenerator(AutoRegressiveDecoder):
         token_ids, segment_ids = inputs
         token_ids = np.concatenate([token_ids, output_ids], 1)
         segment_ids = np.concatenate([segment_ids, np.ones_like(output_ids)], 1)
-        return seq2seq.predict([token_ids, segment_ids])[:, -1]
+        return self.last_token(seq2seq).predict([token_ids, segment_ids])
 
-    def generate(self, text, n=1, topk=5):
+    def generate(self, text, n=1, topp=0.95):
         token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
         output_ids = self.random_sample([token_ids, segment_ids], n,
-                                        topk)  # 基于随机采样
+                                        topp=topp)  # 基于随机采样
         return [tokenizer.decode(ids) for ids in output_ids]
 
 
@@ -83,4 +83,4 @@ if __name__ == '__main__':
     web = WebServing(port=8864)
     web.route('/gen_synonyms', gen_synonyms, arguments)
     web.start()
-    # 现在可以测试访问 https://127.0.0.1:8864/gen_synonyms?text=苹果多少钱一斤
+    # 现在可以测试访问 http://127.0.0.1:8864/gen_synonyms?text=苹果多少钱一斤

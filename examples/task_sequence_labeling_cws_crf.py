@@ -21,7 +21,7 @@ epochs = 10
 num_labels = 4
 batch_size = 32
 bert_layers = 12
-learing_rate = 1e-5  # bert_layers越小，学习率应该要越大
+learning_rate = 1e-5  # bert_layers越小，学习率应该要越大
 crf_lr_multiplier = 1  # 必要时扩大CRF层的学习率
 
 # bert配置
@@ -31,6 +31,9 @@ dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
 
 def load_data(filename):
+    """加载数据
+    单条格式：[词1, 词2, 词3, ...]
+    """
     D = []
     with open(filename, encoding='utf-8') as f:
         for l in f:
@@ -120,7 +123,7 @@ model.summary()
 
 model.compile(
     loss=CRF.sparse_loss,
-    optimizer=Adam(learing_rate),
+    optimizer=Adam(learning_rate),
     metrics=[CRF.sparse_accuracy]
 )
 
@@ -207,7 +210,7 @@ if __name__ == '__main__':
     evaluator = Evaluator()
     train_generator = data_generator(train_data, batch_size)
 
-    model.fit_generator(
+    model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=epochs,
@@ -217,3 +220,4 @@ if __name__ == '__main__':
 else:
 
     model.load_weights('./best_model.weights')
+    segmenter.trans = K.eval(CRF.trans)

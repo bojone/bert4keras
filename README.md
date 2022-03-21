@@ -37,6 +37,15 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 
 **为了获得最好的体验，建议你使用Tensorflow 1.14 + Keras 2.3.1组合。**
 
+<blockquote><strong>关于环境组合</strong>
+  
+- 支持tf+keras和tf+tf.keras，后者需要提前传入环境变量TF_KERAS=1。
+
+- 当使用tf+keras时，建议2.2.4 <= keras <= 2.3.1，以及 1.14 <= tf <= 2.2，不能使用tf 2.3+。
+
+- keras 2.4+可以用，但事实上keras 2.4.x基本上已经完全等价于tf.keras了，因此如果你要用keras 2.4+，倒不如直接用tf.keras。
+</blockquote>
+
 当然，乐于贡献的朋友如果发现了某些bug的话，也欢迎指出修正甚至Pull Requests～
 
 ## 权重
@@ -59,12 +68,24 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 - <strong>CLUE版ELECTRA</strong>: https://github.com/CLUEbenchmark/ELECTRA
 - <strong>LaBSE（多国语言BERT）</strong>: https://github.com/bojone/labse
 - <strong>Chinese-GEN项目下的模型</strong>: https://github.com/bojone/chinese-gen
+- <strong>T5.1.1</strong>: https://github.com/google-research/text-to-text-transfer-transformer/blob/master/released_checkpoints.md#t511
+- <strong>Multilingual T5</strong>: https://github.com/google-research/multilingual-t5/
 
 <strong>注意事项</strong>
 - 注1：brightmart版albert的开源时间早于Google版albert，这导致早期brightmart版albert的权重与Google版的不完全一致，换言之两者不能直接相互替换。为了减少代码冗余，bert4keras的0.2.4及后续版本均只支持加载<u>Google版</u>以brightmart版中<u>带Google字眼</u>的权重。如果要加载早期版本的权重，请用<a href="https://github.com/bojone/bert4keras/releases/tag/v0.2.3">0.2.3版本</a>，或者考虑作者转换过的<a href="https://github.com/bojone/albert_zh">albert_zh</a>。
 - 注2：下载下来的ELECTRA权重，如果没有json配置文件的话，参考<a href="https://github.com/ymcui/Chinese-ELECTRA/issues/3">这里</a>自己改一个（需要加上`type_vocab_size`字段）。
 
 ## 更新
+- <strong>2022.03.20</strong>: 增加[RoFormerV2](https://kexue.fm/archives/8998)。
+- <strong>2022.02.28</strong>: 增加[GatedAttentionUnit](https://kexue.fm/archives/8934)。
+- <strong>2021.04.23</strong>: 增加[GlobalPointer](https://kexue.fm/archives/8373)。
+- <strong>2021.03.23</strong>: 增加[RoFormer](https://kexue.fm/archives/8265)。
+- <strong>2021.01.30</strong>: 发布0.9.9版，完善多GPU支持，增加多GPU例子：[task_seq2seq_autotitle_multigpu.py](https://github.com/bojone/bert4keras/blob/master/examples/task_seq2seq_autotitle_multigpu.py)。
+- <strong>2020.12.29</strong>: 增加`residual_attention_scores`参数来实现RealFormer，只需要在`build_transformer_model`中传入参数`residual_attention_scores=True`启用。
+- <strong>2020.12.04</strong>: `PositionEmbedding`引入层次分解，可以让BERT直接处理超长文本，在`build_transformer_model`中传入参数`hierarchical_position=True`启用。
+- <strong>2020.11.19</strong>: 支持GPT2模型，参考[CPM_LM_bert4keras](https://github.com/bojone/CPM_LM_bert4keras)项目。
+- <strong>2020.11.14</strong>: 新增分参数学习率`extend_with_parameter_wise_lr`，可用于给每层设置不同的学习率。
+- <strong>2020.10.27</strong>: 支持<a href="https://github.com/google-research/text-to-text-transfer-transformer/blob/master/released_checkpoints.md#t511">T5.1.1</a>和<a href="https://github.com/google-research/multilingual-t5/">Multilingual T5</a>。
 - <strong>2020.08.28</strong>: 支持<a href="https://github.com/bojone/CDial-GPT-tf">GPT_OpenAI</a>。
 - <strong>2020.08.22</strong>: 新增`WebServing`类，允许简单地将模型转换为Web接口，详情请参考该类的<a href="https://github.com/bojone/bert4keras/blob/8d55512a12e4677262363ac189ebf504fc451716/bert4keras/snippets.py#L580">说明</a>。
 - <strong>2020.07.14</strong>: `Transformer`类加入`prefix`参数；`snippets.py`引入`to_array`函数；`AutoRegressiveDecoder`修改`rtype='logits'`时的一个隐藏bug。
@@ -128,5 +149,16 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 ## 鸣谢
 感谢CyberZHG大佬实现的<a href="https://github.com/CyberZHG/keras-bert">keras-bert</a>，本实现有不少地方参考了keras-bert的源码，在此衷心感谢大佬的无私奉献。
 
+## 引用
+
+```
+@misc{bert4keras,
+  title={bert4keras},
+  author={Jianlin Su},
+  year={2020},
+  howpublished={\url{https://bert4keras.spaces.ac.cn}},
+}
+```
+
 ## 交流
-QQ交流群：67729435，微信群请加机器人微信号spaces_ac_cn
+QQ交流群：808623966，微信群请加机器人微信号spaces_ac_cn

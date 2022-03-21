@@ -95,7 +95,7 @@ class CrossEntropy(Loss):
 
 
 c_in = Input(shape=(1,))
-c = Embedding(2, 128)(c_in)
+c = Embedding(num_classes, 128)(c_in)
 c = Reshape((128,))(c)
 
 # Bert模型
@@ -122,10 +122,12 @@ class RandomSentiment(AutoRegressiveDecoder):
     def predict(self, inputs, output_ids, states):
         token_ids = output_ids
         segment_ids = np.zeros_like(token_ids)
-        return model.predict([token_ids, segment_ids, inputs[0]])[:, -1]
+        return self.last_token(model).predict([
+            token_ids, segment_ids, inputs[0]
+        ])
 
-    def generate(self, label, n=1, topk=5):
-        results = self.random_sample([[label]], n, topk)  # 基于随机采样
+    def generate(self, label, n=1, topp=0.95):
+        results = self.random_sample([[label]], n, topp=topp)  # 基于随机采样
         return [tokenizer.decode(ids) for ids in results]
 
 
@@ -163,7 +165,7 @@ if __name__ == '__main__':
     evaluator = Evaluator()
     train_generator = data_generator(data, batch_size)
 
-    model.fit_generator(
+    model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=epochs,

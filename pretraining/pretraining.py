@@ -40,6 +40,7 @@ steps_per_epoch = 10000
 grad_accum_steps = 16  # 大于1即表明使用梯度累积
 epochs = num_train_steps * grad_accum_steps // steps_per_epoch
 exclude_from_weight_decay = ['Norm', 'bias']
+exclude_from_layer_adaptation = ['Norm', 'bias']
 tpu_address = 'grpc://xxx.xxx.xxx.xxx:8470'  # 如果用多GPU跑，直接设为None
 which_optimizer = 'lamb'  # adam 或 lamb，均自带weight decay
 lr_schedule = {
@@ -268,6 +269,7 @@ def build_transformer_model_for_pretraining():
         'lr_schedule': lr_schedule,
         'weight_decay_rate': weight_decay_rate,
         'exclude_from_weight_decay': exclude_from_weight_decay,
+        'exclude_from_layer_adaptation': exclude_from_layer_adaptation,
         'bias_correction': False,
     }
     if grad_accum_steps > 1:
@@ -306,6 +308,10 @@ class ModelCheckpoint(keras.callbacks.Callback):
     """自动保存最新模型
     """
     def on_epoch_end(self, epoch, logs=None):
+        # model.save_weights 保存的模型，用 model.load_weights 加载
+        # bert.save_weights_as_checkpoint 保存的模型，用 bert.load_weights_from_checkpoint 加载
+        # 不要问为什么保存的模型用 build_transformer_model 加载不了
+        # 先搞清楚对应情况，build_transformer_model 是用 load_weights_from_checkpoint 加载的。
         self.model.save_weights(model_saved_path, overwrite=True)
 
 

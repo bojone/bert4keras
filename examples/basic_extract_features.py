@@ -1,11 +1,11 @@
 #! -*- coding: utf-8 -*-
 # 测试代码可用性: 提取特征
 
+import numpy as np
 from bert4keras.backend import keras
 from bert4keras.models import build_transformer_model
 from bert4keras.tokenizers import Tokenizer
 from bert4keras.snippets import to_array
-import numpy as np
 
 config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
 checkpoint_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'

@@ -29,6 +29,9 @@ dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
 
 def load_data(filename):
+    """加载数据
+    单条格式：{'text': text, 'spo_list': [(s, p, o)]}
+    """
     D = []
     with open(filename, encoding='utf-8') as f:
         for l in f:
@@ -96,7 +99,7 @@ class data_generator(DataGenerator):
                 for s in spoes:
                     subject_labels[s[0], 0] = 1
                     subject_labels[s[1], 1] = 1
-                # 随机选一个subject
+                # 随机选一个subject（这里没有实现错误！这就是想要的效果！！）
                 start, end = np.array(list(spoes.keys())).T
                 start = np.random.choice(start)
                 end = np.random.choice(end[end >= start])
@@ -161,7 +164,7 @@ subject_model = Model(bert.model.inputs, subject_preds)
 
 # 传入subject，预测object
 # 通过Conditional Layer Normalization将subject融入到object的预测中
-output = bert.model.layers[-2].get_output_at(-1)
+output = bert.model.layers[-2].get_output_at(-1)  # 自己想为什么是-2而不是-1
 subject = Lambda(extract_subject)([output, subject_ids])
 output = LayerNormalization(conditional=True)([output, subject])
 output = Dense(
@@ -222,6 +225,7 @@ def extract_spoes(text):
     token_ids, segment_ids = to_array([token_ids], [segment_ids])
     # 抽取subject
     subject_preds = subject_model.predict([token_ids, segment_ids])
+    subject_preds[:, [0, -1]] *= 0
     start = np.where(subject_preds[0, :, 0] > 0.6)[0]
     end = np.where(subject_preds[0, :, 1] > 0.5)[0]
     subjects = []
@@ -237,6 +241,7 @@ def extract_spoes(text):
         subjects = np.array(subjects)
         # 传入subject，抽取object和predicate
         object_preds = object_model.predict([token_ids, segment_ids, subjects])
+        object_preds[:, [0, -1]] *= 0
         for subject, object_pred in zip(subjects, object_preds):
             start = np.where(object_pred[:, :, 0] > 0.6)
             end = np.where(object_pred[:, :, 1] > 0.5)
@@ -330,7 +335,7 @@ if __name__ == '__main__':
     train_generator = data_generator(train_data, batch_size)
     evaluator = Evaluator()
 
-    train_model.fit_generator(
+    train_model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=20,

@@ -3,6 +3,7 @@
 # use_vat=True比use_vat=False约有1%的提升
 # 数据集：情感分析数据集
 # 博客：https://kexue.fm/archives/7466
+# 适用于Keras 2.3.1
 
 import json
 import numpy as np
@@ -30,6 +31,9 @@ dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
 
 
 def load_data(filename):
+    """加载数据
+    单条格式：(文本, 标签id)
+    """
     D = []
     with open(filename, encoding='utf-8') as f:
         for l in f:
@@ -210,7 +214,7 @@ if __name__ == '__main__':
 
     evaluator = Evaluator()
 
-    model.fit_generator(
+    model.fit(
         train_generator.forfit(),
         steps_per_epoch=30,
         epochs=100,

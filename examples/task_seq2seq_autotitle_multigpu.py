@@ -1,8 +1,13 @@
 #! -*- coding: utf-8 -*-
 # bert做Seq2Seq任务，采用UNILM方案
 # 介绍链接：https://kexue.fm/archives/6933
+# 单机多卡版本，读者可以对照着 task_seq2seq_autotitle.py 阅读
 
 from __future__ import print_function
+
+import os
+os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
+
 import glob
 import numpy as np
 from bert4keras.backend import keras, K
@@ -13,10 +18,11 @@ from bert4keras.optimizers import Adam
 from bert4keras.snippets import sequence_padding, open
 from bert4keras.snippets import DataGenerator, AutoRegressiveDecoder
 from keras.models import Model
+import tensorflow as tf  # 导入tf，备用
 
 # 基本参数
 maxlen = 256
-batch_size = 16
+batch_size = 64
 steps_per_epoch = 1000
 epochs = 10000
 
@@ -39,9 +45,9 @@ tokenizer = Tokenizer(token_dict, do_lower_case=True)
 
 class data_generator(DataGenerator):
     """数据生成器
+    （每次只需要返回一条样本）
     """
     def __iter__(self, random=False):
-        batch_token_ids, batch_segment_ids = [], []
         for is_end, txt in self.sample(random):
             text = open(txt, encoding='utf-8').read()
             text = text.split('\n')
@@ -51,13 +57,8 @@ class data_generator(DataGenerator):
                 token_ids, segment_ids = tokenizer.encode(
                     content, title, maxlen=maxlen
                 )
-                batch_token_ids.append(token_ids)
-                batch_segment_ids.append(segment_ids)
-            if len(batch_token_ids) == self.batch_size or is_end:
-                batch_token_ids = sequence_padding(batch_token_ids)
-                batch_segment_ids = sequence_padding(batch_segment_ids)
-                yield [batch_token_ids, batch_segment_ids], None
-                batch_token_ids, batch_segment_ids = [], []
+                # 返回一条样本
+                yield token_ids, segment_ids
 
 
 class CrossEntropy(Loss):
@@ -73,18 +74,25 @@ class CrossEntropy(Loss):
         return loss
 
 
-model = build_transformer_model(
-    config_path,
-    checkpoint_path,
-    application='unilm',
-    keep_tokens=keep_tokens,  # 只保留keep_tokens中的字，精简原字表
-)
+strategy = tf.distribute.MirroredStrategy()  # 建立单机多卡策略
 
-output = CrossEntropy(2)(model.inputs + model.outputs)
+with strategy.scope():  # 调用该策略
 
-model = Model(model.inputs, output)
-model.compile(optimizer=Adam(1e-5))
-model.summary()
+    bert = build_transformer_model(
+        config_path,
+        checkpoint_path=None,  # 此时可以不加载预训练权重
+        application='unilm',
+        keep_tokens=keep_tokens,  # 只保留keep_tokens中的字，精简原字表
+        return_keras_model=False,  # 返回bert4keras类，而不是keras模型
+    )
+
+    model = bert.model  # 这个才是keras模型
+    output = CrossEntropy(2)(model.inputs + model.outputs)
+
+    model = Model(model.inputs, output)
+    model.compile(optimizer=Adam(1e-5))
+    model.summary()
+    bert.load_weights_from_checkpoint(checkpoint_path)  # 必须最后才加载预训练权重
 
 
 class AutoTitle(AutoRegressiveDecoder):
@@ -135,9 +143,15 @@ if __name__ == '__main__':
 
     evaluator = Evaluator()
     train_generator = data_generator(txts, batch_size)
+    dataset = train_generator.to_dataset(
+        types=('float32', 'float32'),
+        shapes=([None], [None]),  # 配合后面的padded_batch=True，实现自动padding
+        names=('Input-Token', 'Input-Segment'),
+        padded_batch=True
+    )  # 数据要转为tf.data.Dataset格式，names跟输入层的名字对应
 
     model.fit(
-        train_generator.forfit(),
+        dataset,
         steps_per_epoch=steps_per_epoch,
         epochs=epochs,
         callbacks=[evaluator]
