@@ -139,7 +139,8 @@ def align(tensor, axes, ndim=None):
     ndim：新tensor的维度。
     """
     assert len(axes) == K.ndim(tensor)
-    indices = [None] * (ndim or max(axes))
+    assert min(axes) >= 0
+    indices = [None] * (ndim or max(axes) + 1)
     for i in axes:
         indices[i] = slice(None)
     return tensor[indices]
