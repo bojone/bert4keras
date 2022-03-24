@@ -136,14 +136,10 @@ class open:
         return len(self.offsets)
 
     def __iter__(self):
-        if hasattr(self, 'offsets'):
-            for i in range(len(self)):
-                yield self[i]
-        else:
-            for l in self.file:
-                if self.encoding:
-                    l = convert_to_unicode(l, self.encoding, self.errors)
-                yield l
+        for l in self.file:
+            if self.encoding:
+                l = convert_to_unicode(l, self.encoding, self.errors)
+            yield l
 
     def next(self):
         if self.iterator is None:
