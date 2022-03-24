@@ -724,6 +724,7 @@ class LayerNormalization(ScaleOffset):
         config = {
             'zero_mean': self.zero_mean,
             'unit_variance': self.unit_variance,
+            'epsilon': self.epsilon,
         }
         base_config = super(LayerNormalization, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
