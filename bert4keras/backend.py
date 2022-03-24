@@ -412,6 +412,7 @@ custom_objects = {
     'leaky_relu': leaky_relu,
     'Sinusoidal': Sinusoidal,
     'multilabel_categorical_crossentropy': multilabel_categorical_crossentropy,
+    'initializer': keras.initializers.glorot_uniform,  # 就当是默认初始化方案吧
 }
 
 keras.utils.get_custom_objects().update(custom_objects)
