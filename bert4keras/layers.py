@@ -635,7 +635,7 @@ class GatedAttentionUnit(Layer):
             l = K.cast(K.shape(x)[1], K.floatx())
         else:
             l = K.sum(K.cast(mask, dtype=K.floatx()), axis=1)
-            l = K.maximum(l[:, None, None], K.epsilon())
+            l = K.maximum(l[:, None, None], 1)
         if a_bias:
             a_bias = inputs[n]
             n += 1
