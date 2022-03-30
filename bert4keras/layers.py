@@ -837,8 +837,8 @@ class SinusoidalPositionEmbedding(Layer):
         """如果custom_position_ids，那么第二个输入为自定义的位置id
         """
         if self.custom_position_ids:
-            seq_len = K.shape(inputs)[1]
             inputs, position_ids = inputs
+            seq_len = K.shape(inputs)[1]
             if 'float' not in K.dtype(position_ids):
                 position_ids = K.cast(position_ids, K.floatx())
         else:
