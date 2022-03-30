@@ -245,7 +245,7 @@ def attention_normalize(a, axis=-1, method='softmax'):
     """不同的注意力归一化方案
     softmax：常规/标准的指数归一化；
     squared_relu：来自 https://arxiv.org/abs/2202.10447 ；
-    softmax-plus：来自 https://kexue.fm/archives/8823 。
+    softmax_plus：来自 https://kexue.fm/archives/8823 。
     """
     if method == 'softmax':
         return K.softmax(a, axis=axis)
@@ -254,7 +254,7 @@ def attention_normalize(a, axis=-1, method='softmax'):
         l = K.maximum(K.sum(mask, axis=axis, keepdims=True), 1)
         if method == 'squared_relu':
             return K.relu(a)**2 / l
-        elif method == 'softmax-plus':
+        elif method == 'softmax_plus':
             return K.softmax(a * K.log(l) / np.log(512), axis=axis)
     return a
 
