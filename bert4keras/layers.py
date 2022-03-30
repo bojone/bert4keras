@@ -661,7 +661,7 @@ class GatedAttentionUnit(Layer):
             a = a / self.key_size**0.5
         if a_bias is not None:
             a = a + a_bias
-        a = sequence_masking(a, mask, 0, -1)
+        a = sequence_masking(a, mask, '-inf', -1)
         A = attention_normalize(a, -1, self.normalization)
         if self.attention_dropout:
             A = Dropout(self.attention_dropout)(A)
