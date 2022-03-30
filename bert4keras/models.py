@@ -1219,13 +1219,14 @@ class RoFormerV2(RoFormer):
     """RoFormerV2
     改动：去掉bias，简化Norm，优化初始化等。
     """
-    def initializer(self, shape, dtype=None, gain=1.0):
+    def initializer(self, shape, dtype=None, order=2, gain=1.0):
         """使用截断正态分布初始化
         """
         if shape[0] > 10000 or shape[0] < 10:
             hidden_size = shape[1]
         else:
             hidden_size = shape[0]
+        gain *= self.num_hidden_layers**(-1. / order)
         stddev = 1.13684723 / hidden_size**0.5 * gain
         return K.truncated_normal(shape, stddev=stddev)
 
