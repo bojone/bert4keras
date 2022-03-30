@@ -1197,10 +1197,12 @@ class RoFormer(NEZHA):
         """Sinusoidal位置编码（直接返回）
         """
         if self.position_bias is None:
+
             if self.custom_position_ids:
                 x = [inputs, self.inputs[2]]
             else:
                 x = inputs
+
             self.position_bias = self.apply(
                 inputs=x,
                 layer=SinusoidalPositionEmbedding,
