@@ -241,6 +241,24 @@ def leaky_relu(x, alpha=0.2):
     return tf.nn.leaky_relu(x, alpha=alpha)
 
 
+def attention_normalize(a, axis=-1, method='softmax'):
+    """不同的注意力归一化方案
+    softmax：常规/标准的指数归一化；
+    squared_relu：来自 https://arxiv.org/abs/2202.10447 ；
+    softmax-plus：来自 https://kexue.fm/archives/8823 。
+    """
+    if method == 'softmax':
+        return K.softmax(a, axis=axis)
+    else:
+        mask = K.cast(a > -K.infinity() / 10, K.floatx())
+        l = K.maximum(K.sum(mask, axis=axis, keepdims=True), 1)
+        if method == 'squared_relu':
+            return K.relu(a)**2 / l
+        elif method == 'softmax-plus':
+            return K.softmax(a * K.log(l) / np.log(512), axis=axis)
+    return a
+
+
 class Sinusoidal(keras.initializers.Initializer):
     """Sin-Cos位置向量初始化器
     来自：https://arxiv.org/abs/1706.03762

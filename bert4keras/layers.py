@@ -6,6 +6,7 @@ import tensorflow as tf
 from bert4keras.backend import keras, K, is_tf_keras
 from bert4keras.backend import align, sequence_masking
 from bert4keras.backend import recompute_grad
+from bert4keras.backend import attention_normalize
 from keras import initializers, activations
 from keras.layers import *
 
@@ -423,6 +424,7 @@ class MultiHeadAttention(Layer):
         out_dim=None,
         key_size=None,
         use_bias=True,
+        normalization='softmax',
         attention_scale=True,
         attention_dropout=None,
         return_attention_scores=False,
@@ -435,6 +437,7 @@ class MultiHeadAttention(Layer):
         self.out_dim = out_dim or heads * head_size
         self.key_size = key_size or head_size
         self.use_bias = use_bias
+        self.normalization = normalization
         self.attention_scale = attention_scale
         self.attention_dropout = attention_dropout
         self.return_attention_scores = return_attention_scores
@@ -536,7 +539,7 @@ class MultiHeadAttention(Layer):
         if a_bias is not None:
             a = a + a_bias
         a = sequence_masking(a, v_mask, '-inf', -1)
-        A = K.softmax(a)
+        A = attention_normalize(a, -1, self.normalization)
         if self.attention_dropout:
             A = Dropout(self.attention_dropout)(A)
         # 完成输出
@@ -570,6 +573,7 @@ class MultiHeadAttention(Layer):
             'out_dim': self.out_dim,
             'key_size': self.key_size,
             'use_bias': self.use_bias,
+            'normalization': self.normalization,
             'attention_scale': self.attention_scale,
             'attention_dropout': self.attention_dropout,
             'return_attention_scores': self.return_attention_scores,
@@ -593,6 +597,8 @@ class GatedAttentionUnit(Layer):
         key_size,
         activation='swish',
         use_bias=True,
+        normalization='squared_relu',
+        attention_scale=True,
         attention_dropout=None,
         kernel_initializer='glorot_uniform',
         **kwargs
@@ -602,6 +608,8 @@ class GatedAttentionUnit(Layer):
         self.key_size = key_size
         self.activation = activation
         self.use_bias = use_bias
+        self.normalization = normalization
+        self.attention_scale = attention_scale
         self.attention_dropout = attention_dropout
         self.kernel_initializer = initializers.get(kernel_initializer)
 
@@ -631,11 +639,6 @@ class GatedAttentionUnit(Layer):
             inputs, mask = [inputs], [mask]
         x, n = inputs[0], 1
         mask = None if mask is None else mask[0]
-        if mask is None:
-            l = K.cast(K.shape(x)[1], K.floatx())
-        else:
-            l = K.sum(K.cast(mask, dtype=K.floatx()), axis=1)
-            l = K.maximum(l[:, None, None], 1)
         if a_bias:
             a_bias = inputs[n]
             n += 1
@@ -654,10 +657,12 @@ class GatedAttentionUnit(Layer):
             q, k = qk[:, :, 0], qk[:, :, 1]
         # Attention
         a = tf.einsum('bmd,bnd->bmn', q, k)
+        if self.attention_scale:
+            a = a / self.key_size**0.5
         if a_bias is not None:
             a = a + a_bias
         a = sequence_masking(a, mask, 0, -1)
-        A = K.relu(a)**2 / (l * self.key_size)
+        A = attention_normalize(a, -1, self.normalization)
         if self.attention_dropout:
             A = Dropout(self.attention_dropout)(A)
         # 计算输出
@@ -682,6 +687,8 @@ class GatedAttentionUnit(Layer):
             'key_size': self.key_size,
             'activation': activations.serialize(self.activation),
             'use_bias': self.use_bias,
+            'normalization': self.normalization,
+            'attention_scale': self.attention_scale,
             'attention_dropout': self.attention_dropout,
             'kernel_initializer':
                 initializers.serialize(self.kernel_initializer),
