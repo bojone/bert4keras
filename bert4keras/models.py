@@ -413,6 +413,7 @@ class BERT(Transformer):
     def __init__(
         self,
         max_position,  # 序列最大长度
+        attention_normalization="softmax",  # attention正则化方法
         segment_vocab_size=2,  # segment总数目
         with_pool=False,  # 是否包含Pool部分
         with_nsp=False,  # 是否包含NSP部分
@@ -424,6 +425,7 @@ class BERT(Transformer):
     ):
         super(BERT, self).__init__(**kwargs)
         self.max_position = max_position
+        self.attention_normalization = attention_normalization
         self.segment_vocab_size = segment_vocab_size
         self.with_pool = with_pool
         self.with_nsp = with_nsp
@@ -561,6 +563,8 @@ class BERT(Transformer):
             head_size=self.attention_head_size,
             out_dim=self.hidden_size,
             key_size=self.attention_key_size,
+            max_position=self.max_position,
+            normalization=self.attention_normalization,
             attention_dropout=self.attention_dropout_rate,
             kernel_initializer=self.initializer,
             name=attention_name
@@ -814,6 +818,8 @@ class ALBERT(BERT):
             head_size=self.attention_head_size,
             out_dim=self.hidden_size,
             key_size=self.attention_key_size,
+            max_position=self.max_position,
+            normalization=self.attention_normalization,
             attention_dropout=self.attention_dropout_rate,
             kernel_initializer=self.initializer,
             name=attention_name
@@ -1035,6 +1041,8 @@ class NEZHA(BERT):
             head_size=self.attention_head_size,
             out_dim=self.hidden_size,
             key_size=self.attention_key_size,
+            max_position=self.max_position,
+            normalization=self.attention_normalization,
             attention_dropout=self.attention_dropout_rate,
             kernel_initializer=self.initializer,
             name=attention_name
@@ -1139,6 +1147,8 @@ class RoFormer(NEZHA):
             head_size=self.attention_head_size,
             out_dim=self.hidden_size,
             key_size=self.attention_key_size,
+            max_position=self.max_position,
+            normalization=self.attention_normalization,
             attention_dropout=self.attention_dropout_rate,
             kernel_initializer=self.initializer,
             name=attention_name
@@ -1316,6 +1326,8 @@ class RoFormerV2(RoFormer):
             out_dim=self.hidden_size,
             key_size=self.attention_key_size,
             use_bias=False,
+            max_position=self.max_position,
+            normalization=self.attention_normalization,
             attention_dropout=self.attention_dropout_rate,
             kernel_initializer=self.initializer,
             name=attention_name
@@ -1689,6 +1701,8 @@ class GPT2(GPT):
             head_size=self.attention_head_size,
             out_dim=self.hidden_size,
             key_size=self.attention_key_size,
+            max_position=self.max_position,
+            normalization=self.attention_normalization,
             attention_dropout=self.attention_dropout_rate,
             kernel_initializer=self.initializer,
             name=attention_name
@@ -1858,6 +1872,8 @@ class GPT2_ML(GPT):
             head_size=self.attention_head_size,
             out_dim=self.hidden_size,
             key_size=self.attention_key_size,
+            max_position=self.max_position,
+            normalization=self.attention_normalization,
             attention_dropout=self.attention_dropout_rate,
             kernel_initializer=self.initializer,
             name=attention_name
@@ -2169,6 +2185,8 @@ class T5_Encoder(T5_Base):
             out_dim=self.hidden_size,
             key_size=self.attention_key_size,
             use_bias=False,
+            max_position=self.max_position,
+            normalization=self.attention_normalization,
             attention_scale=False,
             attention_dropout=self.attention_dropout_rate,
             kernel_initializer=self.initializer,
@@ -2359,6 +2377,8 @@ class T5_Decoder(LM_Mask, T5_Base):
             out_dim=self.hidden_size,
             key_size=self.attention_key_size,
             use_bias=False,
+            max_position=self.max_position,
+            normalization=self.attention_normalization,
             attention_scale=False,
             attention_dropout=self.attention_dropout_rate,
             kernel_initializer=self.initializer,
@@ -2400,6 +2420,8 @@ class T5_Decoder(LM_Mask, T5_Base):
             out_dim=self.hidden_size,
             key_size=self.attention_key_size,
             use_bias=False,
+            max_position=self.max_position,
+            normalization=self.attention_normalization,
             attention_scale=False,
             attention_dropout=self.attention_dropout_rate,
             kernel_initializer=self.initializer,
@@ -2659,6 +2681,13 @@ def build_transformer_model(
     configs.update(kwargs)
     if 'max_position' not in configs:
         configs['max_position'] = configs.get('max_position_embeddings', 512)
+    attention_normalization = configs.get('attention_normalization', "softmax")
+    normalization_methods = ['softmax', 'squared_relu', 'softmax_plus']
+    if attention_normalization not in normalization_methods:
+        raise ValueError(
+            "attention_normalization must be one of %s.\n" %
+            normalization_methods
+        )
     if 'dropout_rate' not in configs:
         configs['dropout_rate'] = configs.get('hidden_dropout_prob')
     if 'attention_dropout_rate' not in configs:

@@ -241,11 +241,12 @@ def leaky_relu(x, alpha=0.2):
     return tf.nn.leaky_relu(x, alpha=alpha)
 
 
-def attention_normalize(a, axis=-1, method='softmax'):
+def attention_normalize(a, axis=-1, method='softmax', train_length=512):
     """不同的注意力归一化方案
     softmax：常规/标准的指数归一化；
     squared_relu：来自 https://arxiv.org/abs/2202.10447 ；
     softmax_plus：来自 https://kexue.fm/archives/8823 。
+    train_length: 模型训练时的序列长度，下面代码里面的l是预测时的序列长度
     """
     if method == 'softmax':
         return K.softmax(a, axis=axis)
@@ -255,7 +256,7 @@ def attention_normalize(a, axis=-1, method='softmax'):
         if method == 'squared_relu':
             return K.relu(a)**2 / l
         elif method == 'softmax_plus':
-            return K.softmax(a * K.log(l) / np.log(512), axis=axis)
+            return K.softmax(a * K.log(l) / np.log(train_length), axis=axis)
     return a
 
 

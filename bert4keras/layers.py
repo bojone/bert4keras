@@ -424,6 +424,7 @@ class MultiHeadAttention(Layer):
         out_dim=None,
         key_size=None,
         use_bias=True,
+        max_position=512,
         normalization='softmax',
         attention_scale=True,
         attention_dropout=None,
@@ -437,6 +438,7 @@ class MultiHeadAttention(Layer):
         self.out_dim = out_dim or heads * head_size
         self.key_size = key_size or head_size
         self.use_bias = use_bias
+        self.max_position = max_position
         self.normalization = normalization
         self.attention_scale = attention_scale
         self.attention_dropout = attention_dropout
@@ -539,7 +541,7 @@ class MultiHeadAttention(Layer):
         if a_bias is not None:
             a = a + a_bias
         a = sequence_masking(a, v_mask, '-inf', -1)
-        A = attention_normalize(a, -1, self.normalization)
+        A = attention_normalize(a, -1, self.normalization, self.max_position)
         if self.attention_dropout:
             A = Dropout(self.attention_dropout)(A)
         # 完成输出
@@ -573,6 +575,7 @@ class MultiHeadAttention(Layer):
             'out_dim': self.out_dim,
             'key_size': self.key_size,
             'use_bias': self.use_bias,
+            'max_position': self.max_position,
             'normalization': self.normalization,
             'attention_scale': self.attention_scale,
             'attention_dropout': self.attention_dropout,
