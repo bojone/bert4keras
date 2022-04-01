@@ -7,6 +7,7 @@ from bert4keras.backend import keras, K, is_tf_keras
 from bert4keras.backend import align, sequence_masking
 from bert4keras.backend import recompute_grad
 from bert4keras.backend import attention_normalize
+from bert4keras.backend import apply_rotary_position_embeddings
 from keras import initializers, activations
 from keras.layers import *
 
@@ -516,14 +517,7 @@ class MultiHeadAttention(Layer):
             a_bias = inputs[n]
             n += 1
         if p_bias == 'rotary':
-            cos_pos = K.repeat_elements(inputs[n][..., None, 1::2], 2, -1)
-            sin_pos = K.repeat_elements(inputs[n][..., None, ::2], 2, -1)
-            qw2 = K.stack([-qw[..., 1::2], qw[..., ::2]], 4)
-            qw2 = K.reshape(qw2, K.shape(qw))
-            qw = qw * cos_pos + qw2 * sin_pos
-            kw2 = K.stack([-kw[..., 1::2], kw[..., ::2]], 4)
-            kw2 = K.reshape(kw2, K.shape(kw))
-            kw = kw * cos_pos + kw2 * sin_pos
+            qw, kw = apply_rotary_position_embeddings(inputs[n], qw, kw)
         # Attention
         a = tf.einsum('bjhd,bkhd->bhjk', qw, kw)
         # 处理位置编码
@@ -648,12 +642,8 @@ class GatedAttentionUnit(Layer):
         q, k = self.q_scaleoffset(qk), self.k_scaleoffset(qk)
         # 加入RoPE
         if p_bias == 'rotary':
-            cos_pos = K.repeat_elements(inputs[n][..., None, 1::2], 2, -1)
-            sin_pos = K.repeat_elements(inputs[n][..., None, ::2], 2, -1)
             qk = K.stack([q, k], 2)
-            qk2 = K.stack([-qk[..., 1::2], qk[..., ::2]], 4)
-            qk2 = K.reshape(qk2, K.shape(qk))
-            qk = qk * cos_pos + qk2 * sin_pos
+            qk = apply_rotary_position_embeddings(inputs[n], qk)
             q, k = qk[:, :, 0], qk[:, :, 1]
         # Attention
         a = tf.einsum('bmd,bnd->bmn', q, k)
@@ -1413,14 +1403,7 @@ class GlobalPointer(Layer):
         # RoPE编码
         if self.RoPE:
             pos = SinusoidalPositionEmbedding(self.head_size, 'zero')(inputs)
-            cos_pos = K.repeat_elements(pos[..., None, 1::2], 2, -1)
-            sin_pos = K.repeat_elements(pos[..., None, ::2], 2, -1)
-            qw2 = K.stack([-qw[..., 1::2], qw[..., ::2]], 4)
-            qw2 = K.reshape(qw2, K.shape(qw))
-            qw = qw * cos_pos + qw2 * sin_pos
-            kw2 = K.stack([-kw[..., 1::2], kw[..., ::2]], 4)
-            kw2 = K.reshape(kw2, K.shape(kw))
-            kw = kw * cos_pos + kw2 * sin_pos
+            qw, kw = apply_rotary_position_embeddings(inputs[n], qw, kw)
         # 计算内积
         logits = tf.einsum('bmhd,bnhd->bhmn', qw, kw)
         # 排除padding
@@ -1475,14 +1458,7 @@ class EfficientGlobalPointer(GlobalPointer):
         # RoPE编码
         if self.RoPE:
             pos = SinusoidalPositionEmbedding(self.head_size, 'zero')(inputs)
-            cos_pos = K.repeat_elements(pos[..., 1::2], 2, -1)
-            sin_pos = K.repeat_elements(pos[..., ::2], 2, -1)
-            qw2 = K.stack([-qw[..., 1::2], qw[..., ::2]], 3)
-            qw2 = K.reshape(qw2, K.shape(qw))
-            qw = qw * cos_pos + qw2 * sin_pos
-            kw2 = K.stack([-kw[..., 1::2], kw[..., ::2]], 3)
-            kw2 = K.reshape(kw2, K.shape(kw))
-            kw = kw * cos_pos + kw2 * sin_pos
+            qw, kw = apply_rotary_position_embeddings(inputs[n], qw, kw)
         # 计算内积
         logits = tf.einsum('bmd,bnd->bmn', qw, kw) / self.head_size**0.5
         bias = tf.einsum('bnh->bhn', self.q_dense(inputs)) / 2
