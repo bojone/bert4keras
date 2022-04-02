@@ -1403,7 +1403,7 @@ class GlobalPointer(Layer):
         # RoPE编码
         if self.RoPE:
             pos = SinusoidalPositionEmbedding(self.head_size, 'zero')(inputs)
-            qw, kw = apply_rotary_position_embeddings(inputs[n], qw, kw)
+            qw, kw = apply_rotary_position_embeddings(pos, qw, kw)
         # 计算内积
         logits = tf.einsum('bmhd,bnhd->bhmn', qw, kw)
         # 排除padding
@@ -1458,7 +1458,7 @@ class EfficientGlobalPointer(GlobalPointer):
         # RoPE编码
         if self.RoPE:
             pos = SinusoidalPositionEmbedding(self.head_size, 'zero')(inputs)
-            qw, kw = apply_rotary_position_embeddings(inputs[n], qw, kw)
+            qw, kw = apply_rotary_position_embeddings(pos, qw, kw)
         # 计算内积
         logits = tf.einsum('bmd,bnd->bmn', qw, kw) / self.head_size**0.5
         bias = tf.einsum('bnh->bhn', self.q_dense(inputs)) / 2
