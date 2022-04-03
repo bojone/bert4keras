@@ -2697,8 +2697,10 @@ def build_transformer_model(
     if is_string(model):
         model = model.lower()
         MODEL = models[model]
-        if model.endswith('t5.1.1'):
-            configs['version'] = model
+        if model.startswith('t5.1.1'):
+            configs['version'] = 't5.1.1'
+        elif model.startswith('mt5.1.1'):
+            configs['version'] = 'mt5.1.1'
     else:
         MODEL = model
 
