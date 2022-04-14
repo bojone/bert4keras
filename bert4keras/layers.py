@@ -1272,18 +1272,18 @@ class MaximumEntropyMarkovModel(Layer):
                 trans = K.transpose(self.trans)
             else:
                 trans = self.trans
-            histoty = K.gather(trans, y_true)
+            history = K.gather(trans, y_true)
         else:
             if go_backwards:  # 是否反转序列
                 y_true, y_pred = self.reverse_sequence([y_true, y_pred], mask)
                 r_trans, l_trans = self.l_trans, self.r_trans
             else:
                 l_trans, r_trans = self.l_trans, self.r_trans
-            histoty = K.gather(l_trans, y_true)
-            histoty = tf.einsum('bnd,kd->bnk', histoty, r_trans)
+            history = K.gather(l_trans, y_true)
+            history = tf.einsum('bnd,kd->bnk', history, r_trans)
         # 计算loss
-        histoty = K.concatenate([y_pred[:, :1], histoty[:, :-1]], 1)
-        y_pred = (y_pred + histoty) / 2
+        history = K.concatenate([y_pred[:, :1], history[:, :-1]], 1)
+        y_pred = (y_pred + history) / 2
         loss = K.sparse_categorical_crossentropy(
             y_true, y_pred, from_logits=True
         )
@@ -1319,18 +1319,18 @@ class MaximumEntropyMarkovModel(Layer):
                 trans = K.transpose(self.trans)
             else:
                 trans = self.trans
-            histoty = K.gather(trans, y_true)
+            history = K.gather(trans, y_true)
         else:
             if go_backwards:  # 是否反转序列
                 y_true, y_pred = self.reverse_sequence([y_true, y_pred], mask)
                 r_trans, l_trans = self.l_trans, self.r_trans
             else:
                 l_trans, r_trans = self.l_trans, self.r_trans
-            histoty = K.gather(l_trans, y_true)
-            histoty = tf.einsum('bnd,kd->bnk', histoty, r_trans)
+            history = K.gather(l_trans, y_true)
+            history = tf.einsum('bnd,kd->bnk', history, r_trans)
         # 计算逐标签accuracy
-        histoty = K.concatenate([y_pred[:, :1], histoty[:, :-1]], 1)
-        y_pred = (y_pred + histoty) / 2
+        history = K.concatenate([y_pred[:, :1], history[:, :-1]], 1)
+        y_pred = (y_pred + history) / 2
         y_pred = K.cast(K.argmax(y_pred, 2), 'int32')
         isequal = K.cast(K.equal(y_true, y_pred), K.floatx())
         return K.sum(isequal * mask) / K.sum(mask)
