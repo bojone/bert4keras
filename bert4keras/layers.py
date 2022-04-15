@@ -507,7 +507,7 @@ class MultiHeadAttention(Layer):
         p_bias: 在attention里的位置偏置。
                 一般用来指定相对位置编码的种类。
         说明: 这里单独分离出pay_attention_to函数，是为了方便
-              继承此类来定义不同形式的atttention；此处要求
+              继承此类来定义不同形式的attention；此处要求
               返回o.shape=(batch_size, seq_len, heads, head_size)。
         """
         (qw, kw, vw), n = inputs[:3], 3

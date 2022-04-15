@@ -18,7 +18,7 @@ tokenizer = Tokenizer(dict_path, do_lower_case=True)  # 建立分词器
 model = build_transformer_model(
     config_path=config_path,
     checkpoint_path=checkpoint_path,
-    segment_vocab_size=0,  # 去掉segmeng_ids输入
+    segment_vocab_size=0,  # 去掉segment_ids输入
     application='lm',
 )  # 建立模型，加载权重
 
