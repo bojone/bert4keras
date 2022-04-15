@@ -217,7 +217,7 @@ class Transformer(object):
             self.input = inputs[0]
 
     def set_outputs(self, outputs):
-        """设置output和oututs属性
+        """设置output和outputs属性
         """
         if not isinstance(outputs, list):
             outputs = [outputs]
@@ -2321,7 +2321,7 @@ class T5_Decoder(LM_Mask, T5_Base):
         return [c, x]
 
     def apply_main_layers(self, inputs, index):
-        """T5的Dencoder主体是基于Self-Attention、Cross-Attention的模块
+        """T5的Decoder主体是基于Self-Attention、Cross-Attention的模块
         顺序：LN --> Att1 --> Add --> LN --> Att2 --> Add -->  LN --> FFN --> Add
         """
         c, x = inputs
@@ -2504,7 +2504,7 @@ class T5_Decoder(LM_Mask, T5_Base):
                     inputs=x,
                     layer=Activation,
                     activation=lm_activation,
-                    name='Dencoder-Output-LM-Activation'
+                    name='Decoder-Output-LM-Activation'
                 )
             else:
                 x = self.apply(

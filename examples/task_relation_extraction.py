@@ -188,7 +188,7 @@ class TotalLoss(Loss):
             mask = 1.0
         else:
             mask = K.cast(mask[4], K.floatx())
-        # sujuect部分loss
+        # subject部分loss
         subject_loss = K.binary_crossentropy(subject_labels, subject_preds)
         subject_loss = K.mean(subject_loss, 2)
         subject_loss = K.sum(subject_loss * mask) / K.sum(mask)
