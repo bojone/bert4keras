@@ -642,9 +642,7 @@ class GatedAttentionUnit(Layer):
         q, k = self.q_scaleoffset(qk), self.k_scaleoffset(qk)
         # 加入RoPE
         if p_bias == 'rotary':
-            qk = K.stack([q, k], 2)
-            qk = apply_rotary_position_embeddings(inputs[n], qk)
-            q, k = qk[:, :, 0], qk[:, :, 1]
+            q, k = apply_rotary_position_embeddings(inputs[n], q, k)
         # Attention
         a = tf.einsum('bmd,bnd->bmn', q, k)
         if self.attention_scale:
