@@ -294,9 +294,7 @@ def apply_rotary_position_embeddings(sinusoidal, *tensors):
         tensor2 = K.stack([-tensor[..., 1::2], tensor[..., ::2]], ndim)
         tensor2 = K.reshape(tensor2, K.shape(tensor))
         outputs.append(tensor * cos_pos + tensor2 * sin_pos)
-    if len(outputs) == 1:
-        outputs = outputs[0]
-    return outputs
+    return outputs[0] if len(outputs) == 1 else outputs
 
 
 def multilabel_categorical_crossentropy(y_true, y_pred):
