@@ -294,6 +294,8 @@ def apply_rotary_position_embeddings(sinusoidal, *tensors):
         tensor2 = K.stack([-tensor[..., 1::2], tensor[..., ::2]], ndim)
         tensor2 = K.reshape(tensor2, K.shape(tensor))
         outputs.append(tensor * cos_pos + tensor2 * sin_pos)
+    if len(outputs) == 1:
+        outputs = outputs[0]
     return outputs
 
 
