@@ -974,7 +974,7 @@ class NEZHA(BERT):
             s = self.apply(
                 inputs=s,
                 layer=Embedding,
-                input_dim=2,
+                input_dim=self.segment_vocab_size,
                 output_dim=self.embedding_size,
                 embeddings_initializer=self.initializer,
                 name=name
