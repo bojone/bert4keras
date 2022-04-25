@@ -153,7 +153,7 @@ def reshape(tensor, *args):
     维度axis1转换为shape1、维度axis2转换为shape2、...
     """
     if len(args) == 1:
-        return K.reshape(tensor, args[0])
+        return tf.reshape(tensor, args[0])
     assert len(args) % 2 == 0
     shape = K.shape(tensor)
     shape = [[s or shape[i]] for i, s in enumerate(K.int_shape(tensor))]
@@ -164,7 +164,7 @@ def reshape(tensor, *args):
             j = s.index(-1)
             s[j] = -shape[i][0] // K.prod(s)
         shape[i] = s
-    return K.reshape(tensor, [i for s in shape for i in s])
+    return tf.reshape(tensor, [i for s in shape for i in s])
 
 
 def flatten(tensor, start=None, end=None):
@@ -468,6 +468,8 @@ K.symbolic = getattr(K, 'symbolic', None) or symbolic
 K.logsumexp = getattr(K, 'logsumexp', None) or tf.math.reduce_logsumexp
 
 # 添加到 keras.backend 上，使其可以像 K.epsilon() 那样操作
+K.reshape = reshape
+K.flatten = flatten
 K.infinity = infinity
 K.set_infinity = set_infinity
 sys.modules['tensorflow.keras.backend'] = K

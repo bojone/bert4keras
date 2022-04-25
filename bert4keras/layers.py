@@ -5,7 +5,6 @@ import numpy as np
 import tensorflow as tf
 from bert4keras.backend import keras, K, is_tf_keras
 from bert4keras.backend import align, sequence_masking
-from bert4keras.backend import reshape, flatten
 from bert4keras.backend import recompute_grad
 from bert4keras.backend import attention_normalize
 from bert4keras.backend import apply_rotary_position_embeddings
@@ -485,15 +484,15 @@ class MultiHeadAttention(Layer):
         kw = self.k_dense(k)
         vw = self.v_dense(v)
         # 形状变换
-        qw = reshape(qw, (self.heads, self.key_size), -1)
-        kw = reshape(kw, (self.heads, self.key_size), -1)
-        vw = reshape(vw, (self.heads, self.head_size), -1)
+        qw = K.reshape(qw, (self.heads, self.key_size), -1)
+        kw = K.reshape(kw, (self.heads, self.key_size), -1)
+        vw = K.reshape(vw, (self.heads, self.head_size), -1)
         # Attention
         qkv_inputs = [qw, kw, vw] + inputs[3:]
         qv_masks = [q_mask, v_mask]
         o, a = self.pay_attention_to(qkv_inputs, qv_masks, **kwargs)
         # 完成输出
-        o = self.o_dense(flatten(o, 2))
+        o = self.o_dense(K.flatten(o, 2))
         # 返回结果
         if self.return_attention_scores:
             return [o, a]
@@ -846,7 +845,7 @@ class SinusoidalPositionEmbedding(Layer):
         indices = K.pow(10000.0, -2 * indices / self.output_dim)
         embeddings = tf.einsum('bn,d->bnd', position_ids, indices)
         embeddings = K.stack([K.sin(embeddings), K.cos(embeddings)], axis=-1)
-        embeddings = flatten(embeddings, 2)
+        embeddings = K.flatten(embeddings, 2)
 
         if self.merge_mode == 'add':
             return inputs + embeddings
@@ -1138,7 +1137,7 @@ class ConditionalRandomField(Layer):
         """y_true需要是整数形式（非one hot）
         """
         # y_true需要重新明确一下shape和dtype
-        y_true = reshape(y_true, K.shape(y_pred)[:-1])
+        y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
         y_true = K.cast(y_true, 'int32')
         # 转为one hot
         y_true = K.one_hot(y_true, K.shape(self.trans)[0])
@@ -1159,7 +1158,7 @@ class ConditionalRandomField(Layer):
         mask = K.all(K.greater(y_pred, -1e6), axis=2)
         mask = K.cast(mask, K.floatx())
         # y_true需要重新明确一下shape和dtype
-        y_true = reshape(y_true, K.shape(y_pred)[:-1])
+        y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
         y_true = K.cast(y_true, 'int32')
         # 逐标签取最大来粗略评测训练效果
         y_pred = K.cast(K.argmax(y_pred, 2), 'int32')
@@ -1262,7 +1261,7 @@ class MaximumEntropyMarkovModel(Layer):
         mask = K.all(K.greater(y_pred, -1e6), axis=2)
         mask = K.cast(mask, K.floatx())
         # y_true需要重新明确一下shape和dtype
-        y_true = reshape(y_true, K.shape(y_pred)[:-1])
+        y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
         y_true = K.cast(y_true, 'int32')
         # 反转相关
         if self.hidden_dim is None:
@@ -1309,7 +1308,7 @@ class MaximumEntropyMarkovModel(Layer):
         mask = K.all(K.greater(y_pred, -1e6), axis=2)
         mask = K.cast(mask, K.floatx())
         # y_true需要重新明确一下shape和dtype
-        y_true = reshape(y_true, K.shape(y_pred)[:-1])
+        y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
         y_true = K.cast(y_true, 'int32')
         # 反转相关
         if self.hidden_dim is None:
