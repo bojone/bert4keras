@@ -173,7 +173,7 @@ def flatten(tensor, start=None, end=None):
     start, end = start or 0, end or K.ndim(tensor)
     shape = K.shape(tensor)
     shape = [s or shape[i] for i, s in enumerate(K.int_shape(tensor))]
-    shape = shape[:start] + [-1] + shape[end:]
+    shape = shape[:start] + [K.prod(shape[start:end])] + shape[end:]
     return K.reshape(tensor, shape)
 
 
