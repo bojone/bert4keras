@@ -531,6 +531,8 @@ class MultiHeadAttention(Layer):
         if self.attention_scale:
             a = a / self.key_size**0.5
         if a_bias is not None:
+            if K.ndim(a_bias) == 3:
+                a_bias = align(a_bias, [0, -2, -1], K.ndim(a))
             a = a + a_bias
         a = sequence_masking(a, v_mask, '-inf', -1)
         A = attention_normalize(a, -1, self.normalization)
