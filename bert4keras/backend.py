@@ -147,6 +147,36 @@ def align(tensor, axes, ndim=None):
     return tensor[indices]
 
 
+def reshape(tensor, *args):
+    """实现更灵活的reshape
+    其中 *args 为 (shape1, axis1, shape2, axis2, ...) 格式，表示将
+    维度axis1转换为shape1、维度axis2转换为shape2、...
+    """
+    if len(args) == 1:
+        return K.reshape(tensor, args[0])
+    assert len(args) % 2 == 0
+    shape = K.shape(tensor)
+    shape = [[s or shape[i]] for i, s in enumerate(K.int_shape(tensor))]
+    for s, i in zip(args[::2], args[1::2]):
+        s = list(s)
+        assert s.count(-1) <= 1
+        if s.count(-1) == 1:
+            j = s.index(-1)
+            s[j] = -shape[i][0] // K.prod(s)
+        shape[i] = s
+    return K.reshape(tensor, [i for s in shape for i in s])
+
+
+def flatten(tensor, start=None, end=None):
+    """将tensor从start到end的维度展平
+    """
+    start, end = start or 0, end or K.ndim(tensor)
+    shape = K.shape(tensor)
+    shape = [s or shape[i] for i, s in enumerate(K.int_shape(tensor))]
+    shape = shape[:start] + [-1] + shape[end:]
+    return K.reshape(tensor, shape)
+
+
 def sequence_masking(x, mask, value=0, axis=None):
     """为序列条件mask的函数
     mask: 形如(batch_size, seq_len)的0-1矩阵；
