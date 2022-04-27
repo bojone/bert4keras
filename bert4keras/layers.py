@@ -601,7 +601,7 @@ class GatedAttentionUnit(Layer):
         super(GatedAttentionUnit, self).__init__(**kwargs)
         self.units = units
         self.key_size = key_size
-        self.activation = activation
+        self.activation = activations.get(activation)
         self.use_bias = use_bias
         self.normalization = normalization
         self.attention_scale = attention_scale
