@@ -695,7 +695,7 @@ class LayerNormalization(ScaleOffset):
         super(LayerNormalization, self).__init__(**kwargs)
         self.zero_mean = zero_mean
         self.unit_variance = unit_variance
-        self.epsilon = epsilon or 1e-12
+        self.epsilon = epsilon or K.epsilon()
 
     @recompute_grad
     def call(self, inputs):
