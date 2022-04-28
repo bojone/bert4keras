@@ -513,6 +513,7 @@ class BERT(Transformer):
         x = self.apply(
             inputs=self.simplify([x, z]),
             layer=LayerNormalization,
+            epsilon=1e-12,
             conditional=(z is not None),
             hidden_units=self.layer_norm_conds[1],
             hidden_activation=self.layer_norm_conds[2],
@@ -577,6 +578,7 @@ class BERT(Transformer):
         x = self.apply(
             inputs=self.simplify([x, z]),
             layer=LayerNormalization,
+            epsilon=1e-12,
             conditional=(z is not None),
             hidden_units=self.layer_norm_conds[1],
             hidden_activation=self.layer_norm_conds[2],
@@ -606,6 +608,7 @@ class BERT(Transformer):
         x = self.apply(
             inputs=self.simplify([x, z]),
             layer=LayerNormalization,
+            epsilon=1e-12,
             conditional=(z is not None),
             hidden_units=self.layer_norm_conds[1],
             hidden_activation=self.layer_norm_conds[2],
@@ -666,6 +669,7 @@ class BERT(Transformer):
             x = self.apply(
                 inputs=self.simplify([x, z]),
                 layer=LayerNormalization,
+                epsilon=1e-12,
                 conditional=(z is not None),
                 hidden_units=self.layer_norm_conds[1],
                 hidden_activation=self.layer_norm_conds[2],
