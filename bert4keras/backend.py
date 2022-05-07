@@ -331,18 +331,19 @@ def apply_rotary_position_embeddings(sinusoidal, *tensors):
 def multilabel_categorical_crossentropy(y_true, y_pred):
     """多标签分类的交叉熵
     说明：
-        1. y_true和y_pred的shape一致，y_true的元素非0即1，
-           1表示对应的类为目标类，0表示对应的类为非目标类；
+        1. y_true和y_pred的shape一致，y_true的元素是，
+           0～1的数，表示当前类是目标类的概率；
         2. 请保证y_pred的值域是全体实数，换言之一般情况下
            y_pred不用加激活函数，尤其是不能加sigmoid或者
            softmax；
         3. 预测阶段则输出y_pred大于0的类；
-        4. 详情请看：https://kexue.fm/archives/7359 。
+        4. 详情请看：https://kexue.fm/archives/7359 和
+           https://kexue.fm/archives/9064 。
     """
-    y_pred = (1 - 2 * y_true) * y_pred
-    y_neg = y_pred - y_true * K.infinity()
-    y_pos = y_pred - (1 - y_true) * K.infinity()
     zeros = K.zeros_like(y_pred[..., :1])
+    y_true = K.clip(y_true, K.epsilon(), 1 - K.epsilon())
+    y_neg = y_pred + K.log(1 - y_true)
+    y_pos = -y_pred + K.log(y_true)
     y_neg = K.concatenate([y_neg, zeros], axis=-1)
     y_pos = K.concatenate([y_pos, zeros], axis=-1)
     neg_loss = K.logsumexp(y_neg, axis=-1)
