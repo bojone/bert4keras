@@ -340,10 +340,12 @@ def multilabel_categorical_crossentropy(y_true, y_pred):
         4. 详情请看：https://kexue.fm/archives/7359 和
            https://kexue.fm/archives/9064 。
     """
-    zeros = K.zeros_like(y_pred[..., :1])
+    p_mask = K.greater_equal(y_true, K.epsilon())
+    n_mask = K.less_equal(y_true, 1 - K.epsilon())
     y_true = K.clip(y_true, K.epsilon(), 1 - K.epsilon())
-    y_neg = y_pred + K.log(1 - y_true)
-    y_pos = -y_pred + K.log(y_true)
+    y_neg = K.switch(n_mask, y_pred, -y_pred) + K.log(1 - y_true)
+    y_pos = K.switch(p_mask, -y_pred, y_pred) + K.log(y_true)
+    zeros = K.zeros_like(y_pred[..., :1])
     y_neg = K.concatenate([y_neg, zeros], axis=-1)
     y_pos = K.concatenate([y_pos, zeros], axis=-1)
     neg_loss = K.logsumexp(y_neg, axis=-1)
