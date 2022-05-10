@@ -331,8 +331,8 @@ def apply_rotary_position_embeddings(sinusoidal, *tensors):
 def multilabel_categorical_crossentropy(y_true, y_pred):
     """多标签分类的交叉熵
     说明：
-        1. y_true和y_pred的shape一致，y_true的元素是，
-           0～1的数，表示当前类是目标类的概率；
+        1. y_true和y_pred的shape一致，y_true的元素是0～1
+           的数，表示当前类是目标类的概率；
         2. 请保证y_pred的值域是全体实数，换言之一般情况下
            y_pred不用加激活函数，尤其是不能加sigmoid或者
            softmax；
