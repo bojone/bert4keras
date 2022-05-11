@@ -328,6 +328,16 @@ def apply_rotary_position_embeddings(sinusoidal, *tensors):
     return outputs[0] if len(outputs) == 1 else outputs
 
 
+def log(x, epsilon=None):
+    """给log添加epsilon，防止NaN
+    """
+    if epsilon is None:
+        return tf.math.log(x)
+    elif epsilon is True:
+        epsilon = K.epsilon()
+    return tf.math.log(K.maximum(x, epsilon))
+
+
 def multilabel_categorical_crossentropy(y_true, y_pred):
     """多标签分类的交叉熵
     说明：
@@ -343,10 +353,9 @@ def multilabel_categorical_crossentropy(y_true, y_pred):
     y_mask = y_pred > -K.infinity() / 10
     n_mask = (y_true < 1 - K.epsilon()) & y_mask
     p_mask = (y_true > K.epsilon()) & y_mask
-    y_true = K.clip(y_true, K.epsilon(), 1 - K.epsilon())
     infs = K.zeros_like(y_pred) + K.infinity()
-    y_neg = K.switch(n_mask, y_pred, -infs) + K.log(1 - y_true)
-    y_pos = K.switch(p_mask, -y_pred, -infs) + K.log(y_true)
+    y_neg = K.switch(n_mask, y_pred, -infs) + K.log(1 - y_true, True)
+    y_pos = K.switch(p_mask, -y_pred, -infs) + K.log(y_true, True)
     zeros = K.zeros_like(y_pred[..., :1])
     y_neg = K.concatenate([y_neg, zeros], axis=-1)
     y_pos = K.concatenate([y_pos, zeros], axis=-1)
@@ -472,6 +481,9 @@ K.symbolic = getattr(K, 'symbolic', None) or symbolic
 
 # 给tf.keras补充上logsumexp
 K.logsumexp = getattr(K, 'logsumexp', None) or tf.math.reduce_logsumexp
+
+# 修改版对数函数
+K.log = log
 
 # 添加到 keras.backend 上，使其可以像 K.epsilon() 那样操作
 K.reshape = reshape
