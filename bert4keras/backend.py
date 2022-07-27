@@ -290,6 +290,18 @@ def attention_normalize(a, axis=-1, method='softmax'):
     return a
 
 
+def sinusoidal_embeddings(pos, dim, base=10000):
+    """计算pos位置的dim维sinusoidal编码
+    """
+    assert dim % 2 == 0
+    indices = K.arange(0, dim // 2, dtype=K.floatx())
+    indices = K.pow(K.cast(base, K.floatx()), -2 * indices / dim)
+    embeddings = tf.einsum('...,d->...d', pos, indices)
+    embeddings = K.stack([K.sin(embeddings), K.cos(embeddings)], axis=-1)
+    embeddings = K.flatten(embeddings, -2)
+    return embeddings
+
+
 class Sinusoidal(keras.initializers.Initializer):
     """Sin-Cos位置向量初始化器
     来自：https://arxiv.org/abs/1706.03762
@@ -297,14 +309,8 @@ class Sinusoidal(keras.initializers.Initializer):
     def __call__(self, shape, dtype=None):
         """Sin-Cos形式的位置向量
         """
-        vocab_size, depth = shape
-        embeddings = np.zeros(shape)
-        for pos in range(vocab_size):
-            for i in range(depth // 2):
-                theta = pos / np.power(10000, 2. * i / depth)
-                embeddings[pos, 2 * i] = np.sin(theta)
-                embeddings[pos, 2 * i + 1] = np.cos(theta)
-        return embeddings
+        size, dim = shape
+        return sinusoidal_embeddings(K.arange(size, dtype=K.floatx()), dim)
 
 
 def apply_rotary_position_embeddings(sinusoidal, *tensors):
