@@ -7,6 +7,7 @@ from bert4keras.backend import keras, K, is_tf_keras
 from bert4keras.backend import align, sequence_masking
 from bert4keras.backend import recompute_grad
 from bert4keras.backend import attention_normalize
+from bert4keras.backend import sinusoidal_embeddings
 from bert4keras.backend import apply_rotary_position_embeddings
 from keras import initializers, activations
 from keras.layers import *
@@ -841,11 +842,7 @@ class SinusoidalPositionEmbedding(Layer):
             batch_size, seq_len = input_shape[0], input_shape[1]
             position_ids = K.arange(0, seq_len, dtype=K.floatx())[None]
 
-        indices = K.arange(0, self.output_dim // 2, dtype=K.floatx())
-        indices = K.pow(10000.0, -2 * indices / self.output_dim)
-        embeddings = tf.einsum('bn,d->bnd', position_ids, indices)
-        embeddings = K.stack([K.sin(embeddings), K.cos(embeddings)], axis=-1)
-        embeddings = K.flatten(embeddings, 2)
+        embeddings = sinusoidal_embeddings(position_ids, self.output_dim)
 
         if self.merge_mode == 'add':
             return inputs + embeddings
