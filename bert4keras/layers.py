@@ -594,6 +594,7 @@ class GatedAttentionUnit(Layer):
         activation='swish',
         use_bias=True,
         normalization='squared_relu',
+        self_attention=True,
         attention_scale=True,
         attention_dropout=None,
         kernel_initializer='glorot_uniform',
@@ -615,33 +616,61 @@ class GatedAttentionUnit(Layer):
         hidden_size = input_shape[-1]
         if isinstance(hidden_size, (list, tuple)):
             hidden_size = input_shape[0][-1]
-        self.i_dense = Dense(
-            units=2 * self.units + self.key_size,
-            activation=self.activation,
-            use_bias=self.use_bias,
-            kernel_initializer=self.kernel_initializer
-        )
+        if self.self_attention:
+            self.i_dense = Dense(
+                units=2 * self.units + self.key_size,
+                activation=self.activation,
+                use_bias=self.use_bias,
+                kernel_initializer=self.kernel_initializer
+            )
+            self.q_scaleoffset = ScaleOffset(offset=self.use_bias)
+            self.k_scaleoffset = ScaleOffset(offset=self.use_bias)
+        else:
+            self.uq_dense = Dense(
+                units=self.units + self.key_size,
+                activation=self.activation,
+                use_bias=self.use_bias,
+                kernel_initializer=self.kernel_initializer
+            )
+            self.k_dense = Dense(
+                units=self.key_size,
+                activation=self.activation,
+                use_bias=self.use_bias,
+                kernel_initializer=self.kernel_initializer
+            )
+            self.v_dense = Dense(
+                units=self.units,
+                activation=self.activation,
+                use_bias=self.use_bias,
+                kernel_initializer=self.kernel_initializer
+            )
         self.o_dense = Dense(
             units=hidden_size,
             use_bias=self.use_bias,
             kernel_initializer=self.kernel_initializer
         )
-        self.q_scaleoffset = ScaleOffset(offset=self.use_bias)
-        self.k_scaleoffset = ScaleOffset(offset=self.use_bias)
 
     @recompute_grad
     def call(self, inputs, mask=None, a_bias=None, p_bias=None):
         if not isinstance(inputs, list):
             inputs, mask = [inputs], [mask]
-        x, n = inputs[0], 1
+        if self.self_attention:
+            x, n = inputs[0], 1
+        else:
+            (q, k, v), n = inputs[:3], 3
         mask = None if mask is None else mask[0]
         if a_bias:
             a_bias = inputs[n]
             n += 1
         # 投影变换
-        x = self.i_dense(x)
-        u, v, qk = tf.split(x, [self.units, self.units, self.key_size], axis=-1)
-        q, k = self.q_scaleoffset(qk), self.k_scaleoffset(qk)
+        if self.self_attention:
+            x = self.i_dense(x)
+            u, v, qk = tf.split(x, [self.units, self.units, self.key_size], -1)
+            q, k = self.q_scaleoffset(qk), self.k_scaleoffset(qk)
+        else:
+            uq = self.uq_dense(q)
+            u, q = tf.split(uq, [self.units, self.key_size], -1)
+            k, v = self.k_dense(k), self.v_dense(v)
         # 加入RoPE
         if p_bias == 'rotary':
             q, k = apply_rotary_position_embeddings(inputs[n], q, k)
@@ -678,6 +707,7 @@ class GatedAttentionUnit(Layer):
             'activation': activations.serialize(self.activation),
             'use_bias': self.use_bias,
             'normalization': self.normalization,
+            'self_attention': self.self_attention,
             'attention_scale': self.attention_scale,
             'attention_dropout': self.attention_dropout,
             'kernel_initializer':
