@@ -2273,9 +2273,10 @@ class T5_Encoder(T5_Base):
 class T5_Decoder(LM_Mask, T5_Base):
     """Google的T5模型（Decoder）
     """
-    def __init__(self, with_lm=True, **kwargs):
+    def __init__(self, with_lm=True, cross_position_bias=True, **kwargs):
         super(T5_Decoder, self).__init__(**kwargs)
         self.with_lm = with_lm
+        self.cross_position_bias = cross_position_bias
 
     def get_inputs(self):
         """T5的Decoder的输入为context序列和token_ids
@@ -2392,13 +2393,16 @@ class T5_Decoder(LM_Mask, T5_Base):
             hidden_initializer=self.initializer,
             name='%s-Norm' % cross_attention_name
         )
+        if self.cross_position_bias:
+            inputs = [x, c, c, position_bias[1]]
+            arguments = {'a_bias': None, 'p_bias': 't5_relative'}
+        else:
+            inputs = [x, c, c]
+            arguments = {'a_bias': None, 'p_bias': None}
         x = self.apply(
-            inputs=[x, c, c, position_bias[1]],
+            inputs=inputs,
             layer=MultiHeadAttention,
-            arguments={
-                'a_bias': None,
-                'p_bias': 't5_relative'
-            },
+            arguments=arguments,
             heads=self.num_attention_heads,
             head_size=self.attention_head_size,
             out_dim=self.hidden_size,
