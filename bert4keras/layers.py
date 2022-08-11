@@ -606,6 +606,7 @@ class GatedAttentionUnit(Layer):
         self.activation = activations.get(activation)
         self.use_bias = use_bias
         self.normalization = normalization
+        self.self_attention = self_attention
         self.attention_scale = attention_scale
         self.attention_dropout = attention_dropout
         self.kernel_initializer = initializers.get(kernel_initializer)
