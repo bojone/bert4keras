@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # 分离后端函数，主要是为了同时兼容原生keras和tf.keras
 # 通过设置环境变量TF_KERAS=1来切换tf.keras
-
-import os, sys
+import os
+import sys
 from distutils.util import strtobool
 import numpy as np
 import tensorflow as tf
