@@ -9,7 +9,7 @@ from bert4keras.snippets import delete_arguments
 from bert4keras.snippets import is_string, string_matching
 from bert4keras.snippets import orthogonally_resize
 from keras.models import Model
-import json
+#mport json
 
 
 class Transformer(object):
