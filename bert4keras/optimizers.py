@@ -90,6 +90,60 @@ class Adam(keras.optimizers.Optimizer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
+class LionV2(keras.optimizers.Optimizer):
+    """Lion优化器
+    （tensorflow的optimizer_v2类）
+    论文链接：https://arxiv.org/abs/2302.06675
+    """
+    def __init__(self, learning_rate=3e-4, beta_1=0.95, beta_2=0.98, **kwargs):
+        kwargs['name'] = kwargs.get('name') or 'Lion'
+        super(Lion, self).__init__(**kwargs)
+        self._set_hyper('learning_rate', learning_rate)
+        self._set_hyper('beta_1', beta_1)
+        self._set_hyper('beta_2', beta_2)
+
+    def _create_slots(self, var_list):
+        for var in var_list:
+            self.add_slot(var, 'm')
+
+    def _resource_apply(self, grad, var, indices=None):
+        # 准备变量
+
+        var_dtype = var.dtype.base_dtype
+        lr_t = self._decayed_lr(var_dtype)
+        m = self.get_slot(var, 'm')
+        beta_1_t = self._get_hyper('beta_1', var_dtype)
+        beta_2_t = self._get_hyper('beta_2', var_dtype)
+
+        # 更新公式
+        u_t = K.sign(beta_1_t * m + (1 - beta_1_t) * grad)
+        var_t = K.update(var, var - lr_t * u_t)
+        with tf.control_dependencies([var_t]):
+            if indices is None:
+                m_t = K.update(m, beta_2_t * m + (1 - beta_2_t) * grad)
+            else:
+                with tf.control_dependencies([K.update(m, beta_2_t * m)]):
+                    m_t = self._resource_scatter_add(
+                        m, indices, (1 - beta_2_t) * grad
+                    )
+        return m_t
+
+    def _resource_apply_dense(self, grad, var):
+        return self._resource_apply(grad, var)
+
+    def _resource_apply_sparse(self, grad, var, indices):
+        return self._resource_apply(grad, var, indices)
+
+    def get_config(self):
+        config = {
+            'learning_rate': self._serialize_hyperparameter('learning_rate'),
+            'beta_1': self._serialize_hyperparameter('beta_1'),
+            'beta_2': self._serialize_hyperparameter('beta_2'),
+        }
+        base_config = super(Lion, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+
 class AdaFactorBase(keras.optimizers.Optimizer):
     """AdaFactor优化器（基类）
     论文链接：https://arxiv.org/abs/1804.04235
@@ -1127,6 +1181,7 @@ if is_tf_keras:
     extend_with_lazy_optimization = extend_with_lazy_optimization_v2
     extend_with_exponential_moving_average = extend_with_exponential_moving_average_v2
     extend_with_parameter_wise_lr = extend_with_parameter_wise_lr_v2
+    Lion = LionV2
     AdaFactor = AdaFactorV2
 else:
     Adam = keras.optimizers.Adam
