@@ -37,7 +37,7 @@ class Adam(keras.optimizers.Optimizer):
             self.add_slot(var, 'm')
             self.add_slot(var, 'v')
 
-    def _resource_apply(self, grad, var, indices=None):
+    def _resource_apply_dense(self, grad, var):
         # 准备变量
         var_dtype = var.dtype.base_dtype
         lr_t = self._decayed_lr(var_dtype)
@@ -72,11 +72,10 @@ class Adam(keras.optimizers.Optimizer):
             var_t = var - lr_t * m_t / (K.sqrt(v_t) + self.epsilon)
             return K.update(var, var_t)
 
-    def _resource_apply_dense(self, grad, var):
-        return self._resource_apply(grad, var)
-
     def _resource_apply_sparse(self, grad, var, indices):
-        return self._resource_apply(grad, var, indices)
+        grad = tf.IndexedSlices(grad, indices, K.shape(var))
+        grad = tf.convert_to_tensor(grad)
+        return self._resource_apply_dense(grad, var)
 
     def get_config(self):
         config = {
@@ -106,7 +105,7 @@ class LionV2(keras.optimizers.Optimizer):
         for var in var_list:
             self.add_slot(var, 'm')
 
-    def _resource_apply(self, grad, var, indices=None):
+    def _resource_apply_dense(self, grad, var):
         # 准备变量
 
         var_dtype = var.dtype.base_dtype
@@ -128,11 +127,10 @@ class LionV2(keras.optimizers.Optimizer):
                     )
         return m_t
 
-    def _resource_apply_dense(self, grad, var):
-        return self._resource_apply(grad, var)
-
     def _resource_apply_sparse(self, grad, var, indices):
-        return self._resource_apply(grad, var, indices)
+        grad = tf.IndexedSlices(grad, indices, K.shape(var))
+        grad = tf.convert_to_tensor(grad)
+        return self._resource_apply_dense(grad, var)
 
     def get_config(self):
         config = {
@@ -322,7 +320,7 @@ class AdaFactorV2(AdaFactorBase):
     def _decayed_lr(self, var_dtype):
         return self.learning_rate
 
-    def _resource_apply(self, grad, var, indices=None):
+    def _resource_apply_dense(self, grad, var):
         lr = self._decayed_lr(var.dtype.base_dtype)
         g2 = K.square(grad) + self.epsilon1
         shape = K.int_shape(var)
@@ -360,9 +358,6 @@ class AdaFactorV2(AdaFactorBase):
             u = u * K.maximum(rms(var), self.epsilon2)
         # 更新参数
         return K.update(var, var - lr * u)
-
-    def _resource_apply_dense(self, grad, var):
-        return self._resource_apply(grad, var)
 
     def _resource_apply_sparse(self, grad, var, indices):
         grad = tf.IndexedSlices(grad, indices, K.shape(var))
