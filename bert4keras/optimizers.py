@@ -51,18 +51,8 @@ class Adam(keras.optimizers.Optimizer):
         beta_2_t_power = K.pow(beta_2_t, local_step)
 
         # 更新公式
-        if indices is None:
-            m_t = K.update(m, beta_1_t * m + (1 - beta_1_t) * grad)
-            v_t = K.update(v, beta_2_t * v + (1 - beta_2_t) * K.square(grad))
-        else:
-            mv_ops = [K.update(m, beta_1_t * m), K.update(v, beta_2_t * v)]
-            with tf.control_dependencies(mv_ops):
-                m_t = self._resource_scatter_add(
-                    m, indices, (1 - beta_1_t) * grad
-                )
-                v_t = self._resource_scatter_add(
-                    v, indices, (1 - beta_2_t) * K.square(grad)
-                )
+        m_t = K.update(m, beta_1_t * m + (1 - beta_1_t) * grad)
+        v_t = K.update(v, beta_2_t * v + (1 - beta_2_t) * K.square(grad))
 
         # 返回算子
         with tf.control_dependencies([m_t, v_t]):
@@ -118,14 +108,8 @@ class LionV2(keras.optimizers.Optimizer):
         u_t = K.sign(beta_1_t * m + (1 - beta_1_t) * grad)
         var_t = K.update(var, var - lr_t * u_t)
         with tf.control_dependencies([var_t]):
-            if indices is None:
-                m_t = K.update(m, beta_2_t * m + (1 - beta_2_t) * grad)
-            else:
-                with tf.control_dependencies([K.update(m, beta_2_t * m)]):
-                    m_t = self._resource_scatter_add(
-                        m, indices, (1 - beta_2_t) * grad
-                    )
-        return m_t
+            m_t = K.update(m, beta_2_t * m + (1 - beta_2_t) * grad)
+            return m_t
 
     def _resource_apply_sparse(self, grad, var, indices):
         grad = tf.IndexedSlices(grad, indices, K.shape(var))
@@ -740,12 +724,8 @@ def extend_with_gradient_accumulation_v2(BaseOptimizer):
             with tf.control_dependencies([op]):
                 ag_t = K.switch(cond, K.zeros_like(ag), ag)
                 with tf.control_dependencies([K.update(ag, ag_t)]):
-                    if indices is None:
-                        ag_t = K.update(ag, ag + grad)
-                    else:
-                        ag_t = self._resource_scatter_add(ag, indices, grad)
-
-            return ag_t
+                    ag_t = K.update(ag, ag + grad)
+                    return ag_t
 
         def get_config(self):
             config = {
@@ -926,16 +906,9 @@ def extend_with_lazy_optimization_v2(BaseOptimizer):
 
             def new_update(x, new_x):
                 if x is var and self._do_lazy_optimization(x):
-                    if indices is None:
-                        r = K.any(
-                            K.not_equal(grad, 0.0), axis=-1, keepdims=True
-                        )
-                        new_x = x + (new_x - x) * K.cast(r, K.floatx())
-                        return old_update(x, new_x)
-                    else:
-                        return self._resource_scatter_add(
-                            x, indices, K.gather(new_x - x, indices)
-                        )
+                    r = K.any(K.not_equal(grad, 0.0), axis=-1, keepdims=True)
+                    new_x = x + (new_x - x) * K.cast(r, K.floatx())
+                    return old_update(x, new_x)
                 return old_update(x, new_x)
 
             K.update = new_update
