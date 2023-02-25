@@ -435,7 +435,7 @@ def extend_with_weight_decay_v2(BaseOptimizer):
         def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
 
-        def _resource_apply_dense(self, grad, var, indices=None):
+        def _resource_apply_dense(self, grad, var):
             old_update = K.update
 
             def new_update(x, new_x):
@@ -445,7 +445,7 @@ def extend_with_weight_decay_v2(BaseOptimizer):
                 return old_update(x, new_x)
 
             K.update = new_update
-            op = super(NewOptimizer, self)._resource_apply_dense(grad, var, indices)
+            op = super(NewOptimizer, self)._resource_apply_dense(grad, var)
             K.update = old_update
 
             return op
@@ -531,7 +531,7 @@ def extend_with_layer_adaptation_v2(BaseOptimizer):
         def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
 
-        def _resource_apply_dense(self, grad, var, indices=None):
+        def _resource_apply_dense(self, grad, var):
             old_update = K.update
 
             def new_update(x, new_x):
@@ -549,7 +549,7 @@ def extend_with_layer_adaptation_v2(BaseOptimizer):
                 return old_update(x, new_x)
 
             K.update = new_update
-            op = super(NewOptimizer, self)._resource_apply_dense(grad, var, indices)
+            op = super(NewOptimizer, self)._resource_apply_dense(grad, var)
             K.update = old_update
 
             return op
@@ -719,7 +719,7 @@ def extend_with_gradient_accumulation_v2(BaseOptimizer):
             for var in var_list:
                 self.add_slot(var, 'ag')
 
-        def _resource_apply_dense(self, grad, var, indices=None):
+        def _resource_apply_dense(self, grad, var):
             # 更新判据
             cond = K.equal(self.iterations % self.grad_accum_steps, 0)
             # 获取梯度
@@ -826,8 +826,8 @@ def extend_with_lookahead_v2(BaseOptimizer):
             for var in var_list:
                 self.add_slot(var, 'slow_var')
 
-        def _resource_apply_dense(self, grad, var, indices=None):
-            op = super(NewOptimizer, self)._resource_apply_dense(grad, var, indices)
+        def _resource_apply_dense(self, grad, var):
+            op = super(NewOptimizer, self)._resource_apply_dense(grad, var)
 
             k, alpha = self.steps_per_slow_update, self.slow_step_size
             cond = K.equal(self.iterations % k, 0)
@@ -921,7 +921,7 @@ def extend_with_lazy_optimization_v2(BaseOptimizer):
         def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
 
-        def _resource_apply_dense(self, grad, var, indices=None):
+        def _resource_apply_dense(self, grad, var):
             old_update = K.update
 
             def new_update(x, new_x):
@@ -939,7 +939,7 @@ def extend_with_lazy_optimization_v2(BaseOptimizer):
                 return old_update(x, new_x)
 
             K.update = new_update
-            op = super(NewOptimizer, self)._resource_apply_dense(grad, var, indices)
+            op = super(NewOptimizer, self)._resource_apply_dense(grad, var)
             K.update = old_update
 
             return op
@@ -1138,7 +1138,7 @@ def extend_with_parameter_wise_lr_v2(BaseOptimizer):
         def __init__(self, *args, **kwargs):
             super(NewOptimizer, self).__init__(*args, **kwargs)
 
-        def _resource_apply_dense(self, grad, var, indices=None):
+        def _resource_apply_dense(self, grad, var):
             old_update = K.update
 
             def new_update(x, new_x):
@@ -1152,7 +1152,7 @@ def extend_with_parameter_wise_lr_v2(BaseOptimizer):
                 return old_update(x, new_x)
 
             K.update = new_update
-            op = super(NewOptimizer, self)._resource_apply_dense(grad, var, indices)
+            op = super(NewOptimizer, self)._resource_apply_dense(grad, var)
             K.update = old_update
 
             return op
