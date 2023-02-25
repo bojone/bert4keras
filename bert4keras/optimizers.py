@@ -908,7 +908,6 @@ def extend_with_lazy_optimization_v2(BaseOptimizer):
                 if x is var and self._do_lazy_optimization(x):
                     r = K.any(K.not_equal(grad, 0.0), axis=-1, keepdims=True)
                     new_x = x + (new_x - x) * K.cast(r, K.floatx())
-                    return old_update(x, new_x)
                 return old_update(x, new_x)
 
             K.update = new_update
