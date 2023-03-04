@@ -199,7 +199,7 @@ def sequence_masking(x, mask, value=0, axis=None):
         assert axis > 0, 'axis must be greater than 0'
 
         if K.dtype(mask) != 'bool':
-            mask = K.cast(mask, bool)
+            mask = K.cast(mask, 'bool')
         mask = align(mask, [0, axis], K.ndim(x))
 
         return K.switch(mask, x, value)
