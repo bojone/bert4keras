@@ -179,33 +179,30 @@ def flatten(tensor, start=None, end=None):
 
 def sequence_masking(x, mask, value=0, axis=None):
     """为序列条件mask的函数
-    mask: 形如(batch_size, seq_len)的0-1矩阵；
+    mask: 形如(batch_size, seq_len)的bool矩阵；
     value: mask部分要被替换成的值，可以是'-inf'或'inf'；
     axis: 序列所在轴，默认为1；
     """
     if mask is None:
         return x
     else:
-        x_dtype = K.dtype(x)
-        if x_dtype == 'bool':
-            x = K.cast(x, 'int32')
-        if K.dtype(mask) != K.dtype(x):
-            mask = K.cast(mask, K.dtype(x))
         if value == '-inf':
             value = -K.infinity()
         elif value == 'inf':
             value = K.infinity()
+        value = K.zeros_like(x) + value
+
         if axis is None:
             axis = 1
         elif axis < 0:
             axis = K.ndim(x) + axis
         assert axis > 0, 'axis must be greater than 0'
+
+        if K.dtype(mask) != 'bool':
+            mask = K.cast(mask, bool)
         mask = align(mask, [0, axis], K.ndim(x))
-        value = K.cast(value, K.dtype(x))
-        x = x * mask + value * (1 - mask)
-        if x_dtype == 'bool':
-            x = K.cast(x, 'bool')
-        return x
+
+        return K.switch(mask, x, value)
 
 
 def batch_gather(params, indices):
