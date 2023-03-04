@@ -277,13 +277,13 @@ def attention_normalize(a, axis=-1, method='softmax'):
     if method == 'softmax':
         return K.softmax(a, axis=axis)
     else:
-        mask = (a >= -K.infinity() / 10)
-        l = K.sum(K.cast(mask, K.floatx()), axis=axis, keepdims=True)
+        mask = K.cast(a >= -K.infinity() / 10, K.floatx())
+        l = K.sum(mask, axis=axis, keepdims=True)
         if method == 'squared_relu':
             return K.relu(a)**2 / l
         elif method == 'softmax_plus':
-            scale = K.log(l) / np.log(512)
-            return K.softmax(K.switch(mask, a * scale, a), axis=axis)
+            l = K.maximum(l, 2)
+            return K.softmax(a * K.log(l) / np.log(512), axis=axis)
     return a
 
 
