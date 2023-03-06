@@ -144,7 +144,7 @@ class GlobalMaxPooling1D(keras.layers.GlobalMaxPooling1D):
 
     def call(self, inputs, mask=None):
         axis = 1 if self.data_format == 'channels_last' else 2
-        inputs = sequence_masking(inputs, mask, '-inf', axis)
+        inputs = sequence_masking(inputs, mask, -np.inf, axis)
         return K.max(inputs, axis=axis)
 
     def compute_mask(self, inputs, mask=None):
@@ -530,12 +530,9 @@ class MultiHeadAttention(Layer):
         # Attention（续）
         if self.attention_scale:
             a = a / self.key_size**0.5
-        if a_bias is not None:
-            if K.ndim(a_bias) == 3:
-                a_bias = align(a_bias, [0, -2, -1], K.ndim(a))
-            a = a + a_bias
-        a = sequence_masking(a, v_mask, '-inf', -1)
-        A = attention_normalize(a, -1, self.normalization)
+        if a_bias is not None and K.ndim(a_bias) == 3:
+            a_bias = align(a_bias, [0, -2, -1], K.ndim(a))
+        A = attention_normalize(a, v_mask, -1, self.normalization, a_bias)
         if self.attention_dropout:
             A = Dropout(self.attention_dropout)(A)
         # 完成输出
@@ -679,10 +676,7 @@ class GatedAttentionUnit(Layer):
         a = tf.einsum('bmd,bnd->bmn', q, k)
         if self.attention_scale:
             a = a / self.key_size**0.5
-        if a_bias is not None:
-            a = a + a_bias
-        a = sequence_masking(a, mask, '-inf', -1)
-        A = attention_normalize(a, -1, self.normalization)
+        A = attention_normalize(a, mask, -1, self.normalization, a_bias)
         if self.attention_dropout:
             A = Dropout(self.attention_dropout)(A)
         # 计算输出
@@ -741,7 +735,9 @@ class LayerNormalization(ScaleOffset):
             inputs = inputs - mean
         if self.unit_variance:
             variance = K.mean(K.square(inputs), axis=-1, keepdims=True)
-            inputs = inputs / K.sqrt(variance + self.epsilon)
+            inputs = tf.math.divide_no_nan(
+                inputs, K.sqrt(variance + self.epsilon)
+            )
 
         if self.conditional:
             inputs = [inputs, conds]
@@ -1007,7 +1003,7 @@ class RelativePositionEmbeddingT5(RelativePositionEmbedding):
             'int32',
         )
         val_if_large = K.minimum(val_if_large, num_buckets - 1)
-        ret += K.switch(is_small, n, val_if_large)
+        ret += K.where(is_small, n, val_if_large)
         return ret
 
     def get_config(self):
@@ -1114,7 +1110,7 @@ class ConditionalRandomField(Layer):
         return None
 
     def call(self, inputs, mask=None):
-        return sequence_masking(inputs, mask, '-inf', 1)
+        return sequence_masking(inputs, mask, -np.inf, 1)
 
     def target_score(self, y_true, y_pred):
         """计算目标路径的相对概率（还没有归一化）
@@ -1142,13 +1138,14 @@ class ConditionalRandomField(Layer):
         """y_true需要是one hot形式
         """
         # 导出mask并转换数据类型
-        mask = K.all(K.greater(y_pred, -1e6), axis=2, keepdims=True)
-        mask = K.cast(mask, K.floatx())
+        mask = K.all(K.not_equal(y_pred, -np.inf), axis=2, keepdims=True)
         # 计算目标分数
-        y_true, y_pred = y_true * mask, y_pred * mask
+        y_true = K.where(mask, y_true, 0)
+        y_pred = K.where(mask, y_pred, 0)
         target_score = self.target_score(y_true, y_pred)
         # 递归计算log Z
         init_states = [y_pred[:, 0]]
+        mask = K.cast(mask, K.floatx())
         y_pred = K.concatenate([y_pred, mask], axis=2)
         input_length = K.int_shape(y_pred[:, 1:])[1]
         log_norm, _, _ = K.rnn(
@@ -1183,7 +1180,7 @@ class ConditionalRandomField(Layer):
         此处y_true需要是整数形式（非one hot）
         """
         # 导出mask并转换数据类型
-        mask = K.all(K.greater(y_pred, -1e6), axis=2)
+        mask = K.all(K.not_equal(y_pred, -np.inf), axis=2)
         mask = K.cast(mask, K.floatx())
         # y_true需要重新明确一下shape和dtype
         y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
@@ -1273,7 +1270,7 @@ class MaximumEntropyMarkovModel(Layer):
         return None
 
     def call(self, inputs, mask=None):
-        return sequence_masking(inputs, mask, '-inf', 1)
+        return sequence_masking(inputs, mask, -np.inf, 1)
 
     def reverse_sequence(self, inputs, mask=None):
         if mask is None:
@@ -1286,7 +1283,7 @@ class MaximumEntropyMarkovModel(Layer):
         """y_true需要是整数形式（非one hot）
         """
         # 导出mask并转换数据类型
-        mask = K.all(K.greater(y_pred, -1e6), axis=2)
+        mask = K.all(K.not_equal(y_pred, -np.inf), axis=2)
         mask = K.cast(mask, K.floatx())
         # y_true需要重新明确一下shape和dtype
         y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
@@ -1309,7 +1306,7 @@ class MaximumEntropyMarkovModel(Layer):
             history = tf.einsum('bnd,kd->bnk', history, r_trans)
         # 计算loss
         history = K.concatenate([y_pred[:, :1], history[:, :-1]], 1)
-        y_pred = (y_pred + history) / 2
+        y_pred = K.where(mask[..., None], (y_pred + history) / 2, 0)
         loss = K.sparse_categorical_crossentropy(
             y_true, y_pred, from_logits=True
         )
@@ -1333,7 +1330,7 @@ class MaximumEntropyMarkovModel(Layer):
         此处y_true需要是整数形式（非one hot）
         """
         # 导出mask并转换数据类型
-        mask = K.all(K.greater(y_pred, -1e6), axis=2)
+        mask = K.all(K.not_equal(y_pred, -np.inf), axis=2)
         mask = K.cast(mask, K.floatx())
         # y_true需要重新明确一下shape和dtype
         y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
@@ -1431,16 +1428,16 @@ class GlobalPointer(Layer):
             pos = SinusoidalPositionEmbedding(self.head_size, 'zero')(inputs)
             qw, kw = apply_rotary_position_embeddings(pos, qw, kw)
         # 计算内积
-        logits = tf.einsum('bmhd,bnhd->bhmn', qw, kw)
-        # 排除padding
-        logits = sequence_masking(logits, mask, '-inf', 2)
-        logits = sequence_masking(logits, mask, '-inf', 3)
+        logits = tf.einsum('bmhd,bnhd->bhmn', qw, kw) / self.head_size**0.5
         # 排除下三角
         if self.tril_mask:
-            mask = tf.linalg.band_part(K.ones_like(logits), 0, -1)
-            logits = logits - (1 - mask) * K.infinity()
-        # scale返回
-        return logits / self.head_size**0.5
+            tril_mask = tf.linalg.band_part(K.ones_like(logits[0, 0]), 0, -1)
+            tril_mask = K.cast(tril_mask, 'bool')
+        else:
+            tril_mask = None
+        # 返回最终结果
+        print([tril_mask])
+        return sequence_masking(logits, mask, -np.inf, [2, 3], tril_mask)
 
     def compute_output_shape(self, input_shape):
         return (input_shape[0], self.heads, input_shape[1], input_shape[1])
@@ -1489,15 +1486,14 @@ class EfficientGlobalPointer(GlobalPointer):
         logits = tf.einsum('bmd,bnd->bmn', qw, kw) / self.head_size**0.5
         bias = tf.einsum('bnh->bhn', self.q_dense(inputs)) / 2
         logits = logits[:, None] + bias[:, ::2, None] + bias[:, 1::2, :, None]
-        # 排除padding
-        logits = sequence_masking(logits, mask, '-inf', 2)
-        logits = sequence_masking(logits, mask, '-inf', 3)
         # 排除下三角
         if self.tril_mask:
-            mask = tf.linalg.band_part(K.ones_like(logits), 0, -1)
-            logits = logits - (1 - mask) * K.infinity()
+            tril_mask = tf.linalg.band_part(K.ones_like(logits[0, 0]), 0, -1)
+            tril_mask = K.cast(tril_mask, 'bool')
+        else:
+            tril_mask = None
         # 返回最终结果
-        return logits
+        return sequence_masking(logits, mask, -np.inf, [2, 3], tril_mask)
 
 
 class Loss(Layer):

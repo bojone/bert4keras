@@ -473,9 +473,9 @@ def extend_with_layer_adaptation(BaseOptimizer):
                     lr_t = K.clip(self.learning_rate, K.epsilon(), K.infinity())
                     x_norm = tf.norm(x)
                     g_norm = tf.norm(dx / lr_t)
-                    ratio = K.switch(
+                    ratio = K.where(
                         x_norm > 0.0,
-                        K.switch(g_norm > 0.0, x_norm / g_norm, 1.0), 1.0
+                        K.where(g_norm > 0.0, x_norm / g_norm, 1.0), 1.0
                     )
                     new_x = x + dx * ratio
                 return old_update(x, new_x)
@@ -525,9 +525,9 @@ def extend_with_layer_adaptation_v2(BaseOptimizer):
                     lr_t = K.clip(lr_t, K.epsilon(), K.infinity())
                     x_norm = tf.norm(x)
                     g_norm = tf.norm(dx / lr_t)
-                    ratio = K.switch(
+                    ratio = K.where(
                         x_norm > 0.0,
-                        K.switch(g_norm > 0.0, x_norm / g_norm, 1.0), 1.0
+                        K.where(g_norm > 0.0, x_norm / g_norm, 1.0), 1.0
                     )
                     new_x = x + dx * ratio
                 return old_update(x, new_x)
@@ -712,7 +712,7 @@ def extend_with_gradient_accumulation_v2(BaseOptimizer):
             old_update = K.update
 
             def new_update(x, new_x):
-                new_x = K.switch(cond, new_x, x)
+                new_x = K.where(cond, new_x, x)
                 return old_update(x, new_x)
 
             K.update = new_update
@@ -722,7 +722,7 @@ def extend_with_gradient_accumulation_v2(BaseOptimizer):
 
             # 累积梯度
             with tf.control_dependencies([op]):
-                ag_t = K.switch(cond, K.zeros_like(ag), ag)
+                ag_t = K.where(cond, 0, ag)
                 with tf.control_dependencies([K.update(ag, ag_t)]):
                     ag_t = K.update(ag, ag + grad)
                     return ag_t
@@ -765,12 +765,12 @@ def extend_with_lookahead(BaseOptimizer):
 
             with tf.control_dependencies(updates):
                 slow_updates = [
-                    K.update(q, K.switch(cond, q + alpha * (p - q), q))
+                    K.update(q, K.where(cond, q + alpha * (p - q), q))
                     for p, q in zip(params, slow_vars)
                 ]
                 with tf.control_dependencies(slow_updates):
                     copy_updates = [
-                        K.update(p, K.switch(cond, q, p))
+                        K.update(p, K.where(cond, q, p))
                         for p, q in zip(params, slow_vars)
                     ]
 
@@ -816,10 +816,10 @@ def extend_with_lookahead_v2(BaseOptimizer):
 
             with tf.control_dependencies([op]):
                 slow_update = K.update(
-                    slow_var, K.switch(cond, slow_var_t, slow_var)
+                    slow_var, K.where(cond, slow_var_t, slow_var)
                 )
                 with tf.control_dependencies([slow_update]):
-                    copy_update = K.update(var, K.switch(cond, slow_var, var))
+                    copy_update = K.update(var, K.where(cond, slow_var, var))
 
             return copy_update
 

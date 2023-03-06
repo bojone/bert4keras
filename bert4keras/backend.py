@@ -58,18 +58,6 @@ def set_gelu(version):
         keras.utils.get_custom_objects()['gelu'] = gelu_tanh
 
 
-def infinity():
-    """返回默认的代表无穷大的数值
-    """
-    return keras.utils.get_custom_objects().get('infinity', 1e12)
-
-
-def set_infinity(value):
-    """设置新的代表无穷大的数值
-    """
-    keras.utils.get_custom_objects()['infinity'] = value
-
-
 def piecewise_linear(t, schedule, from_zero=True):
     """分段线性函数
     其中schedule是形如{1000: 1, 2000: 0.1}的字典，
@@ -93,7 +81,7 @@ def piecewise_linear(t, schedule, from_zero=True):
             x = schedule[i][1] + slope * (t - t_begin)
         else:
             x = (t * 0 + 1) * schedule[i][1]
-        x = K.switch(t >= t_begin, x, x_begin)
+        x = K.where(t >= t_begin, x, x_begin)
 
     return x
 
@@ -177,32 +165,86 @@ def flatten(tensor, start=None, end=None):
     return K.reshape(tensor, shape)
 
 
-def sequence_masking(x, mask, value=0, axis=None):
+def dtype(x):
+    """增强K.dtype的容错性
+    """
+    try:
+        return K.dtype(x)
+    except:
+        pass
+
+
+def where(cond, x, y):
+    """给tf.where加上自动广播
+    """
+    shape = tf.broadcast_dynamic_shape(K.shape(x), K.shape(y))
+    shape = tf.broadcast_dynamic_shape(K.shape(cond), shape)
+
+    if dtype(x) is None and dtype(y) is None:
+        x = tf.broadcast_to(K.constant(x, dtype=K.floatx()), shape)
+        y = tf.broadcast_to(K.constant(y, dtype=K.floatx()), shape)
+    elif dtype(x) is None:
+        x = tf.broadcast_to(K.constant(x, dtype=dtype(y)), shape)
+    elif dtype(y) is None:
+        y = tf.broadcast_to(K.constant(y, dtype=dtype(x)), shape)
+    else:
+        x = tf.broadcast_to(x, shape)
+        y = tf.broadcast_to(x, shape)
+
+    if dtype(cond) != 'bool':
+        cond = K.cast(cond, 'bool')
+
+    cond = tf.broadcast_to(cond, shape)
+    return tf.where(cond, x, y)
+
+
+def sequence_masking(
+    x, mask=None, value=0, axis=None, bias=None, return_mask=False
+):
     """为序列条件mask的函数
     mask: 形如(batch_size, seq_len)的bool矩阵；
     value: mask部分要被替换成的值，可以是'-inf'或'inf'；
     axis: 序列所在轴，默认为1；
+    bias: 额外的偏置项，或者附加的mask；
+    return_mask: 是否同时返回对齐后的mask。
     """
-    if mask is None:
-        return x
+    if not (mask is None and bias is None):
+        if mask is None:
+            if K.dtype(bias) == 'bool':
+                mask = bias
+                x = K.where(mask, x, value)
+            else:
+                x = x + bias
+        else:
+            if axis is None:
+                axes = [1]
+            elif isinstance(axis, list):
+                axes = axis
+            else:
+                axes = [axis]
+
+            axes = [axis if axis >= 0 else K.ndim(x) + axis for axis in axes]
+
+            if K.dtype(mask) != 'bool':
+                mask = K.cast(mask, 'bool')
+
+            full_mask = align(mask, [0, axes[0]], K.ndim(x))
+            for axis in axes[1:]:
+                full_mask = full_mask & align(mask, [0, axis], K.ndim(x))
+
+            mask = full_mask
+            if bias is None:
+                x = K.where(mask, x, value)
+            elif K.dtype(bias) == 'bool':
+                mask = mask & bias
+                x = K.where(mask, x, value)
+            else:
+                x = K.where(mask, x + bias, value)
+
+    if return_mask:
+        return x, mask
     else:
-        if value == '-inf':
-            value = -K.infinity()
-        elif value == 'inf':
-            value = K.infinity()
-        value = K.zeros_like(x) + value
-
-        if axis is None:
-            axis = 1
-        elif axis < 0:
-            axis = K.ndim(x) + axis
-        assert axis > 0, 'axis must be greater than 0'
-
-        if K.dtype(mask) != 'bool':
-            mask = K.cast(mask, 'bool')
-        mask = align(mask, [0, axis], K.ndim(x))
-
-        return K.switch(mask, x, value)
+        return x
 
 
 def batch_gather(params, indices):
@@ -246,7 +288,7 @@ def divisible_temporal_padding(x, n):
     """将一维向量序列右padding到长度能被n整除
     """
     r_len = K.shape(x)[1] % n
-    p_len = K.switch(r_len > 0, n - r_len, 0)
+    p_len = K.where(r_len > 0, n - r_len, 0)
     return K.temporal_padding(x, (0, p_len))
 
 
@@ -268,17 +310,21 @@ def leaky_relu(x, alpha=0.2):
     return tf.nn.leaky_relu(x, alpha=alpha)
 
 
-def attention_normalize(a, axis=-1, method='softmax'):
+def attention_normalize(a, mask=None, axis=-1, method='softmax', bias=None):
     """不同的注意力归一化方案
     softmax：常规/标准的指数归一化；
     squared_relu：来自 https://arxiv.org/abs/2202.10447 ；
     softmax_plus：来自 https://kexue.fm/archives/8823 。
     """
+    a, mask = sequence_masking(a, mask, -np.inf, axis, bias, True)
     if method == 'softmax':
         return K.softmax(a, axis=axis)
     else:
-        mask = K.cast(a >= -K.infinity() / 10, K.floatx())
-        l = K.sum(mask, axis=axis, keepdims=True)
+        if mask is None:
+            l = K.cast(K.shape(a)[-1], K.floatx())
+        else:
+            mask = K.cast(mask, K.floatx())
+            l = K.sum(mask, axis=axis, keepdims=True)
         if method == 'squared_relu':
             return K.relu(a)**2 / l
         elif method == 'softmax_plus':
@@ -331,16 +377,6 @@ def apply_rotary_position_embeddings(sinusoidal, *tensors):
     return outputs[0] if len(outputs) == 1 else outputs
 
 
-def log(x, epsilon=None):
-    """给log添加epsilon，防止NaN
-    """
-    if epsilon is None:
-        return tf.math.log(x)
-    elif epsilon is True:
-        epsilon = K.epsilon()
-    return tf.math.log(K.maximum(x, epsilon))
-
-
 def multilabel_categorical_crossentropy(y_true, y_pred):
     """多标签分类的交叉熵
     说明：
@@ -353,12 +389,9 @@ def multilabel_categorical_crossentropy(y_true, y_pred):
         4. 详情请看：https://kexue.fm/archives/7359 和
            https://kexue.fm/archives/9064 。
     """
-    y_mask = y_pred > -K.infinity() / 10
-    n_mask = (y_true < 1 - K.epsilon()) & y_mask
-    p_mask = (y_true > K.epsilon()) & y_mask
-    infs = K.zeros_like(y_pred) + K.infinity()
-    y_neg = K.switch(n_mask, y_pred, -infs) + K.log(1 - y_true, True)
-    y_pos = K.switch(p_mask, -y_pred, -infs) + K.log(y_true, True)
+    y_mask = K.not_equal(y_pred, -np.inf)
+    y_neg = K.where(y_mask, y_pred, -np.inf) + K.log(1 - y_true)
+    y_pos = K.where(y_mask, -y_pred, -np.inf) + K.log(y_true)
     zeros = K.zeros_like(y_pred[..., :1])
     y_neg = K.concatenate([y_neg, zeros], axis=-1)
     y_pos = K.concatenate([y_pos, zeros], axis=-1)
@@ -381,7 +414,7 @@ def sparse_multilabel_categorical_crossentropy(y_true, y_pred, mask_zero=False):
     zeros = K.zeros_like(y_pred[..., :1])
     y_pred = K.concatenate([y_pred, zeros], axis=-1)
     if mask_zero:
-        infs = zeros + K.infinity()
+        infs = zeros + np.inf
         y_pred = K.concatenate([infs, y_pred[..., 1:]], axis=-1)
     y_pos_2 = batch_gather(y_pred, y_true)
     y_pos_1 = K.concatenate([y_pos_2, zeros], axis=-1)
@@ -485,14 +518,10 @@ K.symbolic = getattr(K, 'symbolic', None) or symbolic
 # 给tf.keras补充上logsumexp
 K.logsumexp = getattr(K, 'logsumexp', None) or tf.math.reduce_logsumexp
 
-# 修改版对数函数
-K.log = log
-
 # 添加到 keras.backend 上，使其可以像 K.epsilon() 那样操作
 K.reshape = reshape
 K.flatten = flatten
-K.infinity = infinity
-K.set_infinity = set_infinity
+K.where = where
 sys.modules['tensorflow.keras.backend'] = K
 
 custom_objects = {
