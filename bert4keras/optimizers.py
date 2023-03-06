@@ -97,7 +97,6 @@ class LionV2(keras.optimizers.Optimizer):
 
     def _resource_apply_dense(self, grad, var):
         # 准备变量
-
         var_dtype = var.dtype.base_dtype
         lr_t = self._decayed_lr(var_dtype)
         m = self.get_slot(var, 'm')
