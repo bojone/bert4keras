@@ -1436,7 +1436,6 @@ class GlobalPointer(Layer):
         else:
             tril_mask = None
         # 返回最终结果
-        print([tril_mask])
         return sequence_masking(logits, mask, -np.inf, [2, 3], tril_mask)
 
     def compute_output_shape(self, input_shape):
