@@ -470,7 +470,7 @@ def extend_with_layer_adaptation(BaseOptimizer):
             def new_update(x, new_x):
                 if is_one_of(x, params) and self._do_layer_adaptation(x):
                     dx = new_x - x
-                    lr_t = K.clip(self.learning_rate, K.epsilon(), K.infinity())
+                    lr_t = K.maximum(self.learning_rate, K.epsilon())
                     x_norm = tf.norm(x)
                     g_norm = tf.norm(dx / lr_t)
                     ratio = K.where(
@@ -522,7 +522,7 @@ def extend_with_layer_adaptation_v2(BaseOptimizer):
                 if x is var and self._do_layer_adaptation(x):
                     dx = new_x - x
                     lr_t = self._decayed_lr(x.dtype.base_dtype)
-                    lr_t = K.clip(lr_t, K.epsilon(), K.infinity())
+                    lr_t = K.maximum(lr_t, K.epsilon())
                     x_norm = tf.norm(x)
                     g_norm = tf.norm(dx / lr_t)
                     ratio = K.where(
