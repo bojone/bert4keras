@@ -76,6 +76,7 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 - 注2：下载下来的ELECTRA权重，如果没有json配置文件的话，参考<a href="https://github.com/ymcui/Chinese-ELECTRA/issues/3">这里</a>自己改一个（需要加上`type_vocab_size`字段）。
 
 ## 更新
+- <strong>2023.03.06</strong>: [无穷大改np.inf；优化显存占用](https://github.com/bojone/bert4keras/commit/20a46946156b4bc15ceaa00671fcd00c8b702640)。将无穷大改为np.inf，运算更加准确，而且在低精度运算时不容易出错；同时合并了若干mask算子，减少了显存占用。实测在A100上训练base和large级别模型时，速度有明显加快，显存占用也有降低。
 - <strong>2022.03.20</strong>: 增加[RoFormerV2](https://kexue.fm/archives/8998)。
 - <strong>2022.02.28</strong>: 增加[GatedAttentionUnit](https://kexue.fm/archives/8934)。
 - <strong>2021.04.23</strong>: 增加[GlobalPointer](https://kexue.fm/archives/8373)。
