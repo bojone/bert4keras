@@ -328,7 +328,7 @@ def attention_normalize(a, mask=None, axis=-1, method='softmax', bias=None):
         if method == 'squared_relu':
             return K.relu(a)**2 / l
         elif method == 'softmax_plus':
-            l = K.maximum(l, 2)
+            l = K.maximum(l, 16)  # 极短序列scale反而不好
             return K.softmax(a * K.log(l) / np.log(512), axis=axis)
     return a
 
