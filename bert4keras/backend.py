@@ -189,7 +189,7 @@ def where(cond, x, y):
         y = tf.broadcast_to(K.constant(y, dtype=dtype(x)), shape)
     else:
         x = tf.broadcast_to(x, shape)
-        y = tf.broadcast_to(x, shape)
+        y = tf.broadcast_to(y, shape)
 
     if dtype(cond) != 'bool':
         cond = K.cast(cond, 'bool')
