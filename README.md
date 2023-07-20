@@ -150,6 +150,10 @@ pip install git+https://www.github.com/bojone/bert4keras.git
 ## 鸣谢
 感谢CyberZHG大佬实现的<a href="https://github.com/CyberZHG/keras-bert">keras-bert</a>，本实现有不少地方参考了keras-bert的源码，在此衷心感谢大佬的无私奉献。
 
+## 相关
+
+[bert4torch](https://github.com/Tongjilibo/bert4torch)：一个跟bert4keras风格很相似的pytorch-based的transofrmer库，使用pytorch的读者可以尝试。
+
 ## 引用
 
 ```
