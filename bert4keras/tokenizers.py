@@ -186,6 +186,12 @@ class Tokenizer(TokenizerBase):
         self._vocab_size = len(token_dict)
         self._word_maxlen = word_maxlen
 
+        self._token_start_id = self._token_dict.get(self._token_start)
+        self._token_end_id = self._token_dict.get(self._token_end)
+        self._token_pad_id = self._token_dict.get(self._token_pad)
+        self._token_unk_id = self._token_dict.get(self._token_unk)
+        self._token_mask_id = self._token_dict.get(self._token_mask)
+
         for token in ['pad', 'unk', 'mask', 'start', 'end']:
             try:
                 _token_id = token_dict[getattr(self, '_token_%s' % token)]
