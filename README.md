@@ -164,6 +164,3 @@ pip install git+https://www.github.com/bojone/bert4keras.git
   howpublished={\url{https://bert4keras.spaces.ac.cn}},
 }
 ```
-
-## 交流
-QQ交流群：808623966，微信群请加机器人微信号spaces_ac_cn
